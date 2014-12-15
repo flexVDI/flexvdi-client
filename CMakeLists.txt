@@ -11,12 +11,12 @@ configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config
 include_directories("${PROJECT_BINARY_DIR}")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Werror -Wall")
-set(sources FlexVMAgent.cpp VirtioPort.cpp FlexVMProto.c CredentialsManager.cpp
+set(sources FlexVDIGuestAgent.cpp VirtioPort.cpp FlexVDIProto.c CredentialsManager.cpp
     DispatcherRegistry.cpp)
 
 add_library(objects OBJECT ${sources})
-add_executable(flexvm_agent main.cpp $<TARGET_OBJECTS:objects>)
+add_executable(flexvdi-guest-agent main.cpp $<TARGET_OBJECTS:objects>)
 
-install(TARGETS flexvm_agent RUNTIME DESTINATION bin)
+install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
 
 add_subdirectory(test)

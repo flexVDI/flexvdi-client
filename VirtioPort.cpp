@@ -5,7 +5,7 @@
 #include <functional>
 #include "VirtioPort.hpp"
 #include "util.hpp"
-#include "FlexVMProto.h"
+#include "FlexVDIProto.h"
 
 #if defined(WIN32) && defined(ASIO_HAS_WINDOWS_STREAM_HANDLE)
 #include <windows.h>
@@ -25,7 +25,7 @@ public:
     void open(const char * name);
     void readNextHeader() {
         using namespace std::placeholders;
-        asio::async_read(stream, asio::buffer(&header, sizeof(FlexVMMessageHeader)),
+        asio::async_read(stream, asio::buffer(&header, sizeof(FlexVDIMessageHeader)),
                          std::bind(&Impl::readHeader, this, _1, _2));
     }
     void readNextMessage(std::size_t messageLength) {
@@ -43,7 +43,7 @@ private:
 #endif
 
     Handler & handler;
-    FlexVMMessageHeader header;
+    FlexVDIMessageHeader header;
     std::shared_ptr<uint8_t> dataBuffer;
 
     void readHeader(const asio::error_code & error, std::size_t bytes_transferred);

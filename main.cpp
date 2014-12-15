@@ -2,14 +2,14 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
-#include "FlexVMAgent.hpp"
-#include "FlexVMProto.h"
+#include "FlexVDIGuestAgent.hpp"
+#include "FlexVDIProto.h"
 #include "util.hpp"
 using namespace flexvm;
 
 int main(int argc, char * argv[]) {
     registerMessageMarshallers();
-    FlexVMAgent agent(argc, argv);
+    FlexVDIGuestAgent agent(argc, argv);
     return agent.run();
 }
 

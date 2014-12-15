@@ -2,8 +2,8 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
-#ifndef _FLEXVMPROTO_H_
-#define _FLEXVMPROTO_H_
+#ifndef _FLEXVDIPROTO_H_
+#define _FLEXVDIPROTO_H_
 
 #include <stdint.h>
 #include <spice/macros.h>
@@ -17,12 +17,12 @@
 
 SPICE_BEGIN_DECLS
 
-typedef struct FlexVMMessageHeader {
+typedef struct FlexVDIMessageHeader {
     uint32_t type;
     uint32_t size;
-} FlexVMMessageHeader;
+} FlexVDIMessageHeader;
 
-static inline void marshallHeader(FlexVMMessageHeader * header) {
+static inline void marshallHeader(FlexVDIMessageHeader * header) {
     BYTESWAP32(header->type);
     BYTESWAP32(header->size);
 }
@@ -31,27 +31,27 @@ void registerMessageMarshallers();
 int marshallMessage(uint32_t type, uint8_t * data, size_t bytes);
 
 enum {
-    FLEXVM_CREDENTIALS = 0,
-    FLEXVM_MAX_MESSAGE_TYPE // Must be the last one
+    FLEXVDI_CREDENTIALS = 0,
+    FLEXVDI_MAX_MESSAGE_TYPE // Must be the last one
 };
 
-typedef struct FlexVMCredentialsMsg {
+typedef struct FlexVDICredentialsMsg {
     uint32_t userLength;
     uint32_t passLength;
     uint32_t domainLength;
     char strings[0];
-} FlexVMCredentialsMsg;
+} FlexVDICredentialsMsg;
 
-static inline const char * getCredentialsUser(const FlexVMCredentialsMsg * msg) {
+static inline const char * getCredentialsUser(const FlexVDICredentialsMsg * msg) {
     return &msg->strings[0];
 }
-static inline const char * getCredentialsPassword(const FlexVMCredentialsMsg * msg) {
+static inline const char * getCredentialsPassword(const FlexVDICredentialsMsg * msg) {
     return &msg->strings[msg->userLength + 1];
 }
-static inline const char * getCredentialsDomain(const FlexVMCredentialsMsg * msg) {
+static inline const char * getCredentialsDomain(const FlexVDICredentialsMsg * msg) {
     return &msg->strings[msg->userLength + msg->passLength + 2];
 }
 
 SPICE_END_DECLS
 
-#endif // _FLEXVMPROTO_H_
+#endif // _FLEXVDIPROTO_H_

@@ -2,8 +2,8 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
-#ifndef _FLEXVMAGENT_HPP_
-#define _FLEXVMAGENT_HPP_
+#ifndef _FLEXVDIAGENT_HPP_
+#define _FLEXVDIAGENT_HPP_
 
 #include <memory>
 #include <asio.hpp>
@@ -13,9 +13,9 @@
 
 namespace flexvm {
 
-class FlexVMAgent : public VirtioPort::Handler {
+class FlexVDIGuestAgent : public VirtioPort::Handler {
 public:
-    FlexVMAgent(int argc, char * argv[]) : port(io, *this) {
+    FlexVDIGuestAgent(int argc, char * argv[]) : port(io, *this), creds(io) {
         parseOptions(argc, argv);
     }
 
@@ -34,4 +34,4 @@ private:
 
 } // namespace flexvm
 
-#endif // _FLEXVMAGENT_HPP_
+#endif // _FLEXVDIAGENT_HPP_

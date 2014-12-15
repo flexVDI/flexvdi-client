@@ -6,15 +6,28 @@
 #define _CREDENTIALSMANAGER_HPP_
 
 #include <memory>
-#include "FlexVMProto.h"
+#include <asio.hpp>
+#include "FlexVDIProto.h"
 #include "DispatcherRegistry.hpp"
 
 namespace flexvm {
 
 class CredentialsManager {
 public:
-    void handle(const std::shared_ptr<FlexVMCredentialsMsg> & msg);
+    CredentialsManager(asio::io_service & io);
+    ~CredentialsManager();
+    void handle(const std::shared_ptr<FlexVDICredentialsMsg> & msg);
     void registerHandlers(DispatcherRegistry & registry);
+    void open();
+    void setEndpoint(const std::string & name) {
+        endpointName = name;
+    }
+
+private:
+    std::string endpointName;
+
+    class Impl;
+    Impl * impl;
 };
 
 }
