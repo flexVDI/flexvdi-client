@@ -16,7 +16,7 @@ bool DispatcherRegistry::dispatch(uint32_t type, const std::shared_ptr<uint8_t> 
     bool dispatched = false;
     if (type < FLEXVDI_MAX_MESSAGE_TYPE) {
         for (auto & dispatcher : dispatchers[type]) {
-            Log(DEBUG) << "Dispatching message type " << type;
+            Log(L_DEBUG) << "Dispatching message type " << type;
             dispatcher->dispatch(msgBuffer);
             dispatched = true;
         }

@@ -6,7 +6,7 @@
 #define _CREDENTIALSMANAGER_HPP_
 
 #include <memory>
-#include <asio.hpp>
+#include <boost/asio.hpp>
 #include "FlexVDIProto.h"
 #include "DispatcherRegistry.hpp"
 
@@ -14,7 +14,7 @@ namespace flexvm {
 
 class CredentialsManager {
 public:
-    CredentialsManager(asio::io_service & io);
+    CredentialsManager(boost::asio::io_service & io);
     ~CredentialsManager();
     void handle(const std::shared_ptr<FlexVDICredentialsMsg> & msg);
     void registerHandlers(DispatcherRegistry & registry);

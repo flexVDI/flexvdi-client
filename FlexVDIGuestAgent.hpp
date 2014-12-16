@@ -6,7 +6,7 @@
 #define _FLEXVDIAGENT_HPP_
 
 #include <memory>
-#include <asio.hpp>
+#include <boost/asio.hpp>
 #include "DispatcherRegistry.hpp"
 #include "VirtioPort.hpp"
 #include "CredentialsManager.hpp"
@@ -24,7 +24,7 @@ public:
     virtual void handle(uint32_t type, const std::shared_ptr<uint8_t> & msgBuffer);
 
 private:
-    asio::io_service io;
+    boost::asio::io_service io;
     DispatcherRegistry dregistry;
     VirtioPort port;
     CredentialsManager creds;

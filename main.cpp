@@ -2,9 +2,11 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
+#include <iostream>
+#define FLEXVDI_PROTO_IMPL
 #include "FlexVDIGuestAgent.hpp"
-#include "FlexVDIProto.h"
 #include "util.hpp"
+#include "FlexVDIProto.h"
 using namespace flexvm;
 
 int main(int argc, char * argv[]) {

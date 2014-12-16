@@ -5,7 +5,7 @@
 #ifndef _VIRTIOPORT_HPP_
 #define _VIRTIOPORT_HPP_
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 #include <memory>
 
 namespace flexvm {
@@ -17,7 +17,7 @@ public:
         virtual void handle(uint32_t type, const std::shared_ptr<uint8_t> & msgBuffer) = 0;
     };
 
-    VirtioPort(asio::io_service & io, Handler & handler);
+    VirtioPort(boost::asio::io_service & io, Handler & handler);
     ~VirtioPort();
 
     void open();

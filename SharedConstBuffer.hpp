@@ -7,7 +7,7 @@
 
 #include <memory>
 #include <list>
-#include <asio.hpp>
+#include <boost/asio.hpp>
 
 namespace flexvm {
 
@@ -26,21 +26,23 @@ public:
     template <typename T>
     SharedConstBuffer & operator()(T * header) {
         data.emplace_back(std::shared_ptr<T>(header));
-        buffers.emplace_back(asio::buffer(header, sizeof(T)));
+        buffers.emplace_back(boost::asio::buffer(header, sizeof(T)));
         return *this;
     }
-    SharedConstBuffer & operator()(const std::shared_ptr<uint8_t> & payload, std::size_t bytes) {
+    SharedConstBuffer & operator()(const std::shared_ptr<uint8_t> & payload,
+                                   std::size_t bytes) {
         data.emplace_back(payload);
-        buffers.emplace_back(asio::buffer(payload.get(), bytes));
+        buffers.emplace_back(boost::asio::buffer(payload.get(), bytes));
         return *this;
     }
     SharedConstBuffer & operator()(uint8_t * payload, std::size_t bytes) {
-        return operator()(std::shared_ptr<uint8_t>(payload, std::default_delete<uint8_t[]>()), bytes);
+        return operator()(std::shared_ptr<uint8_t>(payload, std::default_delete<uint8_t[]>()),
+                          bytes);
     }
 
     // Implement the ConstBufferSequence requirements.
-    typedef asio::const_buffer value_type;
-    typedef std::list<asio::const_buffer>::const_iterator const_iterator;
+    typedef boost::asio::const_buffer value_type;
+    typedef std::list<boost::asio::const_buffer>::const_iterator const_iterator;
     const_iterator begin() const {
         return buffers.begin();
     }
@@ -50,7 +52,7 @@ public:
 
 private:
     std::list<std::shared_ptr<void>> data;
-    std::list<asio::const_buffer> buffers;
+    std::list<boost::asio::const_buffer> buffers;
 };
 
 } // namespace flexvm

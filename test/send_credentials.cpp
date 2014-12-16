@@ -5,10 +5,17 @@
 #include <iostream>
 #include <memory>
 #include <algorithm>
-#include <asio.hpp>
+#include <boost/asio.hpp>
+#define FLEXVDI_PROTO_IMPL
 #include "../FlexVDIProto.h"
 #include "../SharedConstBuffer.hpp"
+
+#ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
+#include <windows.h>
+#endif
+
 using namespace std;
+namespace asio = boost::asio;
 
 int main(int argc, char * argv[]) {
     if (argc != 2) {
@@ -26,7 +33,13 @@ int main(int argc, char * argv[]) {
     std::copy_n("pass", 5, msgBuffer + 5);
     std::copy_n("domi", 5, msgBuffer + 10);
     asio::io_service io;
+#ifdef BOOST_ASIO_HAS_POSIX_STREAM_DESCRIPTOR
     asio::posix::stream_descriptor stream(io, ::open(argv[1], O_RDWR));
+#else
+    HANDLE h = ::CreateFile(argv[1], GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    asio::windows::stream_handle stream(io, h);
+#endif
     asio::write<>(stream, flexvm::SharedConstBuffer(mHeader)(msg)(msgBuffer, 15));
     return 0;
 }

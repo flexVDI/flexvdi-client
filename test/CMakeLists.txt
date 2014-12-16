@@ -1,1 +1,2 @@
-add_executable(send_credentials send_credentials.cpp ../FlexVDIProto.c)
+add_executable(send_credentials send_credentials.cpp)
+target_link_libraries(send_credentials "${Boost_LIBRARIES}" "${WINSOCK_LIBRARIES}" pthread)

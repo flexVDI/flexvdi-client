@@ -9,16 +9,18 @@
 #include <cerrno>
 #include <ostream>
 
-#define throw_if(cond, msg) \
-    do { if (cond) throw std::system_error(errno, std::system_category(), msg); } while(0)
+#define throw_errno_if(cond, msg) \
+do { if (cond) throw std::system_error(errno, std::system_category(), msg); } while(0)
+#define throw_winerror_if(cond, msg) \
+do { if (cond) throw std::system_error(GetLastError(), std::system_category(), msg); } while(0)
 
 namespace flexvm {
 
 enum LogLevel {
-    DEBUG = 0,
-    INFO,
-    WARNING,
-    ERROR
+    L_DEBUG = 0,
+    L_INFO,
+    L_WARNING,
+    L_ERROR
 };
 
 class Log {
@@ -30,7 +32,7 @@ public:
         *out << par;
         return *this;
     }
-    
+
 private:
     std::ostream * out;
 };
