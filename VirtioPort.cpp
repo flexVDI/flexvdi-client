@@ -58,11 +58,11 @@ private:
 void VirtioPort::Impl::open(const char * name) {
 #ifdef WIN32
     HANDLE portFd = ::CreateFile(name, GENERIC_READ | GENERIC_WRITE, 0, NULL,
-                                 OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    throw_winerror_if(portFd == INVALID_HANDLE_VALUE, name);
+                                 OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+    throw_if(portFd == INVALID_HANDLE_VALUE, name);
 #else
     int portFd = ::open(name, O_RDWR);
-    throw_errno_if(portFd < 0, name);
+    throw_if(portFd < 0, name);
 #endif
     stream.assign(portFd);
     readNextHeader();
@@ -76,7 +76,7 @@ void VirtioPort::Impl::readHeader(const sys::error_code & error,
         // TODO: Closed?
     } else {
         marshallHeader(&header);
-        Log(L_DEBUG) << "Read header for message type " << header.type << " and size " << header.size;
+        Log(L_DEBUG) << "Reading message type " << header.type << " and size " << header.size;
         readNextMessage(header.size);
     }
 }

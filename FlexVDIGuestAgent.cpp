@@ -19,18 +19,16 @@ int FlexVDIGuestAgent::run() {
     return 0;
 }
 
+
+void FlexVDIGuestAgent::stop() {
+    io.stop();
+}
+
+
 void FlexVDIGuestAgent::registerHandlers() {
     creds.registerHandlers(dregistry);
 }
 
-void FlexVDIGuestAgent::parseOptions(int argc, char * argv[]) {
-    for (int i = 1; i < argc; ++i) {
-        if (std::string("-e") == argv[i] && ++i < argc) {
-            Log(L_DEBUG) << "Using endpoint " << argv[i];
-            port.setEndpoint(argv[i]);
-        }
-    }
-}
 
 void FlexVDIGuestAgent::handle(uint32_t type, const std::shared_ptr<uint8_t> & msgBuffer) {
     if (!dregistry.dispatch(type, msgBuffer)) {

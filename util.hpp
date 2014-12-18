@@ -6,13 +6,23 @@
 #define _UTIL_HPP_
 
 #include <system_error>
-#include <cerrno>
 #include <ostream>
 
-#define throw_errno_if(cond, msg) \
-do { if (cond) throw std::system_error(errno, std::system_category(), msg); } while(0)
-#define throw_winerror_if(cond, msg) \
-do { if (cond) throw std::system_error(GetLastError(), std::system_category(), msg); } while(0)
+#define throw_code_if(cond, code, msg) \
+do { if (cond) throw std::system_error(code, std::system_category(), msg); } while(0)
+#define return_code_if(cond, code, msg, ret) \
+do { if (cond) { \
+    Log(L_ERROR) << msg << ": " << std::system_category().message(code); return ret; \
+}} while(0)
+
+#ifdef WIN32
+#define throw_if(cond, msg) throw_code_if(cond, GetLastError(), msg)
+#define return_if(cond, msg, ret) return_code_if(cond, GetLastError(), msg, ret)
+#else
+#include <cerrno>
+#define throw_if(cond, msg) throw_code_if(cond, errno, msg)
+#define return_if(cond, msg, ret) return_code_if(cond, errno, msg, ret)
+#endif
 
 namespace flexvm {
 
@@ -33,8 +43,10 @@ public:
         return *this;
     }
 
+    static void setLogOstream(std::ostream * logout) { out = logout; }
+
 private:
-    std::ostream * out;
+    static std::ostream * out;
 };
 
 }

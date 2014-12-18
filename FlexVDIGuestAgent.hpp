@@ -15,13 +15,14 @@ namespace flexvm {
 
 class FlexVDIGuestAgent : public VirtioPort::Handler {
 public:
-    FlexVDIGuestAgent(int argc, char * argv[]) : port(io, *this), creds(io) {
-        parseOptions(argc, argv);
-    }
+    FlexVDIGuestAgent() : port(io, *this), creds(io) {}
 
-    void parseOptions(int argc, char * argv[]);
     int run();
+    void stop();
     virtual void handle(uint32_t type, const std::shared_ptr<uint8_t> & msgBuffer);
+    void setVirtioEndpoint(const std::string & name) {
+        port.setEndpoint(name);
+    }
 
 private:
     boost::asio::io_service io;

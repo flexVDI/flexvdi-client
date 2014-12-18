@@ -27,7 +27,6 @@ static inline void marshallHeader(FlexVDIMessageHeader * header) {
     BYTESWAP32(header->size);
 }
 
-void registerMessageMarshallers();
 int marshallMessage(uint32_t type, uint8_t * data, size_t bytes);
 
 enum {
@@ -55,8 +54,6 @@ static inline const char * getCredentialsDomain(const FlexVDICredentialsMsg * ms
 #ifdef FLEXVDI_PROTO_IMPL
 typedef int (*MarshallingFunction)(uint8_t *, size_t bytes);
 
-static MarshallingFunction marshallers[FLEXVDI_MAX_MESSAGE_TYPE];
-
 static int marshallFlexVDICredentialsMsg(uint8_t * data, size_t bytes) {
     if (bytes < sizeof(FlexVDICredentialsMsg)) {
         return 0;
@@ -69,9 +66,9 @@ static int marshallFlexVDICredentialsMsg(uint8_t * data, size_t bytes) {
     msg->userLength + msg->passLength + msg->domainLength + 3;
 }
 
-void registerMessageMarshallers() {
-    marshallers[FLEXVDI_CREDENTIALS] = marshallFlexVDICredentialsMsg;
-}
+static MarshallingFunction marshallers[FLEXVDI_MAX_MESSAGE_TYPE] = {
+    [FLEXVDI_CREDENTIALS] = marshallFlexVDICredentialsMsg,
+};
 
 int marshallMessage(uint32_t type, uint8_t * data, size_t bytes) {
     if (type < FLEXVDI_MAX_MESSAGE_TYPE) {

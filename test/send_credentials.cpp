@@ -22,7 +22,6 @@ int main(int argc, char * argv[]) {
         clog << "Use: send_credentials pipe" << endl;
         return 1;
     }
-    registerMessageMarshallers();
     auto mHeader = new FlexVDIMessageHeader;
     mHeader->type = FLEXVDI_CREDENTIALS;
     mHeader->size = sizeof(FlexVDICredentialsMsg) + 15;

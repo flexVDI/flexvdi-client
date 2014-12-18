@@ -56,16 +56,15 @@ private:
 
 void CredentialsManager::Impl::open(const char * name) {
 #ifdef WIN32
-    uint32_t type = PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE |
-                    PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS;
+    uint32_t type = PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT;
     HANDLE portFd = ::CreateNamedPipe(name, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, type,
-                                      PIPE_UNLIMITED_INSTANCES, 1024, 1024, 0, nullptr);
-    throw_winerror_if(portFd == INVALID_HANDLE_VALUE, name);
+                                      PIPE_UNLIMITED_INSTANCES, 1024, 1024, 0, NULL);
+    throw_if(portFd == INVALID_HANDLE_VALUE, name);
     stream.assign(portFd);
     asio::windows::overlapped_ptr overlappedPtr;
     overlappedPtr.reset(io, std::bind(&Impl::acceptConnection, this, ph::_1));
     BOOL ok = ConnectNamedPipe(portFd, overlappedPtr.get());
-    throw_winerror_if(!ok && GetLastError() != ERROR_IO_PENDING, "ConnectNamedPipe failed");
+    throw_if(!ok && GetLastError() != ERROR_IO_PENDING, "ConnectNamedPipe failed");
     // The operation was successfully initiated, so ownership of the
     // OVERLAPPED-derived object has passed to the io_service.
     overlappedPtr.release();

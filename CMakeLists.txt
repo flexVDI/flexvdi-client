@@ -29,9 +29,13 @@ endif (WIN32)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Werror -Wall")
 
 set(sources FlexVDIGuestAgent.cpp VirtioPort.cpp CredentialsManager.cpp
-    DispatcherRegistry.cpp)
+    DispatcherRegistry.cpp util.cpp)
 add_library(objects OBJECT ${sources})
-add_executable(flexvdi-guest-agent main.cpp $<TARGET_OBJECTS:objects>)
+if (WIN32)
+    add_executable(flexvdi-guest-agent WindowsService.cpp $<TARGET_OBJECTS:objects>)
+else (WIN32)
+    add_executable(flexvdi-guest-agent main.cpp $<TARGET_OBJECTS:objects>)
+endif (WIN32)
 target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}" "${WINSOCK_LIBRARIES}" pthread)
 
 install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)

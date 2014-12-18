@@ -3,25 +3,22 @@
  **/
 
 #include <iostream>
-#define FLEXVDI_PROTO_IMPL
 #include "FlexVDIGuestAgent.hpp"
 #include "util.hpp"
-#include "FlexVDIProto.h"
 using namespace flexvm;
+using std::string;
 
 int main(int argc, char * argv[]) {
-    registerMessageMarshallers();
-    FlexVDIGuestAgent agent(argc, argv);
+    FlexVDIGuestAgent agent;
+    for (int i = 1; i < argc; ++i) {
+        if (string("-e") == argv[i] && ++i < argc) {
+            Log(L_DEBUG) << "Using endpoint " << argv[i];
+            agent.setVirtioEndpoint(argv[i]);
+        } else {
+            std::cout << "Usage: " << argv[0] << " [ -e endpoint ]" << std::endl;
+            return 1;
+        }
+    }
+
     return agent.run();
-}
-
-static const char * levelStr[] = { "DEBUG", "INFO", "WARNING", "ERROR" };
-
-Log::Log(LogLevel level) {
-    out = &std::cerr;
-    std::cerr << "[" << levelStr[level] << "] ";
-}
-
-Log::~Log() {
-    std::cerr << std::endl;
 }
