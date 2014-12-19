@@ -1,0 +1,23 @@
+LIBRARY FLEXVDIGINA
+EXPORTS
+    WlxNegotiate
+    WlxInitialize
+    WlxDisplaySASNotice
+    WlxLoggedOutSAS
+    WlxActivateUserShell
+    WlxLoggedOnSAS
+    WlxDisplayLockedNotice
+    WlxWkstaLockedSAS
+    WlxIsLockOk
+    WlxIsLogoffOk
+    WlxLogoff
+    WlxShutdown
+    WlxScreenSaverNotify
+    WlxStartApplication
+    WlxNetworkProviderLoad 
+    WlxDisplayStatusMessage
+    WlxGetStatusMessage    
+    WlxRemoveStatusMessage
+    WlxGetConsoleSwitchCredentials
+    WlxReconnectNotify
+    WlxDisconnectNotify

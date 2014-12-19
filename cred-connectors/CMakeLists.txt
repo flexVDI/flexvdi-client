@@ -1,0 +1,10 @@
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+if (WIN32)
+    set(CMAKE_CXX_FLAGS "-std=c++11")
+    add_library(flexVDIGina SHARED gina/flexVDIGina.cpp gina/SSO.cpp ../util.cpp)
+    set_target_properties(flexVDIGina PROPERTIES LINK_FLAGS
+        "-Wl,-enable-stdcall-fixup ${CMAKE_CURRENT_SOURCE_DIR}/gina/flexVDIGina.def -static-libgcc -static-libstdc++")
+else (WIN32)
+#     add_library(pam_flexvdi_cred SHARED cred_channel.c pam_ovirt_cred.c)
+#     target_link_libraries(pam_flexvdi_cred pam)
+endif(WIN32)

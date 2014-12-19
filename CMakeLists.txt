@@ -17,6 +17,7 @@ pkg_search_module(spice_protocol REQUIRED spice-protocol)
 find_package(Boost 1.50.0 REQUIRED system thread)
 include_directories("${spice_protocol_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}")
 
+set(FLEXVDI_VERSION 2.1.1)
 include(TestBigEndian)
 test_big_endian(BIG_ENDIAN)
 configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config.h")
@@ -28,6 +29,7 @@ endif (WIN32)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Werror -Wall")
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 set(sources FlexVDIGuestAgent.cpp VirtioPort.cpp CredentialsManager.cpp
     DispatcherRegistry.cpp util.cpp)
 add_library(objects OBJECT ${sources})
@@ -41,3 +43,4 @@ target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}" "${WINSOCK_LIBRAR
 install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
 
 add_subdirectory(test)
+add_subdirectory(cred-connectors)

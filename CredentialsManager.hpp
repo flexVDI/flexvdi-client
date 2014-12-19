@@ -14,9 +14,11 @@ namespace flexvm {
 
 class CredentialsManager {
 public:
+    typedef std::shared_ptr<FlexVDICredentialsMsg> FlexVDICredentialsMsgPtr;
+
     CredentialsManager(boost::asio::io_service & io);
     ~CredentialsManager();
-    void handle(const std::shared_ptr<FlexVDICredentialsMsg> & msg);
+    void handle(const FlexVDICredentialsMsgPtr & msg);
     void registerHandlers(DispatcherRegistry & registry);
     void open();
     void setEndpoint(const std::string & name) {

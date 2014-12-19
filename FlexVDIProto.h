@@ -50,6 +50,10 @@ static inline const char * getCredentialsPassword(const FlexVDICredentialsMsg * 
 static inline const char * getCredentialsDomain(const FlexVDICredentialsMsg * msg) {
     return &msg->strings[msg->userLength + msg->passLength + 2];
 }
+static inline uint32_t getCredentialsMsgSize(const FlexVDICredentialsMsg * msg) {
+    return sizeof(FlexVDICredentialsMsg) +
+        msg->userLength + msg->passLength + msg->domainLength + 3;
+}
 
 #ifdef FLEXVDI_PROTO_IMPL
 typedef int (*MarshallingFunction)(uint8_t *, size_t bytes);
@@ -62,8 +66,7 @@ static int marshallFlexVDICredentialsMsg(uint8_t * data, size_t bytes) {
     BYTESWAP32(msg->userLength);
     BYTESWAP32(msg->passLength);
     BYTESWAP32(msg->domainLength);
-    return bytes >= sizeof(FlexVDICredentialsMsg) +
-    msg->userLength + msg->passLength + msg->domainLength + 3;
+    return bytes >= getCredentialsMsgSize(msg);
 }
 
 static MarshallingFunction marshallers[FLEXVDI_MAX_MESSAGE_TYPE] = {

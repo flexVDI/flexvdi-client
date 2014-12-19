@@ -113,11 +113,11 @@ int WindowsService::uninstall() {
 }
 
 
-const TCHAR * WindowsService::getLogPath() {
-    static TCHAR logPath[1024];
-    TCHAR tempPath[1024];
-    GetTempPath(1024, tempPath);
-    _stprintf_s(logPath, 1024, TEXT("%s\\flexvdi_service.log"), tempPath);
+const char * WindowsService::getLogPath() {
+    static char logPath[1024];
+    char tempPath[1024];
+    GetTempPathA(1024, tempPath);
+    sprintf_s(logPath, 1024, "%s\\flexvdi_service.log", tempPath);
     return logPath;
 }
 

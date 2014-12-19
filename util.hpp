@@ -39,14 +39,17 @@ public:
     virtual ~Log();
     template <typename T>
     Log & operator<<(const T & par) {
-        *out << par;
+        if (enabled)
+            *out << par;
         return *this;
     }
 
     static void setLogOstream(std::ostream * logout) { out = logout; }
 
 private:
+    bool enabled;
     static std::ostream * out;
+    static LogLevel minLevel;
 };
 
 }

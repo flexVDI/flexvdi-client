@@ -16,11 +16,6 @@ namespace asio = boost::asio;
 namespace sys = boost::system;
 namespace ph = std::placeholders;
 
-void CredentialsManager::handle(const std::shared_ptr<FlexVDICredentialsMsg> & msg) {
-    Log(L_DEBUG) << "Received a FlexVDICredentialsMsg: " << getCredentialsUser(msg.get()) << ", "
-        << getCredentialsPassword(msg.get()) << ", " << getCredentialsDomain(msg.get());
-}
-
 
 void CredentialsManager::registerHandlers(DispatcherRegistry & registry) {
     registry.registerMessageHandler<FlexVDICredentialsMsg>(*this);
@@ -30,6 +25,7 @@ void CredentialsManager::registerHandlers(DispatcherRegistry & registry) {
 class CredentialsManager::Impl {
 public:
     void open(const char * name);
+    void sendMessage(const FlexVDICredentialsMsgPtr & msg);
 
 #ifdef WIN32
     Impl(asio::io_service & io) : stream(io), io(io) {}
@@ -48,9 +44,12 @@ private:
 
     asio::io_service & io;
     std::shared_ptr<uint8_t> dataBuffer;
+    bool connected;
+    FlexVDICredentialsMsgPtr pendingCredentials;
 
     void acceptConnection(const sys::error_code & error);
     void readMessage(const sys::error_code & error, std::size_t bytes_transferred);
+    void sentMessage(const sys::error_code & error, std::size_t bytes_transferred);
 };
 
 
@@ -76,6 +75,21 @@ void CredentialsManager::Impl::open(const char * name) {
     acceptor.bind(ep);
     acceptor.async_accept(stream, std::bind(&Impl::acceptConnection, this, ph::_1));
 #endif
+    connected = false;
+}
+
+
+void CredentialsManager::Impl::sendMessage(const FlexVDICredentialsMsgPtr & msg) {
+    // TODO: Cancel the last sending, so that connectors only receive one set of credentials
+    if (connected) {
+        Log(L_DEBUG) << "Connection open, sending credentials";
+        std::size_t size = getCredentialsMsgSize(msg.get());
+        asio::async_write(stream, asio::buffer(msg.get(), size),
+                        std::bind(&Impl::sentMessage, this, ph::_1, ph::_2));
+    } else {
+        Log(L_DEBUG) << "Connection not open yet, pending credentials";
+        pendingCredentials = msg;
+    }
 }
 
 
@@ -83,10 +97,18 @@ void CredentialsManager::Impl::acceptConnection(const sys::error_code & error) {
     if (error) {
         // TODO
     } else {
+        Log(L_DEBUG) << "Connection accepted on pipe";
+        connected = true;
+        // TODO
         size_t messageLength = 8;
         dataBuffer.reset(new uint8_t[messageLength], std::default_delete<uint8_t[]>());
         asio::async_read(stream, asio::buffer(dataBuffer.get(), messageLength),
                          std::bind(&Impl::readMessage, this, ph::_1, ph::_2));
+        if (pendingCredentials.get()) {
+            Log(L_DEBUG) << "Sending pending credentials";
+            sendMessage(pendingCredentials);
+            pendingCredentials.reset();
+        }
     }
 }
 
@@ -94,6 +116,18 @@ void CredentialsManager::Impl::acceptConnection(const sys::error_code & error) {
 void CredentialsManager::Impl::readMessage(const sys::error_code & error,
                                            std::size_t bytes_transferred) {
 
+}
+
+
+void CredentialsManager::Impl::sentMessage(const sys::error_code & error,
+                                           std::size_t bytes_transferred) {
+    if (error) {
+        // TODO
+        Log(L_WARNING) << "Sending credentials failed";
+    } else {
+        Log(L_DEBUG) << bytes_transferred << " bytes sent";
+        pendingCredentials.reset();
+    }
 }
 
 
@@ -105,6 +139,13 @@ CredentialsManager::CredentialsManager(asio::io_service & io)
 
 CredentialsManager::~CredentialsManager() {
     delete impl;
+}
+
+
+void CredentialsManager::handle(const FlexVDICredentialsMsgPtr & msg) {
+    Log(L_DEBUG) << "Received a FlexVDICredentialsMsg: " << getCredentialsUser(msg.get()) << ", "
+    << getCredentialsPassword(msg.get()) << ", " << getCredentialsDomain(msg.get());
+    impl->sendMessage(msg);
 }
 
 
