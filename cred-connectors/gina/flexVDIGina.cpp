@@ -8,7 +8,7 @@
 extern "C" {
 #include <winwlx.h>
 }
-#include "SSO.hpp"
+#include "GinaDialogHooks.hpp"
 #include "util.hpp"
 using namespace flexvm;
 
@@ -179,7 +179,7 @@ BOOL WINAPI WlxNegotiate(DWORD dwWinlogonVersion, DWORD * pdwDllVersion) {
 BOOL WINAPI WlxInitialize(LPWSTR lpWinsta, HANDLE hWlx, PVOID pvReserved,
                           PVOID pWinlogonFunctions, PVOID * pWlxContext) {
     LogCall lc(__FUNCTION__);
-    SSO::singleton().hookWinlogonFunctions(pWinlogonFunctions, dwWlxVersion, hWlx);
+    GinaDialogHooks::singleton().hookWinlogonFunctions(pWinlogonFunctions, dwWlxVersion, hWlx);
     return pfWlxInitialize(lpWinsta, hWlx, pvReserved,
                            pWinlogonFunctions, pWlxContext);
 }
@@ -216,7 +216,6 @@ int WINAPI WlxLoggedOutSAS(PVOID pWlxContext, DWORD dwSasType, PLUID pAuthentica
     int iRet = pfWlxLoggedOutSAS(pWlxContext, dwSasType, pAuthenticationId,
                                  pLogonSid, pdwOptions, phToken, pNprNotifyInfo,
                                  pProfile);
-    SSO::singleton().stopListening();
     return iRet;
 }
 
@@ -232,7 +231,6 @@ BOOL WINAPI WlxActivateUserShell(PVOID pWlxContext, PWSTR pszDesktopName,
 int WINAPI WlxLoggedOnSAS(PVOID pWlxContext, DWORD dwSasType, PVOID pReserved) {
     LogCall lc(__FUNCTION__);
     int ret = pfWlxLoggedOnSAS(pWlxContext, dwSasType, pReserved);
-    SSO::singleton().stopListening();
     return ret;
 }
 
@@ -275,7 +273,6 @@ VOID WINAPI WlxLogoff(PVOID pWlxContext) {
 
 VOID WINAPI WlxShutdown(PVOID pWlxContext, DWORD ShutdownType) {
     LogCall lc(__FUNCTION__);
-    SSO::singleton().stopListening();
     pfWlxShutdown(pWlxContext, ShutdownType);
 }
 
@@ -343,6 +340,5 @@ VOID WINAPI WlxReconnectNotify(PVOID pWlxContext) {
 
 VOID WINAPI WlxDisconnectNotify(PVOID pWlxContext) {
     LogCall lc(__FUNCTION__);
-    SSO::singleton().stopListening();
     pfWlxDisconnectNotify(pWlxContext);
 }

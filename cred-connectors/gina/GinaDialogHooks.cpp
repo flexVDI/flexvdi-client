@@ -5,26 +5,15 @@
 #include <windows.h>
 #include <winwlx.h>
 #include "FlexVDIProto.h"
-#include "SSO.hpp"
+#include "GinaDialogHooks.hpp"
 #include "util.hpp"
 
 using namespace flexvm;
 
 #define CRED_FILE_PATH L"\\\\.\\pipe\\flexvdi_creds"
 
-struct Lock {
-    CRITICAL_SECTION & mutex;
-    Lock(CRITICAL_SECTION & m) : mutex(m) {
-        EnterCriticalSection(&mutex);
-    }
-    ~Lock() {
-        LeaveCriticalSection(&mutex);
-    }
-};
-
-
 template <typename T>
-class WinlogonProxy : public SSO::BaseWinlogonProxy {
+class WinlogonProxy : public GinaDialogHooks::BaseWinlogonProxy {
 public:
     WinlogonProxy(PVOID winlogonFunctions) {
         functions = (T)winlogonFunctions;
@@ -49,13 +38,7 @@ private:
 };
 
 
-SSO::SSO() : attemptedLogin(false) {
-    Log(L_DEBUG) << "SSO::ctor ";
-    InitializeCriticalSection(&mutex);
-}
-
-
-void SSO::hookWinlogonFunctions(PVOID pWinlogonFunctions, DWORD dwWlxVersion, HANDLE a_hWlx) {
+void GinaDialogHooks::hookWinlogonFunctions(PVOID pWinlogonFunctions, DWORD dwWlxVersion, HANDLE a_hWlx) {
     hWlx = a_hWlx;
     wlxVersion = dwWlxVersion;
     switch (dwWlxVersion) {
@@ -79,65 +62,21 @@ void SSO::hookWinlogonFunctions(PVOID pWinlogonFunctions, DWORD dwWlxVersion, HA
 }
 
 
-void SSO::stopListening() {
-    if (thread != NULL) {
-        TerminateThread(thread, 0);
-        thread = NULL;
-        threadId = 0;
-        CloseHandle(pipe);
-        pipe = NULL;
-    }
-}
-
-
-DWORD SSO::readCredentials(HWND window) {
-    static const int MAX_CRED_SIZE = 1024;
-
-    Log(L_DEBUG) << "About to read credentials";
-    // TODO: configurable
-    static const char * pipeName = "\\\\.\\pipe\\flexvdi_creds";
-    pipe = CreateFileA(pipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL,
-                       OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    return_if(pipe == INVALID_HANDLE_VALUE, "Error opening pipe", -1);
-
-    uint8_t buffer[MAX_CRED_SIZE];
-    DWORD bytesRead;
-    BOOL success = ReadFile(pipe, (char *)buffer, MAX_CRED_SIZE, &bytesRead, NULL);
-    CloseHandle(pipe);
-    pipe = NULL;
-    return_if(!success, "Reading credentials", -1);
-
-    FlexVDICredentialsMsg * msg = (FlexVDICredentialsMsg *)buffer;
-    return_if(!marshallMessage(FLEXVDI_CREDENTIALS, buffer, bytesRead),
-              "Message size mismatch", -1);
-    Log(L_DEBUG) << "Credentials received";
-
-    {
-        Lock l(mutex);
-        username = getCredentialsUser(msg);
-        password = getCredentialsPassword(msg);
-        domain = getCredentialsDomain(msg);
-    }
-
-    PostMessage(window, WM_USER + 5, 0, 0);
-    return 0;
-}
-
-
-int WINAPI SSO::WlxDialogBoxParam(HANDLE hWlx, HANDLE hInst, LPWSTR lpszTemplate,
+int WINAPI GinaDialogHooks::WlxDialogBoxParam(HANDLE hWlx, HANDLE hInst, LPWSTR lpszTemplate,
                                   HWND hwndOwner, DLGPROC dlgprc, LPARAM dwInitParam) {
-    SSO & s = SSO::singleton();
+    GinaDialogHooks & s = GinaDialogHooks::singleton();
     s.currentDlgProc = dlgprc;
     int res = s.winlogon->WlxDialogBoxParam(hWlx, hInst, lpszTemplate,
                                             hwndOwner, PassDlgProc, dwInitParam);
-    s.stopListening();
+    s.thread.stop();
     Log(L_DEBUG) << "<--WlxDialogBoxParam (" << LOWORD(lpszTemplate) << ")";
     return res;
 }
 
 
-BOOL CALLBACK SSO::PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    SSO & s = SSO::singleton();
+BOOL CALLBACK GinaDialogHooks::PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    GinaDialogHooks & s = GinaDialogHooks::singleton();
+    s.creds.setCurrentDialog(hwndDlg);
     BOOL result = s.LogonDlgProc(hwndDlg, uMsg, wParam, lParam);
     if (uMsg == WM_INITDIALOG && s.passwordIDC == 0) {
         // This may be the annoying dialog askig for Ctrl+Alt+Del
@@ -148,20 +87,19 @@ BOOL CALLBACK SSO::PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
 }
 
 
-BOOL SSO::LogonDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+BOOL GinaDialogHooks::LogonDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (uMsg == WM_INITDIALOG) {
         findCredentialControls(hwndDlg);
-        thread = CreateThread(NULL, 0, &listeningThread, hwndDlg, 0, &threadId);
+        if (passwordIDC != 0)
+            thread.start();
     }
 
     if (uMsg == WM_USER + 5) {
-        Lock l(mutex);
+        std::string username, password, domain;
+        creds.getCredentials(username, password, domain);
         SetDlgItemTextA(hwndDlg, usernameIDC, username.c_str());
         SetDlgItemTextA(hwndDlg, passwordIDC, password.c_str());
         SetDlgItemTextA(hwndDlg, domainIDC, domain.c_str());
-        password = "";
-        username = "";
-        domain = "";
         uMsg = WM_COMMAND;
         wParam = IDOK;
         lParam = 0;
@@ -171,7 +109,7 @@ BOOL SSO::LogonDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 }
 
 
-void SSO::findCredentialControls(HWND hwndDlg) {
+void GinaDialogHooks::findCredentialControls(HWND hwndDlg) {
     // Assume there are two edit controls, one of them with password style,
     // and a combobox for the domain
     HWND hwnd = NULL;
