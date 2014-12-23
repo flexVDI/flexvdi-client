@@ -8,7 +8,6 @@
 extern "C" {
 #include <winwlx.h>
 }
-// #include "RegistryHelper.hpp"
 #include "SSO.hpp"
 #include "util.hpp"
 using namespace flexvm;
@@ -18,7 +17,6 @@ using namespace flexvm;
 // Location of the real MSGINA.
 #define REALGINA_PATH      TEXT("MSGINA.DLL")
 #define GINASTUB_VERSION   (DWORD)(WLX_VERSION_1_4)
-#define WINLOGON_REGISTRY_SUBKEY L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\WinLogon\\"
 
 // Function prototypes for the GINA interface.
 typedef BOOL (WINAPI * PFWLXNEGOTIATE)(DWORD, DWORD *);
@@ -94,6 +92,16 @@ static bool getFunctionPointer(T & p, HINSTANCE hDll, LPCSTR name) {
 #define GET_POINTER_OR_RETURN(hDll, name) \
 do { if (!getFunctionPointer(pf ## name, hDll, #name)) return FALSE; } while (0)
 
+struct LogCall {
+    std::string fn;
+    LogCall(const char * funcName) : fn(funcName) {
+        Log(L_DEBUG) << "-->" << fn;
+    }
+    ~LogCall() {
+        Log(L_DEBUG) << "<--" << fn;
+    }
+};
+
 // Hook into the real MSGINA.
 BOOL getGINAFunctionPointers(HINSTANCE hDll, DWORD dwWlxVersion) {
     // Get pointers to all of the WLX functions in the real MSGINA.
@@ -145,20 +153,13 @@ static const char * getLogPath() {
 
 BOOL WINAPI WlxNegotiate(DWORD dwWinlogonVersion, DWORD * pdwDllVersion) {
     logFile.open(getLogPath(), std::ios_base::app);
-//     logFile.open("c:\\flexvdi_gina.log", std::ios_base::app);
     logFile << std::endl << std::endl;
     Log::setLogOstream(&logFile);
-
-    LDB("-->WlxNegotiate");
+    LogCall lc(__FUNCTION__);
 
     // Load MSGINA.DLL. TODO: Check if there is another custom GINA DLL.
     HINSTANCE hDll = LoadLibrary(REALGINA_PATH);
     return_if(!hDll, "LoadLibrary failed", FALSE);
-
-//     pfWlxNegotiate = (PFWLXNEGOTIATE) GetProcAddress(hDll, "WlxNegotiate");
-//     if (!pfWlxNegotiate) {
-//         return FALSE;
-//     }
     GET_POINTER_OR_RETURN(hDll, WlxNegotiate);
 
     // Handle older version of Winlogon.
@@ -171,64 +172,37 @@ BOOL WINAPI WlxNegotiate(DWORD dwWinlogonVersion, DWORD * pdwDllVersion) {
     }
     *pdwDllVersion = dwWlxVersion;
 
-    LDB("<--WlxNegotiate");
     return TRUE;
 }
 
 
 BOOL WINAPI WlxInitialize(LPWSTR lpWinsta, HANDLE hWlx, PVOID pvReserved,
                           PVOID pWinlogonFunctions, PVOID * pWlxContext) {
-    LDB("-->WlxInitialize");
-
-    // Save pointer to dispatch table.
-    //
-    // Note that g_pWinlogon will need to be properly casted to the
-    // appropriate version when used to call function in the dispatch
-    // table.
-    //
-    // For example, assuming we are at WLX_VERSION_1_3, we would call
-    // WlxSasNotify() as follows:
-    //
-    // ((PWLX_DISPATCH_VERSION_1_3) g_pWinlogon)->WlxSasNotify(hWlx, MY_SAS);
-    //
+    LogCall lc(__FUNCTION__);
     SSO::singleton().hookWinlogonFunctions(pWinlogonFunctions, dwWlxVersion, hWlx);
-    BOOL retVal = pfWlxInitialize(lpWinsta, hWlx, pvReserved,
-                                  pWinlogonFunctions, pWlxContext);
-    LDB("<--WlxInitialize");
-    return retVal;
-
+    return pfWlxInitialize(lpWinsta, hWlx, pvReserved,
+                           pWinlogonFunctions, pWlxContext);
 }
 
 
 VOID WINAPI WlxDisplaySASNotice(PVOID pWlxContext) {
-    LDB("-->WlxDisplaySASNotice");
-//     // Aquí no puedo autenticar, y terminar el proceso de login porque no tengo forma de pasar el token
-//     // resultado de la autenticación a winlogon
-//     // El método adecuado para autenticar es el loggedOutSAS
-//     // Pero puedo leer ya las credenciales, y si las tengo no invocar al WlxDisplaySASNotice
-//     // mostrar ventanita que parece que hace que no esperemos
-//
-//     SSO::readCredentials();
-//
-//     // If there are no credentials, tell user to pulse "CAD"
-//
-//     // flex: First idea was to hide the "pulse CAD" alert.
-//     // It was ok after system start, but when user logged off, system became hanged,
-//     // shutdown button stopped working and CAD did nothing. You must do Force off.
-//     // So we don't hide The alert anymore...
-//
-//     if (!SSO::justStarted || !SSO::usableCredentials) {
-//         LDB("WlxDisplaySASNotice: No usable credentials. Asking for CAD");
-//         /*NoticeDialog dlg(_pWinLogon, IDD_SASNOTICE);
-//         dlg.Show();*/
-//
-//         //Ocultamos el pulse CAD al iniciar el guest si hay credenciales, poniendo el DisplaySAS dentro del if.
-        pfWlxDisplaySASNotice(pWlxContext);
-//     }
-//
-//     SSO::justStarted = false;
-//
-    LDB("<--WlxDisplaySASNotice");
+    LogCall lc(__FUNCTION__);
+    pfWlxDisplaySASNotice(pWlxContext);
+}
+
+
+#define WINLOGON_REGISTRY_SUBKEY "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\WinLogon\\"
+int setRegistryValue(const char * key, const std::string & value) {
+    Log(L_DEBUG) << "Set registry value " << key << " = " << value;
+
+    HKEY hkey;
+    LONG status = RegOpenKey(HKEY_LOCAL_MACHINE, WINLOGON_REGISTRY_SUBKEY, &hkey);
+    return_code_if(status, status, "Failed to open winlogon registry key.", false);
+
+    status = RegSetValueExA(hkey, key, 0, REG_SZ, (LPBYTE)value.c_str(), value.length() + 1);
+    RegCloseKey(hkey);
+    return_code_if(status, status, "Failed to write registry key.", false);
+    return true;
 }
 
 
@@ -238,125 +212,71 @@ http://msdn.microsoft.com/en-us/library/windows/desktop/aa380571%28v=vs.85%29.as
 int WINAPI WlxLoggedOutSAS(PVOID pWlxContext, DWORD dwSasType, PLUID pAuthenticationId,
                            PSID pLogonSid, PDWORD pdwOptions, PHANDLE phToken,
                            PWLX_MPR_NOTIFY_INFO pNprNotifyInfo, PVOID * pProfile) {
-    LDB("-->LoggedOutSAS(" << dwSasType << ")");
-
-    /*
-     * El SSO trata el caso de hacer un login automático cuando tenemos credenciales.
-     * En caso contrario pasamos la invocación al MSGina para que abra diálogos, autentique...
-     */
-    // El SAS que se genera al iniciarse el XP es de tipo CTRL_ALT_DEL. Lo añado a la condicion.
-    // Si fuese de tipo "introducida smart-card" no debería actuar nuestro Gina
-//     if (WLX_SAS_TYPE_CTRL_ALT_DEL == dwSasType && SSO::usableCredentials) {
-//
-//         RegistryHelper::setRegistryValueInLocalMachine(WINLOGON_REGISTRY_SUBKEY, L"DefaultUserName", SSO::flexUser);
-//         LDB1(L"Gina::guardo defaultUserName registry: -%s-", SSO::flexUser);
-//         RegistryHelper::setRegistryValueInLocalMachine(WINLOGON_REGISTRY_SUBKEY, L"DefaultDomainName", SSO::flexDomain);
-//         LDB1(L"Gina::guardo defaultUserName registry: -%s-", SSO::flexDomain);
-//         RegistryHelper::setRegistryValueInLocalMachine(WINLOGON_REGISTRY_SUBKEY, L"DefaultPassword", SSO::flexPassword);
-//
-//         // AutoAdminLogon parece que no pero tambien es String
-//         RegistryHelper::setRegistryValueInLocalMachine(WINLOGON_REGISTRY_SUBKEY, L"AutoAdminLogon", L"1");
-//         LDB1(L"Gina::guardo AutoAdminLogon registry: -%s-", L"1");
-//         //AutoAdminLogon
-//     }
-
-    int iRet;
-    iRet = pfWlxLoggedOutSAS(pWlxContext, dwSasType, pAuthenticationId,
-                             pLogonSid, pdwOptions, phToken, pNprNotifyInfo,
-                             pProfile);
-
-    if (iRet == WLX_SAS_ACTION_LOGON) {
-        //
-        // Copy pMprNotifyInfo and pLogonSid for later use.
-        //
-
-        // pMprNotifyInfo->pszUserName
-        // pMprNotifyInfo->pszDomain
-        // pMprNotifyInfo->pszPassword
-        // pMprNotifyInfo->pszOldPassword
-    }
-
-//     //Limpiamos la password, y marcamos que no vuelva al automatico
-//     RegistryHelper::setRegistryValueInLocalMachine(WINLOGON_REGISTRY_SUBKEY, L"DefaultPassword", L"");
-//
-//     // AutoAdminLogon parece que no pero tambien es String
-//     RegistryHelper::setRegistryValueInLocalMachine(WINLOGON_REGISTRY_SUBKEY, L"AutoAdminLogon", L"0");
-//     LDB1(L"Gina::guardo AutoAdminLogon registry: -%s-", L"1");
-//     //AutoAdminLogon
-
-    LDB("<--LoggedOutSAS");
+    LogCall lc(__FUNCTION__);
+    int iRet = pfWlxLoggedOutSAS(pWlxContext, dwSasType, pAuthenticationId,
+                                 pLogonSid, pdwOptions, phToken, pNprNotifyInfo,
+                                 pProfile);
+    SSO::singleton().stopListening();
     return iRet;
 }
 
 
 BOOL WINAPI WlxActivateUserShell(PVOID pWlxContext, PWSTR pszDesktopName,
                                  PWSTR pszMprLogonScript, PVOID pEnvironment) {
-    LDB("-->WlxActivateUserShell");
-    BOOL retVal = pfWlxActivateUserShell(pWlxContext, pszDesktopName,
-                                         pszMprLogonScript, pEnvironment);
-    LDB("<--WlxActivateUserShell");
-    return retVal;
+    LogCall lc(__FUNCTION__);
+    return pfWlxActivateUserShell(pWlxContext, pszDesktopName,
+                                  pszMprLogonScript, pEnvironment);
 }
 
 
 int WINAPI WlxLoggedOnSAS(PVOID pWlxContext, DWORD dwSasType, PVOID pReserved) {
-    LDB("-->WlxLoggedOnSAS");
-    int iRet = pfWlxLoggedOnSAS(pWlxContext, dwSasType, pReserved);
-    LDB("<--WlxLoggedOnSAS");
-    return iRet;
+    LogCall lc(__FUNCTION__);
+    int ret = pfWlxLoggedOnSAS(pWlxContext, dwSasType, pReserved);
+    SSO::singleton().stopListening();
+    return ret;
 }
 
 
 VOID WINAPI WlxDisplayLockedNotice(PVOID pWlxContext) {
-    LDB("-->WlxDisplayLockedNotice");
+    LogCall lc(__FUNCTION__);
     pfWlxDisplayLockedNotice(pWlxContext);
-    LDB("<--WlxDisplayLockedNotice");
 }
 
 
 BOOL WINAPI WlxIsLockOk(PVOID pWlxContext) {
-    LDB("-->WlxIsLockOk");
-    BOOL bRet = pfWlxIsLockOk(pWlxContext);
-    LDB("<--WlxIsLockOk");
-    return  bRet;
+    LogCall lc(__FUNCTION__);
+    return pfWlxIsLockOk(pWlxContext);
 }
 
 
 int WINAPI WlxWkstaLockedSAS(PVOID pWlxContext, DWORD dwSasType) {
-    LDB("-->WlxWkstaLockedSAS");
-    int iRet = pfWlxWkstaLockedSAS(pWlxContext, dwSasType);
-    LDB("<--WlxWkstaLockedSAS");
-    return  iRet;
+    LogCall lc(__FUNCTION__);
+    return pfWlxWkstaLockedSAS(pWlxContext, dwSasType);
 }
 
 
 BOOL WINAPI WlxIsLogoffOk(PVOID pWlxContext) {
-    LDB("-->WlxIsLogoffOk");
+    LogCall lc(__FUNCTION__);
     BOOL bSuccess = pfWlxIsLogoffOk(pWlxContext);
     if (bSuccess) {
         //
         // If it's OK to logoff, make sure stored credentials are cleaned up.
         //
     }
-    LDB("<--WlxIsLogoffOk");
     return bSuccess;
 }
 
 
 VOID WINAPI WlxLogoff(PVOID pWlxContext) {
-    LDB("<--WlxLogoff");
+    LogCall lc(__FUNCTION__);
     pfWlxLogoff(pWlxContext);
-    LDB("-->WlxLogoff");
 }
 
 
 VOID WINAPI WlxShutdown(PVOID pWlxContext, DWORD ShutdownType) {
-    // Limpieza de variables de flexVDIGina
-    // Currently  nothing to do
-
-    LDB("-->pfWlxShutdown");
+    LogCall lc(__FUNCTION__);
+    SSO::singleton().stopListening();
     pfWlxShutdown(pWlxContext, ShutdownType);
-    LDB("<--pfWlxShutdown");
 }
 
 
@@ -365,19 +285,15 @@ VOID WINAPI WlxShutdown(PVOID pWlxContext, DWORD ShutdownType) {
 //
 
 BOOL WINAPI WlxScreenSaverNotify(PVOID  pWlxContext, BOOL * pSecure) {
-    LDB("-->WlxScreenSaverNotify");
-    BOOL bRet = pfWlxScreenSaverNotify(pWlxContext, pSecure);
-    LDB("<--WlxScreenSaverNotify");
-    return bRet;
+    LogCall lc(__FUNCTION__);
+    return pfWlxScreenSaverNotify(pWlxContext, pSecure);
 }
 
 BOOL WINAPI WlxStartApplication(PVOID pWlxContext, PWSTR pszDesktopName,
                                 PVOID pEnvironment, PWSTR pszCmdLine) {
-    LDB("<--WlxStartApplication");
-    BOOL bRet = pfWlxStartApplication(pWlxContext, pszDesktopName,
-                                      pEnvironment, pszCmdLine);
-    LDB("<--WlxStartApplication");
-    return bRet;
+    LogCall lc(__FUNCTION__);
+    return pfWlxStartApplication(pWlxContext, pszDesktopName,
+                                 pEnvironment, pszCmdLine);
 }
 
 
@@ -387,59 +303,46 @@ BOOL WINAPI WlxStartApplication(PVOID pWlxContext, PWSTR pszDesktopName,
 
 BOOL WINAPI WlxNetworkProviderLoad(PVOID pWlxContext,
                                    PWLX_MPR_NOTIFY_INFO pNprNotifyInfo) {
-    LDB("<--WlxNetworkProviderLoad");
-    BOOL bRet = pfWlxNetworkProviderLoad(pWlxContext, pNprNotifyInfo);
-    LDB("<--WlxNetworkProviderLoad");
-    return bRet;
+    LogCall lc(__FUNCTION__);
+    return pfWlxNetworkProviderLoad(pWlxContext, pNprNotifyInfo);
 }
 
 
 BOOL WINAPI WlxDisplayStatusMessage(PVOID pWlxContext, HDESK hDesktop, DWORD dwOptions,
                                     PWSTR pTitle, PWSTR pMessage) {
-    LDB("<--WlxDisplayStatusMessage");
-    BOOL bRet = pfWlxDisplayStatusMessage(pWlxContext, hDesktop,  dwOptions,
-                                          pTitle, pMessage);
-    LDB("<--WlxDisplayStatusMessage");
-    return bRet;
+    LogCall lc(__FUNCTION__);
+    return pfWlxDisplayStatusMessage(pWlxContext, hDesktop,  dwOptions,
+                                     pTitle, pMessage);
 }
 
 
 BOOL WINAPI WlxGetStatusMessage(PVOID pWlxContext, DWORD * pdwOptions,
                                 PWSTR pMessage, DWORD dwBufferSize) {
-    LDB("<--WlxGetStatusMessage");
-    BOOL bRet = pfWlxGetStatusMessage(pWlxContext, pdwOptions,
-                                      pMessage, dwBufferSize);
-    LDB("<--WlxGetStatusMessage");
-
-    return bRet;
+    LogCall lc(__FUNCTION__);
+    return pfWlxGetStatusMessage(pWlxContext, pdwOptions,
+                                 pMessage, dwBufferSize);
 }
 
 BOOL WINAPI WlxRemoveStatusMessage(PVOID pWlxContext) {
-    LDB("<--WlxRemoveStatusMessage");
-    BOOL bRet =  pfWlxRemoveStatusMessage(pWlxContext);
-    LDB("<--WlxRemoveStatusMessage");
-    return bRet;
+    LogCall lc(__FUNCTION__);
+    return pfWlxRemoveStatusMessage(pWlxContext);
 }
 
 // New for version 1.4
 //
 BOOL WINAPI WlxGetConsoleSwitchCredentials(PVOID pWlxContext, PVOID p2) {
-    LDB("<--WlxGetConsoleSwitchCredentials");
-    BOOL bRet = pfWlxGetConsoleSwitchCredentials(pWlxContext, p2);
-    LDB("<--WlxGetConsoleSwitchCredentials");
-    return bRet;
+    LogCall lc(__FUNCTION__);
+    return pfWlxGetConsoleSwitchCredentials(pWlxContext, p2);
 }
 
 
 VOID WINAPI WlxReconnectNotify(PVOID pWlxContext) {
-    LDB("<--WlxReconnectNotify");
+    LogCall lc(__FUNCTION__);
     pfWlxReconnectNotify(pWlxContext);
-    LDB("<--WlxReconnectNotify");
 }
 
 VOID WINAPI WlxDisconnectNotify(PVOID pWlxContext) {
-    LDB("<--WlxDisconnectNotify");
+    LogCall lc(__FUNCTION__);
     SSO::singleton().stopListening();
     pfWlxDisconnectNotify(pWlxContext);
-    LDB("<--WlxDisconnectNotify");
 }

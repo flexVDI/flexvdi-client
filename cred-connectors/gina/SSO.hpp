@@ -16,7 +16,6 @@ public:
         static SSO instance;
         return instance;
     }
-
     void hookWinlogonFunctions(PVOID pWinlogonFunctions, DWORD dwWlxVersion, HANDLE a_hWlx);
     void stopListening();
 
@@ -38,8 +37,8 @@ private:
     };
     friend BaseWinlogonProxy;
 
-    static const int MAX_CRED_SIZE = 1024;
-
+    std::string username, password, domain;
+    CRITICAL_SECTION mutex;
     bool attemptedLogin;
     HANDLE thread;
     DWORD threadId;
@@ -47,32 +46,20 @@ private:
     DWORD wlxVersion;
     HANDLE hWlx;
     HANDLE pipe;
-    DLGPROC pfWlxLoggedOutSASDlgProc;
-    DLGPROC pfWlxDisplaySASNoticeDlgProc;
-    DLGPROC pfWlxDisplayLockedNoticeDlgProc;
-    DLGPROC pfWlxLoggedOnSASDlgProc;
-    DLGPROC pfWlxUserMessageDlgProc;
+    DLGPROC currentDlgProc;
+    int usernameIDC, passwordIDC, domainIDC;
 
     SSO();
     DWORD readCredentials(HWND window);
     void sendCtrlAltDel() {
         winlogon->sendCtrlAltDel(hWlx);
     }
+    void findCredentialControls(HWND hwndDlg);
 
     static int WINAPI WlxDialogBoxParam(HANDLE hWlx, HANDLE hInst, LPWSTR lpszTemplate,
                                         HWND hwndOwner, DLGPROC dlgprc, LPARAM  dwInitParam);
-    static BOOL CALLBACK WlxLoggedOutSASDlgProc(HWND hwndDlg, UINT uMsg,
-                                                WPARAM wParam, LPARAM lParam);
-    static BOOL CALLBACK WlxDisplaySASNoticeDlgProc(HWND hwndDlg, UINT uMsg,
-                                                    WPARAM wParam, LPARAM lParam);
-    static BOOL CALLBACK WlxDisplayLockedNoticeDlgProc(HWND hwndDlg, UINT uMsg,
-                                                       WPARAM wParam, LPARAM lParam);
-    static BOOL CALLBACK WlxLoggedOnSASDlgProc(HWND hwndDlg, UINT uMsg,
-                                               WPARAM wParam, LPARAM lParam);
-    static BOOL CALLBACK WlxUserMessageDlgProc(HWND hwndDlg, UINT uMsg,
-                                               WPARAM wParam, LPARAM lParam);
-    BOOL LogonDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam,
-                      DLGPROC dlgProc, int usernameIDC, int passwordIDC);
+    static BOOL CALLBACK PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    BOOL LogonDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     static DWORD WINAPI listeningThread(LPVOID lpParameter) {
         return SSO::singleton().readCredentials((HWND)lpParameter);

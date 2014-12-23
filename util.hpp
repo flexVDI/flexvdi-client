@@ -30,13 +30,22 @@ enum LogLevel {
     L_DEBUG = 0,
     L_INFO,
     L_WARNING,
-    L_ERROR
+    L_ERROR,
+    L_MAX_LEVEL
 };
 
 class Log {
 public:
-    Log(LogLevel level);
-    virtual ~Log();
+    Log(LogLevel level) : enabled(level >= minLevel) {
+        if (enabled) {
+            logDate();
+            *out << " [" << levelStr[level] << "] ";
+        }
+    }
+    virtual ~Log() {
+        if (enabled)
+            *out << std::endl;
+    }
     template <typename T>
     Log & operator<<(const T & par) {
         if (enabled)
@@ -48,8 +57,14 @@ public:
 
 private:
     bool enabled;
+    #ifdef NDEBUG
+    static const LogLevel minLevel = L_INFO;
+    #else
+    static const LogLevel minLevel = L_DEBUG;
+    #endif
+    static const char * levelStr[L_MAX_LEVEL];
     static std::ostream * out;
-    static LogLevel minLevel;
+    static void logDate();
 };
 
 }

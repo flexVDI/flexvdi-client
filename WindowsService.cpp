@@ -130,11 +130,22 @@ int WindowsService::run() {
 
 #define FLEXVDI_ACCEPTED_CONTROLS \
     (SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN | SERVICE_ACCEPT_SESSIONCHANGE)
+// Sysprep file. Read by Windows during vm creation, we remove it from here on first boot.
+#define SYSPREP_FILE_PATH TEXT("A:\\sysprep.inf")
 
 void WindowsService::serviceMain() {
     if (!SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS)) {
         Log(L_WARNING) << "SetPriorityClass failed " << GetLastError();
     }
+
+    // Delete sysprep file
+    if (!DeleteFile(SYSPREP_FILE_PATH)
+        && GetLastError() != ERROR_FILE_NOT_FOUND
+        && GetLastError() != ERROR_PATH_NOT_FOUND) {
+        Log(L_WARNING) << "Could not delete sysprep file: (" << GetLastError() << ") "
+            << std::system_category().message(GetLastError());
+    }
+
     status.dwServiceType = SERVICE_WIN32;
     status.dwCurrentState = SERVICE_STOPPED;
     status.dwControlsAccepted = 0;

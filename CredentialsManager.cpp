@@ -32,6 +32,7 @@ public:
     static constexpr const char * defaultCredsName = "\\\\.\\pipe\\flexvdi_creds";
 
 private:
+    std::string pipeName;
     asio::windows::stream_handle stream;
 #else
     Impl(asio::io_service & io) : acceptor(io), stream(io), io(io) {}
@@ -50,30 +51,51 @@ private:
     void acceptConnection(const sys::error_code & error);
     void readMessage(const sys::error_code & error, std::size_t bytes_transferred);
     void sentMessage(const sys::error_code & error, std::size_t bytes_transferred);
+    void listen();
+    void disconnect();
 };
 
 
 void CredentialsManager::Impl::open(const char * name) {
 #ifdef WIN32
     uint32_t type = PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT;
-    HANDLE portFd = ::CreateNamedPipe(name, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED, type,
-                                      PIPE_UNLIMITED_INSTANCES, 1024, 1024, 0, NULL);
+    uint32_t flags = PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED;
+    HANDLE portFd = ::CreateNamedPipe(name, flags, type, PIPE_UNLIMITED_INSTANCES,
+                                      1024, 1024, 0, NULL);
     throw_if(portFd == INVALID_HANDLE_VALUE, name);
     stream.assign(portFd);
-    asio::windows::overlapped_ptr overlappedPtr;
-    overlappedPtr.reset(io, std::bind(&Impl::acceptConnection, this, ph::_1));
-    BOOL ok = ConnectNamedPipe(portFd, overlappedPtr.get());
-    throw_if(!ok && GetLastError() != ERROR_IO_PENDING, "ConnectNamedPipe failed");
-    // The operation was successfully initiated, so ownership of the
-    // OVERLAPPED-derived object has passed to the io_service.
-    overlappedPtr.release();
 #else
     ::unlink(name);
     asio::local::stream_protocol::endpoint ep(name);
     if (!acceptor.is_open())
         acceptor.open(ep.protocol());
     acceptor.bind(ep);
+#endif
+    connected = false;
+    listen();
+}
+
+
+void CredentialsManager::Impl::listen() {
+#ifdef WIN32
+    asio::windows::overlapped_ptr overlappedPtr;
+    overlappedPtr.reset(io, std::bind(&Impl::acceptConnection, this, ph::_1));
+    BOOL ok = ConnectNamedPipe(stream.native_handle(), overlappedPtr.get());
+    throw_if(!ok && GetLastError() != ERROR_IO_PENDING, "ConnectNamedPipe failed");
+    // The operation was successfully initiated, so ownership of the
+    // OVERLAPPED-derived object has passed to the io_service.
+    overlappedPtr.release();
+#else
     acceptor.async_accept(stream, std::bind(&Impl::acceptConnection, this, ph::_1));
+#endif
+}
+
+
+void CredentialsManager::Impl::disconnect() {
+#ifdef WIN32
+    DisconnectNamedPipe(stream.native_handle());
+#else
+    stream.close();
 #endif
     connected = false;
 }
@@ -95,7 +117,9 @@ void CredentialsManager::Impl::sendMessage(const FlexVDICredentialsMsgPtr & msg)
 
 void CredentialsManager::Impl::acceptConnection(const sys::error_code & error) {
     if (error) {
-        // TODO
+        Log(L_WARNING) << "Connection failed";
+        disconnect();
+        listen();
     } else {
         Log(L_DEBUG) << "Connection accepted on pipe";
         connected = true;
@@ -115,7 +139,11 @@ void CredentialsManager::Impl::acceptConnection(const sys::error_code & error) {
 
 void CredentialsManager::Impl::readMessage(const sys::error_code & error,
                                            std::size_t bytes_transferred) {
-
+    if (error) {
+        Log(L_DEBUG) << "Pipe closed, listening again";
+        disconnect();
+        listen();
+    }
 }
 
 
@@ -143,8 +171,7 @@ CredentialsManager::~CredentialsManager() {
 
 
 void CredentialsManager::handle(const FlexVDICredentialsMsgPtr & msg) {
-    Log(L_DEBUG) << "Received a FlexVDICredentialsMsg: " << getCredentialsUser(msg.get()) << ", "
-    << getCredentialsPassword(msg.get()) << ", " << getCredentialsDomain(msg.get());
+    Log(L_DEBUG) << "Received a FlexVDICredentialsMsg";
     impl->sendMessage(msg);
 }
 
