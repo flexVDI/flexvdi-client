@@ -2,8 +2,6 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
-#include <windows.h>
-#include <winwlx.h>
 #include "FlexVDIProto.h"
 #include "GinaDialogHooks.hpp"
 #include "util.hpp"
@@ -74,7 +72,7 @@ int WINAPI GinaDialogHooks::WlxDialogBoxParam(HANDLE hWlx, HANDLE hInst, LPWSTR 
 }
 
 
-BOOL CALLBACK GinaDialogHooks::PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+INT_PTR CALLBACK GinaDialogHooks::PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     GinaDialogHooks & s = GinaDialogHooks::singleton();
     s.creds.setCurrentDialog(hwndDlg);
     BOOL result = s.LogonDlgProc(hwndDlg, uMsg, wParam, lParam);

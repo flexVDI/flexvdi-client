@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <windows.h>
+#include <winwlx.h>
 #include "CredentialsConnectorThread.hpp"
 
 namespace flexvm {
@@ -52,7 +53,7 @@ private:
     void findCredentialControls(HWND hwndDlg);
     static int WINAPI WlxDialogBoxParam(HANDLE hWlx, HANDLE hInst, LPWSTR lpszTemplate,
                                         HWND hwndOwner, DLGPROC dlgprc, LPARAM  dwInitParam);
-    static BOOL CALLBACK PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    static INT_PTR CALLBACK PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     BOOL LogonDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 };
 
