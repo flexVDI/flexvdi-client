@@ -8,8 +8,6 @@
 
 using namespace flexvm;
 
-#define CRED_FILE_PATH L"\\\\.\\pipe\\flexvdi_creds"
-
 template <typename T>
 class WinlogonProxy : public GinaDialogHooks::BaseWinlogonProxy {
 public:
