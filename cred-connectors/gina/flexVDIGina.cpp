@@ -92,16 +92,6 @@ static bool getFunctionPointer(T & p, HINSTANCE hDll, LPCSTR name) {
 #define GET_POINTER_OR_RETURN(hDll, name) \
 do { if (!getFunctionPointer(pf ## name, hDll, #name)) return FALSE; } while (0)
 
-struct LogCall {
-    std::string fn;
-    LogCall(const char * funcName) : fn(funcName) {
-        Log(L_DEBUG) << "-->" << fn;
-    }
-    ~LogCall() {
-        Log(L_DEBUG) << "<--" << fn;
-    }
-};
-
 // Hook into the real MSGINA.
 BOOL getGINAFunctionPointers(HINSTANCE hDll, DWORD dwWlxVersion) {
     // Get pointers to all of the WLX functions in the real MSGINA.

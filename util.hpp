@@ -43,8 +43,10 @@ public:
         }
     }
     virtual ~Log() {
-        if (enabled)
+        if (enabled) {
             *out << std::endl;
+            out->flush();
+        }
     }
     template <typename T>
     Log & operator<<(const T & par) {
@@ -66,6 +68,18 @@ private:
     static std::ostream * out;
     static void logDate();
 };
+
+
+struct LogCall {
+    std::string fn;
+    LogCall(const char * funcName) : fn(funcName) {
+        Log(L_DEBUG) << "-->" << fn;
+    }
+    ~LogCall() {
+        Log(L_DEBUG) << "<--" << fn;
+    }
+};
+
 
 }
 
