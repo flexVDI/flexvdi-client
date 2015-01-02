@@ -15,17 +15,11 @@
 #include <credentialprovider.h>
 #include <ntsecapi.h>
 
-//makes a copy of a field descriptor on the normal heap
-HRESULT FieldDescriptorCopy(
-    const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR & rcpfd,
-    CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR * pcpfd
-);
-
-//creates a UNICODE_STRING from a NULL-terminated string
-HRESULT UnicodeStringInitWithString(
-    PWSTR pwz,
-    UNICODE_STRING * pus
-);
+// //creates a UNICODE_STRING from a NULL-terminated string
+// HRESULT UnicodeStringInitWithString(
+//     PWSTR pwz,
+//     UNICODE_STRING * pus
+// );
 
 //initializes a KERB_INTERACTIVE_UNLOCK_LOGON with weak references to the provided credentials
 HRESULT KerbInteractiveUnlockLogonInit(
@@ -54,21 +48,3 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
     CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,
     PWSTR * ppwzProtectedPassword
 );
-
-// HRESULT KerbInteractiveUnlockLogonRepackNative(
-//     BYTE * rgbWow,
-//     DWORD cbWow,
-//     BYTE ** prgbNative,
-//     DWORD * pcbNative
-// );
-//
-// void KerbInteractiveUnlockLogonUnpackInPlace(
-//     KERB_INTERACTIVE_UNLOCK_LOGON * pkiul,
-//     DWORD cb
-// );
-//
-// HRESULT DomainUsernameStringAlloc(
-//     PCWSTR pwszDomain,
-//     PCWSTR pwszUsername,
-//     PWSTR * ppwszDomainUsername
-// );

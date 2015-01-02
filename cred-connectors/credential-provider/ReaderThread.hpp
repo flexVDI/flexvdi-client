@@ -21,10 +21,10 @@ public:
 };
 
 
-class CReaderThread {
+class ReaderThread {
 public:
-    CReaderThread() : consumer(nullptr), thread(NULL) {}
-    ~CReaderThread() { stop(); }
+    ReaderThread() : consumer(nullptr), thread(NULL) {}
+    ~ReaderThread() { stop(); }
     HRESULT Initialize(CredentialConsumer * c);
     void stop();
 

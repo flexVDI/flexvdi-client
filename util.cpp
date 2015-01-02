@@ -2,15 +2,20 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
+#ifdef WIN32
+#include <windows.h>
+#include <shlobj.h>
+#endif
+#include <algorithm>
 #include <iostream>
 #include <iomanip>
 #include <ctime>
+#include <cstring>
 #include <chrono>
 #define FLEXVDI_PROTO_IMPL
 #include "FlexVDIProto.h"
 #include "util.hpp"
 using namespace flexvm;
-using std::string;
 using namespace std::chrono;
 
 
@@ -26,4 +31,17 @@ void Log::logDate() {
     std::size_t fraction = us.count() % 1000000;
     std::strftime(date, 20, "%Y/%m/%d %H:%M:%S", std::localtime(&now_sec));
     *out << date << '.' << std::setfill('0') << std::setw(6) << fraction;
+}
+
+
+const char * Log::getDefaultLogPath() {
+#ifdef WIN32
+    static char logPath[MAX_PATH + 9] = "c:";
+    SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA, NULL, 0, logPath);
+    size_t length = strlen(logPath);
+    std::copy_n("\\flexVDI", 9, &logPath[length]);
+    return logPath;
+#else
+    return "/var/log/flexVDI";
+#endif
 }

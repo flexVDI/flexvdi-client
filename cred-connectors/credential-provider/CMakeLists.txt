@@ -14,14 +14,12 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/unregister.reg.in"
                "${CMAKE_CURRENT_BINARY_DIR}/unregister.reg")
 
 add_definitions(-DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0600)
-set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wno-unknown-pragmas")
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
 
 set(DEF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/FlexVDICredentialProvider.def")
-add_library(FlexVDICredentialProvider SHARED CFlexCredential.cpp CFlexProvider.cpp
+add_library(flexVDICredentialProvider SHARED FlexCredential.cpp FlexProvider.cpp
             guid.cpp ReaderThread.cpp FlexProviderFactory.cpp helpers.cpp
-            ../../util.cpp resources.rc)
-target_link_libraries(FlexVDICredentialProvider ShLwApi Secur32 Uuid)
-set_target_properties(FlexVDICredentialProvider PROPERTIES LINK_FLAGS
+            resources.rc $<TARGET_OBJECTS:util_o>)
+target_link_libraries(flexVDICredentialProvider shlwapi secur32 Uuid)
+set_target_properties(flexVDICredentialProvider PROPERTIES LINK_FLAGS
     "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static-libgcc -static-libstdc++"
     PREFIX "")

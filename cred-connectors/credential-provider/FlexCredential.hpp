@@ -10,10 +10,10 @@
 
 namespace flexvm {
 
-class CFlexCredential : public ICredentialProviderCredential {
+class FlexCredential : public ICredentialProviderCredential {
 public:
-    CFlexCredential(HINSTANCE h);
-    virtual ~CFlexCredential();
+    FlexCredential(HINSTANCE h);
+    virtual ~FlexCredential();
 
     // IUnknown
     IFACEMETHODIMP_(ULONG) AddRef() {

@@ -8,13 +8,13 @@
 //
 //
 
-#include "ReaderThread.h"
+#include "ReaderThread.hpp"
 #include "FlexVDIProto.h"
 #include "util.hpp"
 using namespace flexvm;
 
 
-HRESULT CReaderThread::Initialize(CredentialConsumer * c) {
+HRESULT ReaderThread::Initialize(CredentialConsumer * c) {
     HRESULT hr = S_OK;
     consumer = c;
     // Create and launch the thread.
@@ -26,7 +26,7 @@ HRESULT CReaderThread::Initialize(CredentialConsumer * c) {
 }
 
 
-void CReaderThread::stop() {
+void ReaderThread::stop() {
     if (thread != NULL) {
         TerminateThread(thread, 0);
         thread = NULL;
@@ -36,8 +36,8 @@ void CReaderThread::stop() {
 }
 
 
-DWORD WINAPI CReaderThread::ThreadProc(LPVOID lpParameter) {
-    CReaderThread *pReaderThread = static_cast<CReaderThread *>(lpParameter);
+DWORD WINAPI ReaderThread::ThreadProc(LPVOID lpParameter) {
+    ReaderThread *pReaderThread = static_cast<ReaderThread *>(lpParameter);
     while (pReaderThread->ProcessNextMessage()) {}
     return 0;
 }
@@ -52,7 +52,7 @@ static wchar_t * getUnicodeString(const char * s) {
 }
 
 
-BOOL CReaderThread::ProcessNextMessage() {
+BOOL ReaderThread::ProcessNextMessage() {
     static const int MAX_CRED_SIZE = 1024;
 
     Log(L_DEBUG) << "About to read credentials";
@@ -60,18 +60,18 @@ BOOL CReaderThread::ProcessNextMessage() {
     static const char * pipeName = "\\\\.\\pipe\\flexvdi_creds";
     pipe = CreateFileA(pipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL,
                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    return_if(pipe == INVALID_HANDLE_VALUE, "Error opening pipe", -1);
+    return_if(pipe == INVALID_HANDLE_VALUE, "Error opening pipe", FALSE);
 
     uint8_t buffer[MAX_CRED_SIZE];
     DWORD bytesRead;
     BOOL success = ReadFile(pipe, (char *)buffer, MAX_CRED_SIZE, &bytesRead, NULL);
     CloseHandle(pipe);
     pipe = NULL;
-    return_if(!success, "Reading credentials", -1);
+    return_if(!success, "Reading credentials", FALSE);
 
     FlexVDICredentialsMsg * msg = (FlexVDICredentialsMsg *)buffer;
     return_if(!marshallMessage(FLEXVDI_CREDENTIALS, buffer, bytesRead),
-              "Message size mismatch", -1);
+              "Message size mismatch", FALSE);
     Log(L_DEBUG) << "Credentials received";
 
     consumer->credentialsChanged(getUnicodeString(getCredentialsUser(msg)),

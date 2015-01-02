@@ -7,15 +7,15 @@
 
 #include <credentialprovider.h>
 #include <memory>
-#include "ReaderThread.h"
+#include "ReaderThread.hpp"
 
 namespace flexvm {
 
-class CFlexCredential;
-class CFlexProvider : public ICredentialProvider, public CredentialConsumer {
+class FlexCredential;
+class FlexProvider : public ICredentialProvider, public CredentialConsumer {
 public:
-    CFlexProvider(HINSTANCE h);
-    virtual ~CFlexProvider();
+    FlexProvider(HINSTANCE h);
+    virtual ~FlexProvider();
 
     // IUnknown
     IFACEMETHODIMP_(ULONG) AddRef() {
@@ -50,8 +50,9 @@ public:
 private:
     int refCount;
     HINSTANCE dllHInst;
-    CFlexCredential * credential;      // Our "connected" credential.
-    std::unique_ptr<CReaderThread> thread;
+    FlexCredential * credential;      // Our "connected" credential.
+    std::unique_ptr<ReaderThread> thread;
+    bool receivedCredentials;
     ICredentialProviderEvents * cpe;   // Used to tell our owner to re-enumerate credentials.
     UINT_PTR adviseContext;            // Used to tell our owner who we are when asking to
     // re-enumerate credentials.

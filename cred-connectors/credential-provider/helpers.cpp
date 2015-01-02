@@ -14,37 +14,8 @@
 #include <windows.h>
 #include <security.h>
 #include <wincred.h>
-#include <Shlwapi.h>
+#include <shlwapi.h>
 #include "helpers.h"
-
-//
-// Coppies rcpfd into the buffer pointed to by pcpfd. The caller is responsible for
-// allocating pcpfd. This function uses CoTaskMemAlloc to allocate memory for
-// pcpfd->pszLabel.
-//
-HRESULT FieldDescriptorCopy(
-    const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR & rcpfd,
-    CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR * pcpfd
-) {
-    HRESULT hr;
-    CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR cpfd;
-
-    cpfd.dwFieldID = rcpfd.dwFieldID;
-    cpfd.cpft = rcpfd.cpft;
-
-    if (rcpfd.pszLabel) {
-        hr = SHStrDupW(rcpfd.pszLabel, &cpfd.pszLabel);
-    } else {
-        cpfd.pszLabel = NULL;
-        hr = S_OK;
-    }
-
-    if (SUCCEEDED(hr)) {
-        *pcpfd = cpfd;
-    }
-
-    return hr;
-}
 
 #define USHORT_MAX      0xffff
 #define USHORT_ERROR    0xffff
@@ -330,25 +301,21 @@ static HRESULT _LsaInitString(
 // http://msdn.microsoft.com/library/default.asp?url=/library/en-us/secauthn/security/msv1_0_lm20_logon.asp
 //
 HRESULT RetrieveNegotiateAuthPackage(ULONG * pulAuthPackage) {
-    HRESULT hr;
     HANDLE hLsa;
 
     NTSTATUS status = LsaConnectUntrusted(&hLsa);
-    if (SUCCEEDED(HRESULT_FROM_NT(status))) {
+    HRESULT hr = HRESULT_FROM_NT(status);
+    if (SUCCEEDED(hr)) {
         ULONG ulAuthPackage;
         LSA_STRING lsaszKerberosName;
         _LsaInitString(&lsaszKerberosName, NEGOSSP_NAME_A);
 
         status = LsaLookupAuthenticationPackage(hLsa, &lsaszKerberosName, &ulAuthPackage);
-        if (SUCCEEDED(HRESULT_FROM_NT(status))) {
+        hr = HRESULT_FROM_NT(status);
+        if (SUCCEEDED(hr)) {
             *pulAuthPackage = ulAuthPackage;
-            hr = S_OK;
-        } else {
-            hr = HRESULT_FROM_NT(status);
         }
         LsaDeregisterLogonProcess(hLsa);
-    } else {
-        hr = HRESULT_FROM_NT(status);
     }
 
     return hr;
@@ -457,119 +424,3 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
 
     return hr;
 }
-
-//
-// Unpack a KERB_INTERACTIVE_UNLOCK_LOGON *in place*.  That is, reset the Buffers from being offsets to
-// being real pointers.  This means, of course, that passing the resultant struct across any sort of
-// memory space boundary is not going to work -- repack it if necessary!
-//
-// void KerbInteractiveUnlockLogonUnpackInPlace(
-//     KERB_INTERACTIVE_UNLOCK_LOGON * pkiul,
-//     DWORD cb
-// ) {
-//     if (sizeof(*pkiul) <= cb) {
-//         KERB_INTERACTIVE_LOGON * pkil = &pkiul->Logon;
-//
-//         // Sanity check: if the range described by each (Buffer + MaximumSize) falls within the total bytecount,
-//         // we can be pretty confident that the Buffers are actually offsets and that this is a packed credential.
-//         if (((ULONG_PTR)pkil->LogonDomainName.Buffer + pkil->LogonDomainName.MaximumLength <= cb) &&
-//                 ((ULONG_PTR)pkil->UserName.Buffer + pkil->UserName.MaximumLength <= cb) &&
-//                 ((ULONG_PTR)pkil->Password.Buffer + pkil->Password.MaximumLength <= cb)) {
-//             pkil->LogonDomainName.Buffer = pkil->LogonDomainName.Buffer
-//                                            ? (PWSTR)((BYTE *)pkiul + (ULONG_PTR)pkil->LogonDomainName.Buffer)
-//                                            : NULL;
-//
-//             pkil->UserName.Buffer = pkil->UserName.Buffer
-//                                     ? (PWSTR)((BYTE *)pkiul + (ULONG_PTR)pkil->UserName.Buffer)
-//                                     : NULL;
-//
-//             pkil->Password.Buffer = pkil->Password.Buffer
-//                                     ? (PWSTR)((BYTE *)pkiul + (ULONG_PTR)pkil->Password.Buffer)
-//                                     : NULL;
-//         }
-//     }
-// }
-//
-// //
-// // Use the CredPackAuthenticationBuffer and CredUnpackAuthenticationBuffer to convert a 32 bit WOW
-// // cred blob into a 64 bit native blob by unpacking it and immediately repacking it.
-// //
-// HRESULT KerbInteractiveUnlockLogonRepackNative(
-//     BYTE * rgbWow,
-//     DWORD cbWow,
-//     BYTE ** prgbNative,
-//     DWORD * pcbNative) {
-//     HRESULT hr = E_OUTOFMEMORY;
-//     PWSTR pszDomainUsername = NULL;
-//     DWORD cchDomainUsername = 0;
-//     PWSTR pszPassword = NULL;
-//     DWORD cchPassword = 0;
-//
-//     *prgbNative = NULL;
-//     *pcbNative = 0;
-//
-//     // Unpack the 32 bit KERB structure
-//     CredUnPackAuthenticationBufferW(CRED_PACK_WOW_BUFFER, rgbWow, cbWow, pszDomainUsername, &cchDomainUsername, NULL, NULL, pszPassword, &cchPassword);
-//     if (ERROR_INSUFFICIENT_BUFFER == GetLastError()) {
-//         pszDomainUsername = (PWSTR) LocalAlloc(0, cchDomainUsername * sizeof(WCHAR));
-//         if (pszDomainUsername) {
-//             pszPassword = (PWSTR) LocalAlloc(0, cchPassword * sizeof(WCHAR));
-//             if (pszPassword) {
-//                 if (CredUnPackAuthenticationBufferW(CRED_PACK_WOW_BUFFER, rgbWow, cbWow, pszDomainUsername, &cchDomainUsername, NULL, NULL, pszPassword, &cchPassword)) {
-//                     hr = S_OK;
-//                 } else {
-//                     hr = GetLastError();
-//                 }
-//             }
-//         }
-//     }
-//
-//     // Repack native
-//     if (SUCCEEDED(hr)) {
-//         hr = E_OUTOFMEMORY;
-//         CredPackAuthenticationBufferW(0, pszDomainUsername, pszPassword, *prgbNative, pcbNative);
-//         if (ERROR_INSUFFICIENT_BUFFER == GetLastError()) {
-//             *prgbNative = (BYTE *) LocalAlloc(LMEM_ZEROINIT, *pcbNative);
-//             if (*prgbNative) {
-//                 if (CredPackAuthenticationBufferW(0, pszDomainUsername, pszPassword, *prgbNative, pcbNative)) {
-//                     hr = S_OK;
-//                 } else {
-//                     LocalFree(*prgbNative);
-//                 }
-//             }
-//         }
-//     }
-//
-//     LocalFree(pszDomainUsername);
-//     if (pszPassword) {
-//         SecureZeroMemory(pszPassword, cchPassword * sizeof(WCHAR));
-//         LocalFree(pszPassword);
-//     }
-//     return hr;
-// }
-//
-// // Concatonates pwszDomain and pwszUsername and places the result in *ppwszDomainUsername.
-// HRESULT DomainUsernameStringAlloc(
-//     PCWSTR pwszDomain,
-//     PCWSTR pwszUsername,
-//     PWSTR * ppwszDomainUsername
-// ) {
-//     HRESULT hr;
-//     size_t cchDomain = lstrlen(pwszDomain);
-//     size_t cchUsername = lstrlen(pwszUsername);
-//     // Length of domain, 1 character for '\', length of Username, plus null terminator.
-//     size_t cbLen = sizeof(WCHAR) * (cchDomain + 1 + cchUsername + 1);
-//     PWSTR pwszDest = (PWSTR)HeapAlloc(GetProcessHeap(), 0, cbLen);
-//     if (pwszDest) {
-//         hr = StringCbPrintfW(pwszDest, cbLen, L"%s\\%s", pwszDomain, pwszUsername);
-//         if (SUCCEEDED(hr)) {
-//             *ppwszDomainUsername = pwszDest;
-//         } else {
-//             HeapFree(GetProcessHeap(), 0, pwszDest);
-//         }
-//     } else {
-//         hr = E_OUTOFMEMORY;
-//     }
-//
-//     return hr;
-// }

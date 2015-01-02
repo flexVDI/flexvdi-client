@@ -7,6 +7,10 @@
 
 #include <system_error>
 #include <ostream>
+#include <functional>
+#include <wchar.h>
+
+namespace flexvm {
 
 #define throw_code_if(cond, code, msg) \
 do { if (cond) throw std::system_error(code, std::system_category(), msg); } while(0)
@@ -24,7 +28,11 @@ do { if (cond) { \
 #define return_if(cond, msg, ret) return_code_if(cond, errno, msg, ret)
 #endif
 
-namespace flexvm {
+struct on_return {
+    std::function<void(void)> f;
+    template <typename T> on_return(T c) : f(c) {}
+    ~on_return() { f(); }
+};
 
 enum LogLevel {
     L_DEBUG = 0,
@@ -54,8 +62,21 @@ public:
             *out << par;
         return *this;
     }
+    Log & operator<<(const wchar_t * par) {
+        if (enabled) {
+            char buffer[512];
+            wcstombs(buffer, par, 511);
+            buffer[511] = '\0';
+            *out << buffer;
+        }
+        return *this;
+    }
+    Log & operator<<(wchar_t * par) {
+        return operator<<(const_cast<const wchar_t *>(par));
+    }
 
     static void setLogOstream(std::ostream * logout) { out = logout; }
+    static const char * getDefaultLogPath();
 
 private:
     bool enabled;

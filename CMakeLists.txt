@@ -23,20 +23,21 @@ test_big_endian(BIG_ENDIAN)
 configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config.h")
 include_directories("${PROJECT_BINARY_DIR}")
 
-if (WIN32)
-    set(WINSOCK_LIBRARIES wsock32)
-endif (WIN32)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Werror -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 set(sources FlexVDIGuestAgent.cpp VirtioPort.cpp CredentialsManager.cpp
-    DispatcherRegistry.cpp util.cpp)
+    DispatcherRegistry.cpp)
+add_library(util_o OBJECT util.cpp)
 add_library(objects OBJECT ${sources})
 if (WIN32)
-    add_executable(flexvdi-guest-agent WindowsService.cpp $<TARGET_OBJECTS:objects>)
+    add_definitions(-DWIN32)
+    add_executable(flexvdi-guest-agent WindowsService.cpp
+                   $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
+    set(WINSOCK_LIBRARIES wsock32)
 else (WIN32)
-    add_executable(flexvdi-guest-agent main.cpp $<TARGET_OBJECTS:objects>)
+    add_executable(flexvdi-guest-agent main.cpp
+                   $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
 endif (WIN32)
 target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}" "${WINSOCK_LIBRARIES}" pthread)
 

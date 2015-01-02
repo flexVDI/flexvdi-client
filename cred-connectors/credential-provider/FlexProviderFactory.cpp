@@ -4,13 +4,13 @@
 
 #include <fstream>
 #include "FlexProviderFactory.hpp"
-#include "CFlexProvider.h"
+#include "FlexProvider.hpp"
 #include "util.hpp"
 #include "guid.h"
 using namespace flexvm;
 
 
-static LONG g_cRef = 0;   // global dll reference count
+static LONG g_cRef = 0;
 HINSTANCE FlexProviderFactory::dllHInst = NULL;
 
 void DllAddRef() {
@@ -66,30 +66,26 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv) {
 static std::ofstream logFile;
 static const char * getLogPath() {
     static char logPath[1024] = "c:\\flexvdi_credprov.log";
-    //     char tempPath[1024];
-    //     GetTempPathA(1024, tempPath);
-    //     sprintf_s(logPath, 1024, "%s\\flexvdi_credprov.log", tempPath);
+    sprintf_s(logPath, 1024, "%s\\credprov.log", Log::getDefaultLogPath());
     return logPath;
 }
 
 
 STDAPI_(BOOL) DllMain(HINSTANCE hinstDll, DWORD dwReason, void *) {
-    switch (dwReason)
-    {
+    switch (dwReason) {
         case DLL_PROCESS_ATTACH:
             DisableThreadLibraryCalls(hinstDll);
+            logFile.open(getLogPath(), std::ios_base::app);
+            logFile << std::endl << std::endl << getLogPath() << std::endl << Log::getDefaultLogPath() << std::endl;
+            Log::setLogOstream(&logFile);
+            FlexProviderFactory::dllHInst = hinstDll;
+            Log(L_DEBUG) << "FlexVDICredentialProvider loaded";
             break;
         case DLL_PROCESS_DETACH:
         case DLL_THREAD_ATTACH:
         case DLL_THREAD_DETACH:
             break;
     }
-
-    logFile.open(getLogPath(), std::ios_base::app);
-    logFile << std::endl << std::endl;
-    Log::setLogOstream(&logFile);
-    FlexProviderFactory::dllHInst = hinstDll;
-    Log(L_DEBUG) << "FlexVDICredentialProvider loaded";
     return TRUE;
 }
 
@@ -109,7 +105,7 @@ HRESULT FlexProviderFactory::QueryInterface(REFIID riid, void ** ppv) {
 
 HRESULT FlexProviderFactory::createProvider(REFIID riid, void ** ppv) {
     HRESULT hr = E_NOINTERFACE;
-    CFlexProvider * pProvider = new CFlexProvider(dllHInst);
+    FlexProvider * pProvider = new FlexProvider(dllHInst);
     if (pProvider) {
         Log(L_DEBUG) << "Created provider";
         hr = pProvider->QueryInterface(riid, ppv);

@@ -5,7 +5,7 @@
 #ifndef _FLEXPROVIDERFACTORY_HPP_
 #define _FLEXPROVIDERFACTORY_HPP_
 
-#include "helpers.h"
+#include "credentialprovider.h"
 
 namespace flexvm {
 

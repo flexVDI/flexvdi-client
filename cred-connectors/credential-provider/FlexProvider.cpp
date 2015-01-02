@@ -2,9 +2,9 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
-#include <Shlwapi.h>
-#include "CFlexProvider.h"
-#include "CFlexCredential.h"
+#include <shlwapi.h>
+#include "FlexProvider.hpp"
+#include "FlexCredential.hpp"
 #include "util.hpp"
 using namespace flexvm;
 
@@ -13,14 +13,14 @@ void DllAddRef();
 void DllRelease();
 
 
-CFlexProvider::CFlexProvider(HINSTANCE h) : refCount(1), dllHInst(h),
-credential(nullptr), cpe(nullptr) {
+FlexProvider::FlexProvider(HINSTANCE h) : refCount(1), dllHInst(h),
+credential(nullptr), receivedCredentials(false), cpe(nullptr) {
     LogCall cl(__FUNCTION__);
     DllAddRef();
 }
 
 
-CFlexProvider::~CFlexProvider() {
+FlexProvider::~FlexProvider() {
     LogCall cl(__FUNCTION__);
     if (credential != nullptr) {
         credential->Release();
@@ -29,7 +29,7 @@ CFlexProvider::~CFlexProvider() {
 }
 
 
-HRESULT CFlexProvider::QueryInterface(REFIID riid, void ** ppv) {
+HRESULT FlexProvider::QueryInterface(REFIID riid, void ** ppv) {
     if (riid == IID_ICredentialProvider) {
         ICredentialProvider * thisCP = static_cast<ICredentialProvider *>(this);
         thisCP->AddRef();
@@ -44,10 +44,11 @@ HRESULT CFlexProvider::QueryInterface(REFIID riid, void ** ppv) {
 
 // This method acts as a callback for the hardware emulator. When it's called, it simply
 // tells the infrastructure that it needs to re-enumerate the credentials.
-void CFlexProvider::credentialsChanged(wchar_t * username, wchar_t * password,
-                                       wchar_t * domain) {
+void FlexProvider::credentialsChanged(wchar_t * username, wchar_t * password,
+                                      wchar_t * domain) {
     LogCall cl(__FUNCTION__);
     if (credential) {
+        receivedCredentials = true;
         credential->setCredentials(username, password, domain);
         if (cpe) {
             cpe->CredentialsChanged(adviseContext);
@@ -58,7 +59,7 @@ void CFlexProvider::credentialsChanged(wchar_t * username, wchar_t * password,
 
 // SetUsageScenario is the provider's cue that it's going to be asked for tiles
 // in a subsequent call.
-HRESULT CFlexProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario,
+HRESULT FlexProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario,
                                         DWORD dwFlags) {
     LogCall cl(__FUNCTION__);
     UNREFERENCED_PARAMETER(dwFlags);
@@ -70,7 +71,7 @@ HRESULT CFlexProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO scena
     case CPUS_UNLOCK_WORKSTATION:
         cpus = scenario;
 
-        // Create the CFlexCredential
+        // Create the FlexCredential
         // We can get SetUsageScenario multiple times
         // (for example, cancel back out to the CAD screen, and then hit CAD again),
         // but there's no point in recreating our creds, since they're the same all the
@@ -79,16 +80,16 @@ HRESULT CFlexProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO scena
         if (!credential) {
             // For the locked case, a more advanced credprov might only enumerate tiles for the
             // user whose owns the locked session, since those are the only creds that will work
-            credential = new CFlexCredential(dllHInst);
+            credential = new FlexCredential(dllHInst);
             if (credential) {
                 // Initialize each of the object we've just created.
-                // - The CFlexCredential needs field descriptors.
+                // - The FlexCredential needs field descriptors.
                 hr = credential->Initialize(cpus);
                 if (FAILED(hr)) {
                     credential->Release();
                     credential = nullptr;
                 }
-                thread.reset(new CReaderThread());
+                thread.reset(new ReaderThread());
                 thread->Initialize(this);
             } else {
                 hr = E_OUTOFMEMORY;
@@ -126,7 +127,7 @@ HRESULT CFlexProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO scena
 // it into the main sample.  We felt it was more important to get these samples out to you quickly than to
 // hold them in order to do the work to integrate the SetSerialization changes from SampleCredentialProvider
 // into this sample.]
-HRESULT CFlexProvider::SetSerialization(
+HRESULT FlexProvider::SetSerialization(
     const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION * pcpcs) {
     LogCall lc(__FUNCTION__);
     UNREFERENCED_PARAMETER(pcpcs);
@@ -136,7 +137,7 @@ HRESULT CFlexProvider::SetSerialization(
 
 // Called by LogonUI to give you a callback. Providers often use the callback if they
 // some event would cause them to need to change the set of tiles that they enumerated
-HRESULT CFlexProvider::Advise(ICredentialProviderEvents * pcpe, UINT_PTR upAdviseContext) {
+HRESULT FlexProvider::Advise(ICredentialProviderEvents * pcpe, UINT_PTR upAdviseContext) {
     LogCall lc(__FUNCTION__);
     if (cpe) {
         cpe->Release();
@@ -149,7 +150,7 @@ HRESULT CFlexProvider::Advise(ICredentialProviderEvents * pcpe, UINT_PTR upAdvis
 
 
 // Called by LogonUI when the ICredentialProviderEvents callback is no longer valid.
-HRESULT CFlexProvider::UnAdvise() {
+HRESULT FlexProvider::UnAdvise() {
     LogCall lc(__FUNCTION__);
     if (cpe) {
         cpe->Release();
@@ -161,8 +162,8 @@ HRESULT CFlexProvider::UnAdvise() {
 
 // Called by LogonUI to determine the number of fields in your tiles. We return the number
 // of fields to be displayed on our active tile:
-// CFlexCredential has SFI_NUM_FIELDS fields
-HRESULT CFlexProvider::GetFieldDescriptorCount(DWORD * pdwCount) {
+// FlexCredential has SFI_NUM_FIELDS fields
+HRESULT FlexProvider::GetFieldDescriptorCount(DWORD * pdwCount) {
     LogCall lc(__FUNCTION__);
     *pdwCount = SFI_NUM_FIELDS;
     return S_OK;
@@ -197,12 +198,12 @@ static HRESULT FieldDescriptorCoAllocCopy(
 
 
 // Gets the field descriptor for a particular field.
-HRESULT CFlexProvider::GetFieldDescriptorAt(DWORD dwIndex,
+HRESULT FlexProvider::GetFieldDescriptorAt(DWORD dwIndex,
                                             CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR ** ppcpfd) {
     LogCall lc(__FUNCTION__);
     HRESULT hr;
     if ((dwIndex < SFI_NUM_FIELDS) && ppcpfd) {
-        hr = FieldDescriptorCoAllocCopy(CFlexCredential::fieldDescriptors[dwIndex], ppcpfd);
+        hr = FieldDescriptorCoAllocCopy(FlexCredential::fieldDescriptors[dwIndex], ppcpfd);
     } else {
         hr = E_INVALIDARG;
     }
@@ -216,12 +217,13 @@ HRESULT CFlexProvider::GetFieldDescriptorAt(DWORD dwIndex,
 // different sets of credentials, we would provide a combobox in the "connected" tile so
 // that the user could pick which one they want to use.
 // The last cred prov used gets to select the default user tile
-HRESULT CFlexProvider::GetCredentialCount(DWORD * pdwCount, DWORD * pdwDefault,
+HRESULT FlexProvider::GetCredentialCount(DWORD * pdwCount, DWORD * pdwDefault,
                                           BOOL * pbAutoLogonWithDefault) {
     LogCall cl(__FUNCTION__);
     *pdwCount = 1;
     *pdwDefault = 0;
-    *pbAutoLogonWithDefault = FALSE;
+    *pbAutoLogonWithDefault = receivedCredentials;
+    receivedCredentials = false;
     return S_OK;
 }
 
@@ -229,10 +231,11 @@ HRESULT CFlexProvider::GetCredentialCount(DWORD * pdwCount, DWORD * pdwDefault,
 // Returns the credential at the index specified by dwIndex. This function is called
 // to enumerate the tiles. Note that we need to return the right credential, which depends
 // on whether we're connected or not.
-HRESULT CFlexProvider::GetCredentialAt(DWORD dwIndex, ICredentialProviderCredential ** ppcpc) {
+HRESULT FlexProvider::GetCredentialAt(DWORD dwIndex, ICredentialProviderCredential ** ppcpc) {
     LogCall cl(__FUNCTION__);
-    if (dwIndex == 0) {
+    if (dwIndex == 0 && credential) {
         *ppcpc = static_cast<ICredentialProviderCredential *>(credential);
+        credential->AddRef();
         return S_OK;
     } else {
         return E_INVALIDARG;

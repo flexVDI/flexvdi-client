@@ -9,8 +9,8 @@
 //
 
 #include <ntstatus.h>
-#include <Shlwapi.h>
-#include "CFlexCredential.h"
+#include <shlwapi.h>
+#include "FlexCredential.hpp"
 #include "guid.h"
 #include "helpers.h"
 #include "util.hpp"
@@ -32,7 +32,7 @@ static wchar_t submitFieldName[] = L"Submit";
 // The first field is the index of the field.
 // The second is the type of the field.
 // The third is the name of the field, NOT the value which will appear in the field.
-const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR CFlexCredential::fieldDescriptors[] = {
+const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR FlexCredential::fieldDescriptors[] = {
     { SFI_TILEIMAGE, CPFT_TILE_IMAGE, imageFieldName },
     { SFI_GREETING, CPFT_LARGE_TEXT, greetingFieldName },
     { SFI_USERNAME, CPFT_EDIT_TEXT, usernameFieldName },
@@ -45,7 +45,7 @@ const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR CFlexCredential::fieldDescriptors[] =
 // The field state value indicates whether the field is displayed
 // in the selected tile, the deselected tile, or both.
 // The Field interactive state indicates when
-const FIELD_STATE_PAIR CFlexCredential::fieldStatePairs[] = {
+const FIELD_STATE_PAIR FlexCredential::fieldStatePairs[] = {
     { CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },                   // SFI_TILEIMAGE
     { CPFS_DISPLAY_IN_BOTH, CPFIS_NONE },                   // SFI_GREETING
     { CPFS_DISPLAY_IN_SELECTED_TILE, CPFIS_NONE },          // SFI_USERNAME
@@ -55,7 +55,7 @@ const FIELD_STATE_PAIR CFlexCredential::fieldStatePairs[] = {
 };
 
 
-CFlexCredential::CFlexCredential(HINSTANCE h): refCount(1), dllHInst(h), events(NULL) {
+FlexCredential::FlexCredential(HINSTANCE h): refCount(1), dllHInst(h), events(NULL) {
     LogCall cl(__FUNCTION__);
     DllAddRef();
     ZeroMemory(fieldContent, sizeof(fieldContent));
@@ -74,7 +74,7 @@ struct Lock {
 };
 
 
-CFlexCredential::~CFlexCredential() {
+FlexCredential::~FlexCredential() {
     LogCall cl(__FUNCTION__);
     clearPassword();
     for (int i = 0; i < SFI_NUM_FIELDS; i++) {
@@ -85,7 +85,7 @@ CFlexCredential::~CFlexCredential() {
 }
 
 
-void CFlexCredential::clearPassword() {
+void FlexCredential::clearPassword() {
     Lock lock(mutex);
     if (fieldContent[SFI_PASSWORD]) {
         size_t lenPassword = lstrlen(fieldContent[SFI_PASSWORD]);
@@ -96,7 +96,7 @@ void CFlexCredential::clearPassword() {
 }
 
 
-IFACEMETHODIMP CFlexCredential::QueryInterface(REFIID riid, void ** ppv) {
+IFACEMETHODIMP FlexCredential::QueryInterface(REFIID riid, void ** ppv) {
     if (riid == IID_ICredentialProviderCredential) {
         ICredentialProviderCredential * thisCPC = static_cast<ICredentialProviderCredential *>(this);
         thisCPC->AddRef();
@@ -109,34 +109,21 @@ IFACEMETHODIMP CFlexCredential::QueryInterface(REFIID riid, void ** ppv) {
 }
 
 
-/* Obtiene el valor en el registro de windows asociado a la clave "key", dentro de la  subclave "subkey".
- * Sólo busca bajo HKLM (local machine) que es suficiente para lo que buscamos.
- * Nótese que en el registro las claves están dentro de las subclaves.
- * Ejemplo:
- *    Subkey: SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\SessionData\\1
- *    Key: LoggedOnSAMUSer
- *
- *    Hace uso de .Net framework. NO recomendada para XP que no lo trae de serie.
- */
-static bool getRegistryValueInLocalMachine(const wchar_t * subkey, const wchar_t * key,
-                                           wchar_t * value, int size) {
-    Log(L_DEBUG) << "getRegistryValueInLocalMachine(" << subkey << ", " << key << ")";
+static bool getLastLoggedOnSAMUser(wchar_t * value, int size) {
+    LogCall cl(__FUNCTION__);
+    wchar_t key[] = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\";
+    wchar_t subkey[] = L"LastLoggedOnSAMUSer";
     HKEY hkey;
-    LONG status = RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_QUERY_VALUE, &hkey);
+    LONG status = RegOpenKeyEx(HKEY_LOCAL_MACHINE, key, 0, KEY_QUERY_VALUE, &hkey);
     return_if(status, "Failed to open WinLogon registry key", false);
     DWORD cb = size * sizeof(wchar_t);
-    status = RegQueryValueEx(hkey, key, 0, 0, (BYTE *)value, &cb);
+    status = RegQueryValueEx(hkey, subkey, 0, 0, (BYTE *)value, &cb);
     RegCloseKey(hkey);
     return_if(status, "Failed to read registry key", false);
     return true;
 }
 
 
-/* Parsea input que será una cadena como domain\username, username, o "".
- * Los valores de los trozos los devuelve en los parametros user y domain
- * username y domain son wchar_t[size]. Los sobreescribimos
- * En el Initialize de CrednetialProvider podemos contar con que es así.
- */
 static void parseCompositeUserName(wchar_t * input, wchar_t * username,
                                    wchar_t * domain, int size) {
     wchar_t * nextToken = NULL;
@@ -158,7 +145,7 @@ static void parseCompositeUserName(wchar_t * input, wchar_t * username,
 
 // Initializes one credential with the field information passed in.
 // Set the value of the SFI_USERNAME field to pwzUsername.
-HRESULT CFlexCredential::Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario) {
+HRESULT FlexCredential::Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario) {
     LogCall cl(__FUNCTION__);
     cpus = scenario;
 
@@ -166,17 +153,14 @@ HRESULT CFlexCredential::Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario)
     wchar_t username[MAX_CRED_SIZE];
     wchar_t domain[MAX_CRED_SIZE];
     wchar_t registryUserName[2 * MAX_CRED_SIZE];
-    getRegistryValueInLocalMachine(L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\LogonUI\\",
-            L"LastLoggedOnSAMUSer", registryUserName, 2 * MAX_CRED_SIZE);
-    Log(L_DEBUG) << "CFlexCredential::Initialize() registryUserName: " << registryUserName;
+    getLastLoggedOnSAMUser(registryUserName, 2 * MAX_CRED_SIZE);
+    Log(L_DEBUG) << "Last logged on user: " << registryUserName;
     parseCompositeUserName(registryUserName, username, domain, MAX_CRED_SIZE);
-    Log(L_DEBUG) << "CFlexCredential::Initialize() flexUser: " << username;
-    Log(L_DEBUG) << "CFlexCredential::Initialize() proposedDomain: " << domain;
 
     Lock lock(mutex);
     HRESULT hr = S_OK;
     // Initialize the String value of all the fields.
-    hr = SHStrDupW(L"FlexVDI SSO", &fieldContent[SFI_GREETING]);
+    hr = SHStrDupW(L"flexVDI SSO", &fieldContent[SFI_GREETING]);
     if (SUCCEEDED(hr)) {
         hr = SHStrDupW(username, &fieldContent[SFI_USERNAME]);
     }
@@ -194,7 +178,7 @@ HRESULT CFlexCredential::Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario)
 
 
 // LogonUI calls this in order to give us a callback in case we need to notify it of anything.
-HRESULT CFlexCredential::Advise(ICredentialProviderCredentialEvents * pcpce) {
+HRESULT FlexCredential::Advise(ICredentialProviderCredentialEvents * pcpce) {
     LogCall cl(__FUNCTION__);
     if (events != NULL) {
         events->Release();
@@ -206,7 +190,7 @@ HRESULT CFlexCredential::Advise(ICredentialProviderCredentialEvents * pcpce) {
 
 
 // LogonUI calls this to tell us to release the callback.
-HRESULT CFlexCredential::UnAdvise() {
+HRESULT FlexCredential::UnAdvise() {
     LogCall cl(__FUNCTION__);
     if (events) {
         events->Release();
@@ -222,7 +206,7 @@ HRESULT CFlexCredential::UnAdvise() {
 // field definitions.  But if you want to do something
 // more complicated, like change the contents of a field when the tile is
 // selected, you would do it here.
-HRESULT CFlexCredential::SetSelected(BOOL * pbAutoLogon) {
+HRESULT FlexCredential::SetSelected(BOOL * pbAutoLogon) {
     LogCall lc(__FUNCTION__);
     *pbAutoLogon = FALSE;
     return S_OK;
@@ -232,7 +216,7 @@ HRESULT CFlexCredential::SetSelected(BOOL * pbAutoLogon) {
 // Similarly to SetSelected, LogonUI calls this when your tile was selected
 // and now no longer is.  The most common thing to do here (which we do below)
 // is to clear out the password field.
-HRESULT CFlexCredential::SetDeselected() {
+HRESULT FlexCredential::SetDeselected() {
     LogCall lc(__FUNCTION__);
     HRESULT hr = S_OK;
     Lock lock(mutex);
@@ -248,7 +232,7 @@ HRESULT CFlexCredential::SetDeselected() {
 
 // Get info for a particular field of a tile. Called by logonUI to get information to
 // display the tile.
-HRESULT CFlexCredential::GetFieldState(DWORD dwFieldID,
+HRESULT FlexCredential::GetFieldState(DWORD dwFieldID,
     CREDENTIAL_PROVIDER_FIELD_STATE * pcpfs,
     CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE * pcpfis
 ) {
@@ -263,7 +247,7 @@ HRESULT CFlexCredential::GetFieldState(DWORD dwFieldID,
 }
 
 // Sets ppwsz to the string value of the field at the index dwFieldID.
-HRESULT CFlexCredential::GetStringValue(DWORD dwFieldID, PWSTR * ppwsz) {
+HRESULT FlexCredential::GetStringValue(DWORD dwFieldID, PWSTR * ppwsz) {
     LogCall cl(__FUNCTION__);
     if (dwFieldID < SFI_NUM_FIELDS) {
         Lock lock(mutex);
@@ -274,7 +258,7 @@ HRESULT CFlexCredential::GetStringValue(DWORD dwFieldID, PWSTR * ppwsz) {
 }
 
 // Get the image to show in the user tile.
-HRESULT CFlexCredential::GetBitmapValue(DWORD dwFieldID, HBITMAP * phbmp) {
+HRESULT FlexCredential::GetBitmapValue(DWORD dwFieldID, HBITMAP * phbmp) {
     LogCall cl(__FUNCTION__);
     if (dwFieldID == SFI_TILEIMAGE) {
         *phbmp = LoadBitmap(dllHInst, MAKEINTRESOURCE(IDB_TILE_IMAGE));
@@ -288,7 +272,7 @@ HRESULT CFlexCredential::GetBitmapValue(DWORD dwFieldID, HBITMAP * phbmp) {
 // adjacent to. We recommend that the submit button is placed next to the last
 // field which the user is required to enter information in. Optional fields
 // should be below the submit button.
-HRESULT CFlexCredential::GetSubmitButtonValue(DWORD dwFieldID, DWORD * pdwAdjacentTo) {
+HRESULT FlexCredential::GetSubmitButtonValue(DWORD dwFieldID, DWORD * pdwAdjacentTo) {
     LogCall cl(__FUNCTION__);
     if (dwFieldID == SFI_SUBMIT_BUTTON) {
         // pdwAdjacentTo is a pointer to the fieldID you want the submit button to
@@ -302,7 +286,7 @@ HRESULT CFlexCredential::GetSubmitButtonValue(DWORD dwFieldID, DWORD * pdwAdjace
 
 // Sets the value of a field which can accept a string as a value.
 // This is called on each keystroke when a user types into an edit field
-HRESULT CFlexCredential::SetStringValue(DWORD dwFieldID, PCWSTR pwz) {
+HRESULT FlexCredential::SetStringValue(DWORD dwFieldID, PCWSTR pwz) {
     LogCall cl(__FUNCTION__);
     if (dwFieldID < SFI_NUM_FIELDS &&
         (fieldDescriptors[dwFieldID].cpft == CPFT_EDIT_TEXT ||
@@ -316,7 +300,7 @@ HRESULT CFlexCredential::SetStringValue(DWORD dwFieldID, PCWSTR pwz) {
 }
 
 
-void CFlexCredential::setCredentials(wchar_t * username, wchar_t * password,
+void FlexCredential::setCredentials(wchar_t * username, wchar_t * password,
                                      wchar_t * domain) {
     Lock lock(mutex);
     CoTaskMemFree(fieldContent[SFI_USERNAME]);
@@ -334,7 +318,7 @@ void CFlexCredential::setCredentials(wchar_t * username, wchar_t * password,
 // Los valores que se serializan para pasar a windows son flexUser, flexPassword, flexDomain.
 // 2014-04: Ahora también usa el dominio.
 // El parametro de salida "importante" es el pcpcs que contiene username, pass, domain, ... "empaquetados"
-HRESULT CFlexCredential::GetSerialization(
+HRESULT FlexCredential::GetSerialization(
     CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE * pcpgsr,
     CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION * pcpcs,
     PWSTR * ppwszOptionalStatusText,
@@ -347,10 +331,9 @@ HRESULT CFlexCredential::GetSerialization(
 
     HRESULT hr = S_OK; //
     Lock lock(mutex);
-    
+
     WCHAR effectiveDomain[MAX_CRED_SIZE]; // Variable que contendrá el nombre de dominio usado para autenticar. En el original se llamaba wsz ¿?
     DWORD domainLength = MAX_CRED_SIZE;
-    Log(L_DEBUG) << L"Deciding Effective Domain";
 
     // Si han especificado domain, lo usamos. Si no, usamos getComputerName()
     if (wcslen(fieldContent[SFI_DOMAIN]) > 0) {
@@ -359,26 +342,24 @@ HRESULT CFlexCredential::GetSerialization(
         hr = GetComputerNameW(effectiveDomain, &domainLength);
         return_if(FAILED(hr), "GetComputerNameW failed", HRESULT_FROM_WIN32(GetLastError()));
     }
-    Log(L_DEBUG) << "Effective domain: " << effectiveDomain;
-
     Log(L_DEBUG) << "-> KIUL: usu: " << fieldContent[SFI_USERNAME]
         << ", pas: *, dom: " << effectiveDomain;
 
-    PWSTR protectedPassword; // Var. auxiliar para guardar el password protegido
+    PWSTR protectedPassword;
     hr = ProtectIfNecessaryAndCopyPassword(fieldContent[SFI_PASSWORD],
                                            cpus, &protectedPassword);
     return_if(FAILED(hr), "Protect password failed", HRESULT_FROM_WIN32(GetLastError()));
-    KERB_INTERACTIVE_UNLOCK_LOGON kiul; // Var que contiene username, pass y domain
+    on_return r([&] () { CoTaskMemFree(protectedPassword); });
+    KERB_INTERACTIVE_UNLOCK_LOGON kiul;
     // Initialize kiul with weak references to our credential.
     hr = KerbInteractiveUnlockLogonInit(effectiveDomain, fieldContent[SFI_USERNAME],
                                         protectedPassword, cpus, &kiul);
     if (SUCCEEDED(hr)) {
-        // We use KERB_INTERACTIVE_UNLOCK_LOGON in both unlock and logon scenarios.  It contains a
-        // KERB_INTERACTIVE_LOGON to hold the creds plus a LUID that is filled in for us by Winlogon
-        // as necessary.
+        // We use KERB_INTERACTIVE_UNLOCK_LOGON in both unlock and logon scenarios.
+        // It contains a KERB_INTERACTIVE_LOGON to hold the creds plus a LUID that
+        // is filled in for us by Winlogon as necessary.
         hr = KerbInteractiveUnlockLogonPack(kiul, &pcpcs->rgbSerialization,
                                             &pcpcs->cbSerialization);
-        CoTaskMemFree(protectedPassword);
         return_if(FAILED(hr), "Creds pack failed", HRESULT_FROM_WIN32(GetLastError()));
         ULONG ulAuthPackage;
         hr = RetrieveNegotiateAuthPackage(&ulAuthPackage);
@@ -396,24 +377,24 @@ HRESULT CFlexCredential::GetSerialization(
 }
 
 
-// struct REPORT_RESULT_STATUS_INFO {
-//     NTSTATUS ntsStatus;
-//     NTSTATUS ntsSubstatus;
-//     PCWSTR     pwzMessage;
-//     CREDENTIAL_PROVIDER_STATUS_ICON cpsi;
-// };
-//
-// static const REPORT_RESULT_STATUS_INFO s_rgLogonStatusInfo[] = {
-//     { STATUS_LOGON_FAILURE, STATUS_SUCCESS, L"Incorrect password or username.", CPSI_ERROR, },
-//     { STATUS_ACCOUNT_RESTRICTION, STATUS_ACCOUNT_DISABLED, L"The account is disabled.", CPSI_WARNING },
-// };
+struct REPORT_RESULT_STATUS_INFO {
+    NTSTATUS ntsStatus;
+    NTSTATUS ntsSubstatus;
+    PCWSTR     pwzMessage;
+    CREDENTIAL_PROVIDER_STATUS_ICON cpsi;
+};
+
+static const REPORT_RESULT_STATUS_INFO s_rgLogonStatusInfo[] = {
+    { STATUS_LOGON_FAILURE, STATUS_SUCCESS, L"Incorrect password or username.", CPSI_ERROR, },
+    { STATUS_ACCOUNT_RESTRICTION, STATUS_ACCOUNT_DISABLED, L"The account is disabled.", CPSI_WARNING },
+};
 
 
 // ReportResult is completely optional.  Its purpose is to allow a credential to customize the string
 // and the icon displayed in the case of a logon failure.  For example, we have chosen to
 // customize the error shown in the case of bad username/password and in the case of the account
 // being disabled.
-HRESULT CFlexCredential::ReportResult(
+HRESULT FlexCredential::ReportResult(
     NTSTATUS ntsStatus,
     NTSTATUS ntsSubstatus,
     PWSTR * ppwszOptionalStatusText,
@@ -424,37 +405,33 @@ HRESULT CFlexCredential::ReportResult(
     *ppwszOptionalStatusText = NULL;
     *pcpsiOptionalStatusIcon = CPSI_NONE;
 
-//     DWORD dwStatusInfo = (DWORD) - 1;
-//
-//     //FLEX Autologon. Tras un intento de login quitamos el autologon (por si las credenciales fallan)
-//     /*CReaderThread::log("Setting usable to false");
-//     usableCredentials=false;*/
-//
-//     // Look for a match on status and substatus.
-//     for (DWORD i = 0; i < ARRAYSIZE(s_rgLogonStatusInfo); i++) {
-//         if (s_rgLogonStatusInfo[i].ntsStatus == ntsStatus && s_rgLogonStatusInfo[i].ntsSubstatus == ntsSubstatus) {
-//             dwStatusInfo = i;
-//             break;
-//         }
-//     }
-//
-//     if ((DWORD) - 1 != dwStatusInfo) {
-//         if (SUCCEEDED(SHStrDupW(s_rgLogonStatusInfo[dwStatusInfo].pwzMessage, ppwszOptionalStatusText))) {
-//             *pcpsiOptionalStatusIcon = s_rgLogonStatusInfo[dwStatusInfo].cpsi;
-//         }
-//     }
-//
-//     // If we failed the logon, try to erase the password field.
-//     if (!SUCCEEDED(HRESULT_FROM_NT(ntsStatus))) {
-//         if (events) {
-//             events->SetFieldString(this, SFI_PASSWORD, L"");
-//         }
-//         //FLEX Autologon. Y guardamos que las credenciales NO son buenas
-//         Log(L_DEBUG) << "ReportResult Setting usable to false";
-// //         usableCredentials = false;
-//
-//     }
-//
+    DWORD dwStatusInfo = (DWORD) - 1;
+
+    // Look for a match on status and substatus.
+    for (DWORD i = 0; i < ARRAYSIZE(s_rgLogonStatusInfo); i++) {
+        if (s_rgLogonStatusInfo[i].ntsStatus == ntsStatus && s_rgLogonStatusInfo[i].ntsSubstatus == ntsSubstatus) {
+            dwStatusInfo = i;
+            break;
+        }
+    }
+
+    if ((DWORD) - 1 != dwStatusInfo) {
+        if (SUCCEEDED(SHStrDupW(s_rgLogonStatusInfo[dwStatusInfo].pwzMessage, ppwszOptionalStatusText))) {
+            *pcpsiOptionalStatusIcon = s_rgLogonStatusInfo[dwStatusInfo].cpsi;
+        }
+    }
+
+    // If we failed the logon, try to erase the password field.
+    if (!SUCCEEDED(HRESULT_FROM_NT(ntsStatus))) {
+        if (events) {
+            events->SetFieldString(this, SFI_PASSWORD, L"");
+        }
+        //FLEX Autologon. Y guardamos que las credenciales NO son buenas
+        Log(L_DEBUG) << "ReportResult Setting usable to false";
+//         usableCredentials = false;
+
+    }
+
     // Since NULL is a valid value for *ppwszOptionalStatusText and *pcpsiOptionalStatusIcon
     // this function can't fail.
     return S_OK;
@@ -464,30 +441,30 @@ HRESULT CFlexCredential::ReportResult(
 // The following methods are for logonUI to get the values of various UI elements and then communicate
 // to the credential about what the user did in that field.  However, these methods are not implemented
 // because our tile doesn't contain these types of UI elements
-HRESULT CFlexCredential::GetCheckboxValue(DWORD dwFieldID, BOOL * pbChecked,
+HRESULT FlexCredential::GetCheckboxValue(DWORD dwFieldID, BOOL * pbChecked,
                                           PWSTR * ppwszLabel) {
     return E_NOTIMPL;
 }
 
-HRESULT CFlexCredential::GetComboBoxValueCount(DWORD dwFieldID, DWORD * pcItems,
+HRESULT FlexCredential::GetComboBoxValueCount(DWORD dwFieldID, DWORD * pcItems,
                                                DWORD * pdwSelectedItem) {
     return E_NOTIMPL;
 }
 
-HRESULT CFlexCredential::GetComboBoxValueAt(DWORD dwFieldID, DWORD dwItem,
+HRESULT FlexCredential::GetComboBoxValueAt(DWORD dwFieldID, DWORD dwItem,
                                             PWSTR * ppwszItem) {
     return E_NOTIMPL;
 }
 
-HRESULT CFlexCredential::SetCheckboxValue(DWORD dwFieldID, BOOL bChecked) {
+HRESULT FlexCredential::SetCheckboxValue(DWORD dwFieldID, BOOL bChecked) {
     return E_NOTIMPL;
 }
 
-HRESULT CFlexCredential::SetComboBoxSelectedValue(DWORD dwFieldId, DWORD dwSelectedItem) {
+HRESULT FlexCredential::SetComboBoxSelectedValue(DWORD dwFieldId, DWORD dwSelectedItem) {
     return E_NOTIMPL;
 }
 
-HRESULT CFlexCredential::CommandLinkClicked(DWORD dwFieldID) {
+HRESULT FlexCredential::CommandLinkClicked(DWORD dwFieldID) {
     return E_NOTIMPL;
 }
 //------ end of methods for controls we don't have in our tile ----//
