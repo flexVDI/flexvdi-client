@@ -35,8 +35,8 @@ int main(int argc, char * argv[]) {
 #ifdef BOOST_ASIO_HAS_POSIX_STREAM_DESCRIPTOR
     asio::posix::stream_descriptor stream(io, ::open(argv[1], O_RDWR));
 #else
-    HANDLE h = ::CreateFile(argv[1], GENERIC_READ | GENERIC_WRITE, 0, NULL,
-                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE h = ::CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                             OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     asio::windows::stream_handle stream(io, h);
 #endif
     asio::write<>(stream, flexvm::SharedConstBuffer(mHeader)(msg)(msgBuffer, 15));

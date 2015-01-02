@@ -13,8 +13,6 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/register.reg.in"
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/unregister.reg.in"
                "${CMAKE_CURRENT_BINARY_DIR}/unregister.reg")
 
-add_definitions(-DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0600)
-
 set(DEF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/FlexVDICredentialProvider.def")
 add_library(flexVDICredentialProvider SHARED FlexCredential.cpp FlexProvider.cpp
             guid.cpp ReaderThread.cpp FlexProviderFactory.cpp helpers.cpp

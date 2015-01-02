@@ -57,8 +57,8 @@ private:
 
 void VirtioPort::Impl::open(const char * name) {
 #ifdef WIN32
-    HANDLE portFd = ::CreateFile(name, GENERIC_READ | GENERIC_WRITE, 0, NULL,
-                                 OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+    HANDLE portFd = ::CreateFileA(name, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                                  OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     throw_if(portFd == INVALID_HANDLE_VALUE, name);
 #else
     int portFd = ::open(name, O_RDWR);

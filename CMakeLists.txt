@@ -31,7 +31,7 @@ set(sources FlexVDIGuestAgent.cpp VirtioPort.cpp CredentialsManager.cpp
 add_library(util_o OBJECT util.cpp)
 add_library(objects OBJECT ${sources})
 if (WIN32)
-    add_definitions(-DWIN32)
+    add_definitions(-DWIN32 -DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0600)
     add_executable(flexvdi-guest-agent WindowsService.cpp
                    $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
     set(WINSOCK_LIBRARIES wsock32)

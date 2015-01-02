@@ -60,8 +60,8 @@ void CredentialsManager::Impl::open(const char * name) {
 #ifdef WIN32
     uint32_t type = PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT;
     uint32_t flags = PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED;
-    HANDLE portFd = ::CreateNamedPipe(name, flags, type, PIPE_UNLIMITED_INSTANCES,
-                                      1024, 1024, 0, NULL);
+    HANDLE portFd = ::CreateNamedPipeA(name, flags, type, PIPE_UNLIMITED_INSTANCES,
+                                       1024, 1024, 0, NULL);
     throw_if(portFd == INVALID_HANDLE_VALUE, name);
     stream.assign(portFd);
 #else

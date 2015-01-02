@@ -7,14 +7,13 @@
 #include <fstream>
 #include "FlexVDIGuestAgent.hpp"
 #include <windows.h>
-#include <tchar.h>
 #include "util.hpp"
 using std::string;
 using namespace flexvm;
 
-static TCHAR serviceName[] = TEXT("flexvdi_service");
-static TCHAR serviceDescription[] =
-    TEXT("Provides several VDI functionalities on top of SPICE.");
+static wchar_t serviceName[] = L"flexvdi_service";
+static wchar_t serviceDescription[] =
+    L"Provides several VDI functionalities on top of SPICE.";
 
 
 class WindowsService {
@@ -22,7 +21,7 @@ public:
     static int install();
     static int uninstall();
     static int run();
-    static const TCHAR * getLogPath();
+    static const char * getLogPath();
 
     static WindowsService & singleton() {
         static WindowsService instance;
@@ -39,7 +38,7 @@ private:
     DWORD controlHandler(DWORD control, DWORD event_type,
                          LPVOID event_data, LPVOID context);
 
-    static VOID WINAPI serviceMain_cb(DWORD argc, TCHAR * argv[]) {
+    static VOID WINAPI serviceMain_cb(DWORD argc, wchar_t * argv[]) {
         singleton().serviceMain();
     }
     static DWORD WINAPI controlHandler_cb(DWORD control, DWORD event_type,
@@ -49,7 +48,7 @@ private:
 };
 
 
-int _tmain(int argc, char * argv[]) {
+int main(int argc, char * argv[]) {
     if (argc == 2 && string("install") == argv[1]) {
         return WindowsService::install();
     } else if (argc == 2 && string("uninstall") == argv[1]) {
@@ -63,19 +62,19 @@ int _tmain(int argc, char * argv[]) {
 }
 
 
-#define LOAD_ORDER_GROUP TEXT("Pointer Port")
+#define LOAD_ORDER_GROUP L"Pointer Port"
 
 int WindowsService::install() {
     SC_HANDLE service_control_manager = OpenSCManager(0, 0, SC_MANAGER_CREATE_SERVICE);
     return_if(!service_control_manager, "OpenSCManager failed", 1);
-    TCHAR path[_MAX_PATH + 2];
+    wchar_t path[_MAX_PATH + 2];
     DWORD len = GetModuleFileName(0, path + 1, _MAX_PATH);
     return_if(len == 0 || len == _MAX_PATH, "GetModuleFileName failed", 1);
     // add quotes for the case path contains a space (see CreateService doc)
-    path[0] = path[len + 1] = TEXT('\"');
+    path[0] = path[len + 1] = L'\"';
     path[len + 2] = 0;
     SC_HANDLE service = CreateService(service_control_manager, serviceName,
-                                      TEXT("flexVDI Guest Agent"), SERVICE_ALL_ACCESS,
+                                      L"flexVDI Guest Agent", SERVICE_ALL_ACCESS,
                                       SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START,
                                       SERVICE_ERROR_IGNORE, path, LOAD_ORDER_GROUP,
                                       0, 0, 0, 0);
@@ -114,10 +113,8 @@ int WindowsService::uninstall() {
 
 
 const char * WindowsService::getLogPath() {
-    static char logPath[1024];
-    char tempPath[1024];
-    GetTempPathA(1024, tempPath);
-    sprintf_s(logPath, 1024, "%s\\flexvdi_service.log", tempPath);
+    static char logPath[1024] = "c:\\flexvdi_service.log";
+    sprintf_s(logPath, 1024, "%s\\flexvdi_service.log", Log::getDefaultLogPath());
     return logPath;
 }
 
@@ -131,7 +128,7 @@ int WindowsService::run() {
 #define FLEXVDI_ACCEPTED_CONTROLS \
     (SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN | SERVICE_ACCEPT_SESSIONCHANGE)
 // Sysprep file. Read by Windows during vm creation, we remove it from here on first boot.
-#define SYSPREP_FILE_PATH TEXT("A:\\sysprep.inf")
+#define SYSPREP_FILE_PATH L"A:\\sysprep.inf"
 
 void WindowsService::serviceMain() {
     if (!SetPriorityClass(GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS)) {
