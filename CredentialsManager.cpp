@@ -58,14 +58,19 @@ private:
 
 void CredentialsManager::Impl::open(const char * name) {
 #ifdef WIN32
+    SECURITY_ATTRIBUTES secAttr;
+    secAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+    secAttr.bInheritHandle = FALSE;
+    // Only current user may access the named pipe
+    secAttr.lpSecurityDescriptor = NULL;
+    uint32_t mode = PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE;
     uint32_t type = PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT;
-    uint32_t flags = PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED;
-    HANDLE portFd = ::CreateNamedPipeA(name, flags, type, PIPE_UNLIMITED_INSTANCES,
-                                       1024, 1024, 0, NULL);
+    HANDLE portFd = ::CreateNamedPipeA(name, mode, type, 1, 1024, 1024, 0, &secAttr);
     throw_if(portFd == INVALID_HANDLE_VALUE, name);
     stream.assign(portFd);
 #else
     ::unlink(name);
+    // TODO: protect the access to the local socket
     asio::local::stream_protocol::endpoint ep(name);
     if (!acceptor.is_open())
         acceptor.open(ep.protocol());
