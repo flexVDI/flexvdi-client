@@ -5,6 +5,9 @@
 #ifdef WIN32
 #include <windows.h>
 #include <shlobj.h>
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
 #endif
 #include <algorithm>
 #include <iostream>
@@ -29,7 +32,7 @@ void Log::logDate() {
     microseconds us = duration_cast<microseconds>(now.time_since_epoch());
     std::time_t now_sec = duration_cast<seconds>(us).count();
     std::size_t fraction = us.count() % 1000000;
-    std::strftime(date, 20, "%Y/%m/%d %H:%M:%S", std::localtime(&now_sec));
+    std::strftime(date, 20, "%d/%m/%Y %H:%M:%S", std::localtime(&now_sec));
     *out << date << '.' << std::setfill('0') << std::setw(6) << fraction;
 }
 
@@ -40,8 +43,14 @@ const char * Log::getDefaultLogPath() {
     SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA, NULL, 0, logPath);
     size_t length = strlen(logPath);
     std::copy_n("\\flexVDI", 9, &logPath[length]);
-    return logPath;
+    if (SHCreateDirectoryExA(NULL, logPath, NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
+        return logPath;
+    else
+        return "c:";
 #else
-    return "/var/log/flexVDI";
+    if (!mkdir("/var/log/flexVDI", 0755) || errno == EEXIST)
+        return "/var/log/flexVDI";
+    else
+        return "/tmp";
 #endif
 }

@@ -7,6 +7,7 @@
 #include "FlexProvider.hpp"
 #include "util.hpp"
 #include "guid.h"
+#include <strsafe.h>
 using namespace flexvm;
 
 
@@ -66,8 +67,10 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv) {
 static std::ofstream logFile;
 static const char * getLogPath() {
     static char logPath[1024] = "c:\\flexvdi_credprov.log";
-    sprintf_s(logPath, 1024, "%s\\credprov.log", Log::getDefaultLogPath());
-    return logPath;
+    if (StringCbPrintfA(logPath, 1024, "%s\\credprov.log", Log::getDefaultLogPath()) == S_OK)
+        return logPath;
+    else
+        return "c:\\flexvdi_credprov.log";
 }
 
 
@@ -76,7 +79,7 @@ STDAPI_(BOOL) DllMain(HINSTANCE hinstDll, DWORD dwReason, void *) {
         case DLL_PROCESS_ATTACH:
             DisableThreadLibraryCalls(hinstDll);
             logFile.open(getLogPath(), std::ios_base::app);
-            logFile << std::endl << std::endl << getLogPath() << std::endl << Log::getDefaultLogPath() << std::endl;
+            logFile << std::endl << std::endl;
             Log::setLogOstream(&logFile);
             FlexProviderFactory::dllHInst = hinstDll;
             Log(L_DEBUG) << "FlexVDICredentialProvider loaded";

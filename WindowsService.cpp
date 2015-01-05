@@ -7,6 +7,7 @@
 #include <fstream>
 #include "FlexVDIGuestAgent.hpp"
 #include <windows.h>
+#include <strsafe.h>
 #include "util.hpp"
 using std::string;
 using namespace flexvm;
@@ -114,8 +115,11 @@ int WindowsService::uninstall() {
 
 const char * WindowsService::getLogPath() {
     static char logPath[1024] = "c:\\flexvdi_service.log";
-    sprintf_s(logPath, 1024, "%s\\flexvdi_service.log", Log::getDefaultLogPath());
-    return logPath;
+    if (StringCbPrintfA(logPath, 1024, "%s\\flexvdi_service.log",
+                        Log::getDefaultLogPath()) == S_OK)
+        return logPath;
+    else
+        return "c:\\flexvdi_service.log";
 }
 
 
