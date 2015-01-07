@@ -42,6 +42,7 @@ endif (WIN32)
 target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}" "${WINSOCK_LIBRARIES}" pthread)
 
 install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
+configure_file("${PROJECT_SOURCE_DIR}/setup.nsi" "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
 
 add_subdirectory(test)
 add_subdirectory(cred-connectors)

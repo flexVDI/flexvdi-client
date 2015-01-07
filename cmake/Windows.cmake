@@ -6,6 +6,11 @@ SET(CMAKE_SYSTEM_NAME Windows)
 if (NOT WIN_ARCH)
     set(WIN_ARCH i686)
 endif (NOT WIN_ARCH)
+if (WIN_ARCH STREQUAL i686)
+    set(WIN_BITS 32)
+else()
+    set(WIN_BITS 64)
+endif()
 
 # specify the cross compiler
 SET(CMAKE_C_COMPILER   /usr/bin/${WIN_ARCH}-w64-mingw32-gcc)
