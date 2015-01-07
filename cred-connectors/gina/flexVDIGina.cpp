@@ -5,6 +5,7 @@
 #include <fstream>
 #include <algorithm>
 #include <windows.h>
+#include <strsafe.h>
 extern "C" {
 #include <winwlx.h>
 }
@@ -134,10 +135,10 @@ BOOL getGINAFunctionPointers(HINSTANCE hDll, DWORD dwWlxVersion) {
 static std::ofstream logFile;
 static const char * getLogPath() {
     static char logPath[1024];
-    char tempPath[1024];
-    GetTempPathA(1024, tempPath);
-    sprintf_s(logPath, 1024, "%s\\flexvdi_gina.log", tempPath);
-    return logPath;
+    if (StringCbPrintfA(logPath, 1024, "%s\\gina.log", Log::getDefaultLogPath()) == S_OK)
+        return logPath;
+    else
+        return "c:\\flexvdi_gina.log";
 }
 
 

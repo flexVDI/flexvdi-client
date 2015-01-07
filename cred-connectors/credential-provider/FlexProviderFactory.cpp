@@ -66,7 +66,7 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv) {
 
 static std::ofstream logFile;
 static const char * getLogPath() {
-    static char logPath[1024] = "c:\\flexvdi_credprov.log";
+    static char logPath[1024];
     if (StringCbPrintfA(logPath, 1024, "%s\\credprov.log", Log::getDefaultLogPath()) == S_OK)
         return logPath;
     else
