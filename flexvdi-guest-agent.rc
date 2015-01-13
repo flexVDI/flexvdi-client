@@ -1,0 +1,26 @@
+iconId ICON "@PROJECT_SOURCE_DIR@/images/icon.ico"
+
+1 VERSIONINFO
+FILEVERSION     @FLEXVDI_VERSION_COMA@,0
+PRODUCTVERSION  @FLEXVDI_VERSION_COMA@,0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName", "Flexible Software Solutions S.L."
+            VALUE "FileDescription", "flexVDI guest agent @WIN_BITS@bit"
+            VALUE "FileVersion", "@FLEXVDI_VERSION@"
+            VALUE "InternalName", "flexvdi-guest-agent"
+            VALUE "LegalCopyright", "Flexible Software Solutions S.L."
+            VALUE "OriginalFilename", "flexvdi-guest-agent.exe"
+            VALUE "ProductName", "flexVDI guest agent"
+            VALUE "ProductVersion", "@FLEXVDI_VERSION@"
+        END
+    END
+
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END
