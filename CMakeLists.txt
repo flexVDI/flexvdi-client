@@ -48,5 +48,8 @@ target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}" pthread)
 
 install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
 
+configure_file("${PROJECT_SOURCE_DIR}/setup.nsi" "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
+
 add_subdirectory(cred-connectors)
+add_subdirectory(print)
 add_subdirectory(test)

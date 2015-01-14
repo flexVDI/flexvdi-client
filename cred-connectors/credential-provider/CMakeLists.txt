@@ -1,6 +1,7 @@
-include(GenerateGUID)
+# include(GenerateGUID)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/winsdk/include)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/winsdk/lib-${WIN_ARCH})
+add_definitions(-D_WIN32_WINNT=0x0600)
 
 set(FLEXVDI_GUID "858F113B-553C-5FD6-DEDB-A89065FBF768" CACHE INTERNAL "")
 set(FLEXVDI_GUID_PARAMS "0x858F113B,0x553C,0x5FD6,0xDE,0xDB,0xA8,0x90,0x65,0xFB,0xF7,0x68" CACHE INTERNAL "")
