@@ -17,7 +17,6 @@
 #define MAXSTR 512
 
 #include <winspool.h>
-
 #ifndef __BORLANDC__
 #define _export
 #endif

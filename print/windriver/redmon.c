@@ -3910,40 +3910,40 @@ BOOL start_redirect(REDATA * prd)
     /* Create the child process. */
 
 #if defined(UNICODE) && (defined(NT40) || defined(NT50)) && !defined(__BORLANDC__)
-    if (prd->config.dwRunUser) {
-	BOOL flag;
-	TCHAR buf[MAXSTR];
-
-	/* Be default, the process is created on an invisible desktop.
-	 * that can't receive input.
-	 * Instead we try to put the process on the main desktop.
-	 * The following attempts to get the primary user token needed
- 	 * to access the user desktop/session.
- 	 */
-	fill_primary_token(prd);
-
-	if ( !(flag = CreateProcessAsUser(prd->primary_token, NULL,
-		prd->command,  /* command line                       */
-		NULL,          /* process security attributes        */
-		NULL,          /* primary thread security attributes */
-		TRUE,          /* handles are inherited              */
-		CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
-		env,           /* environment                        */
-		NULL,          /* use parent's current directory     */
-		&siStartInfo,  /* STARTUPINFO pointer                */
-		&prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
-	   ) {
-	    DWORD err = GetLastError();
-	    wsprintf(buf, TEXT("CreateProcessAsUser failed, error code=%d\r\n"),
-		err);
-	    write_string_to_log(prd, buf);
-	    write_error(prd, err);
-	}
-
-	if (!flag)
-	   prd->config.dwRunUser = FALSE;
-    }
-    if (!prd->config.dwRunUser)
+//     if (prd->config.dwRunUser) {
+// 	BOOL flag;
+// 	TCHAR buf[MAXSTR];
+//
+// 	/* Be default, the process is created on an invisible desktop.
+// 	 * that can't receive input.
+// 	 * Instead we try to put the process on the main desktop.
+// 	 * The following attempts to get the primary user token needed
+//  	 * to access the user desktop/session.
+//  	 */
+// 	fill_primary_token(prd);
+//
+// 	if ( !(flag = CreateProcessAsUser(prd->primary_token, NULL,
+// 		prd->command,  /* command line                       */
+// 		NULL,          /* process security attributes        */
+// 		NULL,          /* primary thread security attributes */
+// 		TRUE,          /* handles are inherited              */
+// 		CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
+// 		env,           /* environment                        */
+// 		NULL,          /* use parent's current directory     */
+// 		&siStartInfo,  /* STARTUPINFO pointer                */
+// 		&prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
+// 	   ) {
+// 	    DWORD err = GetLastError();
+// 	    wsprintf(buf, TEXT("CreateProcessAsUser failed, error code=%d\r\n"),
+// 		err);
+// 	    write_string_to_log(prd, buf);
+// 	    write_error(prd, err);
+// 	}
+//
+// 	if (!flag)
+// 	   prd->config.dwRunUser = FALSE;
+//     }
+//     if (!prd->config.dwRunUser)
 #endif
 
     if (!CreateProcess(NULL,
@@ -3998,196 +3998,196 @@ BOOL start_redirect(REDATA * prd)
  */
 BOOL get_filename_as_user(REDATA * prd)
 {
-    SECURITY_ATTRIBUTES saAttr;
-    STARTUPINFO siStartInfo;
-    HANDLE hPipeTemp;
-    HANDLE hPipeWrite;
-    HANDLE hPipeRead;
-    LPVOID env;
-    TCHAR command[MAXSTR*3];
-    TCHAR dllname[MAXSTR];
-    BOOL flag = TRUE;
-    HANDLE htoken;
-    TCHAR buf[MAXSTR];
-    DWORD dwBytesRead;
-    HANDLE pHandles[2];
-    DWORD dwWait;
-    DWORD exit_status;
-    int i;
-
-    /* Set the bInheritHandle flag so pipe handles are inherited. */
-    saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-    saAttr.bInheritHandle = TRUE;
-    saAttr.lpSecurityDescriptor = NULL;
-
-    /* Create anonymous inheritable pipes for retrieving filename
-     * from user.  Create a noninheritable duplicate handle
-     * of our end of the pipe, then close the inheritable handle.
-     */
-
-    if (!CreatePipe(&hPipeTemp, &hPipeWrite, &saAttr, 0))
-	return FALSE;	/* cleanup of pipes will occur in caller */
-    if (!DuplicateHandle(GetCurrentProcess(), hPipeTemp,
-            GetCurrentProcess(), &hPipeRead, 0,
-            FALSE,       /* not inherited */
-            DUPLICATE_SAME_ACCESS)) {
-        CloseHandle(hPipeTemp);
-	return FALSE;
-    }
-    CloseHandle(hPipeTemp);
-
-    /* This requires that the rundll32.exe be in the normal location
-     * and that the RedMon DLL is in a location with no spaces in
-     * the filename.
-     * If this breaks, then we will need to put the GetFileNameW code
-     * in a separate EXE.
-     */
-    GetModuleFileName(hdll, dllname, sizeof(dllname)/sizeof(TCHAR));
-    wsprintf(command, TEXT("C:\\Windows\\System32\\rundll32.exe %s,GetFileName %lu %s"),
-	dllname, hPipeWrite, prd->tempname);
-    write_string_to_log(prd, command);
-    write_string_to_log(prd, TEXT("\r\n"));
-
-    /* Now create the child process. */
-
-    /* Set up members of STARTUPINFO structure. */
-
-    siStartInfo.cb = sizeof(STARTUPINFO);
-    siStartInfo.lpReserved = NULL;
-    siStartInfo.lpDesktop = NULL;
-    siStartInfo.lpTitle = NULL;  /* use executable name as title */
-    siStartInfo.dwX = siStartInfo.dwY = CW_USEDEFAULT;		/* ignored */
-    siStartInfo.dwXSize = siStartInfo.dwYSize = CW_USEDEFAULT;	/* ignored */
-    siStartInfo.dwXCountChars = 80;
-    siStartInfo.dwYCountChars = 25;
-    siStartInfo.dwFillAttribute = 0;			/* ignored */
-    siStartInfo.dwFlags = STARTF_USESTDHANDLES;
-    siStartInfo.wShowWindow = SW_SHOWNORMAL;		/* ignored */
-    siStartInfo.dwFlags |= STARTF_USESHOWWINDOW;
-    siStartInfo.cbReserved2 = 0;
-    siStartInfo.lpReserved2 = NULL;
-    siStartInfo.hStdInput = NULL;
-    siStartInfo.hStdOutput = NULL;
-    siStartInfo.hStdError = NULL;
-
-    /* make the environment block, which will need to
-     * be recreated later to add REDMON_FILENAME
-     */
-    write_string_to_log(prd, TEXT("Creating environment before prompting for filename\r\n"));
-    make_env(prd);
-    if (prd->environment)
-        env = GlobalLock(prd->environment);
-    else
-	env = NULL;
-
-    /* Create the child process. */
-    fill_primary_token(prd);
-
-    /* Platform SDK documentation says we need to LoadUserProfile
-     * before calling CreateProcessAsUser, but since the user is
-     * is already logged in, it has already been done.
-     */
-
-    /* Be default, the process is created on an invisible desktop.
-     * that can't receive input.
-     * By settings lpDesktop to an empty string, the system will
-     * try to use the existing desktop of the impersonated user.
-     */
-    siStartInfo.lpDesktop = TEXT("");
-    if ( !(flag = CreateProcessAsUser(prd->primary_token, NULL,
-	    command,  /* command line                       */
-	    NULL,          /* process security attributes        */
-	    NULL,          /* primary thread security attributes */
-	    TRUE,          /* handles are inherited              */
-	    CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
-	    env,           /* environment                        */
-	    NULL,          /* use parent's current directory     */
-	    &siStartInfo,  /* STARTUPINFO pointer                */
-	    &prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
-       ) {
-	DWORD err = GetLastError();
-	wsprintf(buf, TEXT("CreateProcessAsUser failed, error code=%d\r\n"),
-	    err);
-	write_string_to_log(prd, buf);
-	write_error(prd, err);
-    }
-    if (flag && (prd->piProcInfo.hProcess == INVALID_HANDLE_VALUE))
-	flag = FALSE;
-
-    /* Close our copy of the pipe write handle, so pipe will close
-     * when the other process terminates.
-     */
-    CloseHandle(hPipeWrite);
-
-    dwBytesRead = 0;
-    buf[0] = '\0';
-    buf[1] = '\0';
-    /* Wait until the user enters a filename, */
-    /* or timeout if they do nothing for 'delay' seconds */
-    if (flag) {
-        DWORD bytes_available = 0;
-        BOOL result;
-	pHandles[0] = hPipeRead;
-	pHandles[1] = prd->piProcInfo.hProcess;
-        for (i=0; i<prd->config.dwDelay; i++) {
-	    dwWait = WaitForMultipleObjects(2, pHandles, FALSE, 1000);
-	    if (dwWait == WAIT_OBJECT_0) {
-		/* Pipe has data */
-write_string_to_log(prd, TEXT("Starting reading filename from pipe\r\n"));
-		    flag = ReadFile(hPipeRead, buf, sizeof(buf)-1,
-			&dwBytesRead, NULL);
-write_string_to_log(prd, TEXT("Finished reading filename from pipe\r\n"));
-		break;
-	    }
-	    else if (dwWait == WAIT_OBJECT_0 + 1) {
-write_string_to_log(prd, TEXT("GetFileNameW process has changed state\r\n"));
-		if (GetExitCodeProcess(prd->piProcInfo.hProcess,
-		    &exit_status)) {
-		    if (exit_status != STILL_ACTIVE) {
-write_string_to_log(prd, TEXT("GetFileNameW has exited, so did not return a filename\r\n"));
-			break;
-		    }
-		}
-		/* Process ended without writing anything */
-		flag = FALSE;
-		break;
-	    }
-	    /* else if (dwWait == WAIT_TIMEOUT) */
-            Sleep(1000);
-	}
-    }
-
-    if (flag) {
-	if (dwBytesRead < sizeof(prd->tempname))
-	    CopyMemory(prd->tempname, buf, dwBytesRead);
-write_string_to_log(prd, TEXT("GetFileNameW returns '"));
-write_string_to_log(prd, buf);
-write_string_to_log(prd, TEXT("'\r\n"));
-wsprintf(buf, TEXT("  read %d bytes\r\n"), dwBytesRead);
-write_string_to_log(prd, buf);
-    }
-    else {
-	write_string_to_log(prd, TEXT("GetFileNameW cancelled"));
-    }
-
-
-    if (prd->piProcInfo.hProcess != INVALID_HANDLE_VALUE) {
-	CloseHandle(prd->piProcInfo.hProcess);
-	prd->piProcInfo.hProcess = INVALID_HANDLE_VALUE;
-    }
-
-    if (prd->piProcInfo.hThread != INVALID_HANDLE_VALUE) {
-	CloseHandle(prd->piProcInfo.hThread);
-	prd->piProcInfo.hThread = INVALID_HANDLE_VALUE;
-    }
-
-    if (hPipeRead != INVALID_HANDLE_VALUE)
-        CloseHandle(hPipeRead);
-
-    if (prd->environment)
-	GlobalUnlock(prd->environment);
-
-    return flag;
+//     SECURITY_ATTRIBUTES saAttr;
+//     STARTUPINFO siStartInfo;
+//     HANDLE hPipeTemp;
+//     HANDLE hPipeWrite;
+//     HANDLE hPipeRead;
+//     LPVOID env;
+//     TCHAR command[MAXSTR*3];
+//     TCHAR dllname[MAXSTR];
+//     BOOL flag = TRUE;
+//     HANDLE htoken;
+//     TCHAR buf[MAXSTR];
+//     DWORD dwBytesRead;
+//     HANDLE pHandles[2];
+//     DWORD dwWait;
+//     DWORD exit_status;
+//     int i;
+//
+//     /* Set the bInheritHandle flag so pipe handles are inherited. */
+//     saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+//     saAttr.bInheritHandle = TRUE;
+//     saAttr.lpSecurityDescriptor = NULL;
+//
+//     /* Create anonymous inheritable pipes for retrieving filename
+//      * from user.  Create a noninheritable duplicate handle
+//      * of our end of the pipe, then close the inheritable handle.
+//      */
+//
+//     if (!CreatePipe(&hPipeTemp, &hPipeWrite, &saAttr, 0))
+// 	return FALSE;	/* cleanup of pipes will occur in caller */
+//     if (!DuplicateHandle(GetCurrentProcess(), hPipeTemp,
+//             GetCurrentProcess(), &hPipeRead, 0,
+//             FALSE,       /* not inherited */
+//             DUPLICATE_SAME_ACCESS)) {
+//         CloseHandle(hPipeTemp);
+// 	return FALSE;
+//     }
+//     CloseHandle(hPipeTemp);
+//
+//     /* This requires that the rundll32.exe be in the normal location
+//      * and that the RedMon DLL is in a location with no spaces in
+//      * the filename.
+//      * If this breaks, then we will need to put the GetFileNameW code
+//      * in a separate EXE.
+//      */
+//     GetModuleFileName(hdll, dllname, sizeof(dllname)/sizeof(TCHAR));
+//     wsprintf(command, TEXT("C:\\Windows\\System32\\rundll32.exe %s,GetFileName %lu %s"),
+// 	dllname, hPipeWrite, prd->tempname);
+//     write_string_to_log(prd, command);
+//     write_string_to_log(prd, TEXT("\r\n"));
+//
+//     /* Now create the child process. */
+//
+//     /* Set up members of STARTUPINFO structure. */
+//
+//     siStartInfo.cb = sizeof(STARTUPINFO);
+//     siStartInfo.lpReserved = NULL;
+//     siStartInfo.lpDesktop = NULL;
+//     siStartInfo.lpTitle = NULL;  /* use executable name as title */
+//     siStartInfo.dwX = siStartInfo.dwY = CW_USEDEFAULT;		/* ignored */
+//     siStartInfo.dwXSize = siStartInfo.dwYSize = CW_USEDEFAULT;	/* ignored */
+//     siStartInfo.dwXCountChars = 80;
+//     siStartInfo.dwYCountChars = 25;
+//     siStartInfo.dwFillAttribute = 0;			/* ignored */
+//     siStartInfo.dwFlags = STARTF_USESTDHANDLES;
+//     siStartInfo.wShowWindow = SW_SHOWNORMAL;		/* ignored */
+//     siStartInfo.dwFlags |= STARTF_USESHOWWINDOW;
+//     siStartInfo.cbReserved2 = 0;
+//     siStartInfo.lpReserved2 = NULL;
+//     siStartInfo.hStdInput = NULL;
+//     siStartInfo.hStdOutput = NULL;
+//     siStartInfo.hStdError = NULL;
+//
+//     /* make the environment block, which will need to
+//      * be recreated later to add REDMON_FILENAME
+//      */
+//     write_string_to_log(prd, TEXT("Creating environment before prompting for filename\r\n"));
+//     make_env(prd);
+//     if (prd->environment)
+//         env = GlobalLock(prd->environment);
+//     else
+// 	env = NULL;
+//
+//     /* Create the child process. */
+//     fill_primary_token(prd);
+//
+//     /* Platform SDK documentation says we need to LoadUserProfile
+//      * before calling CreateProcessAsUser, but since the user is
+//      * is already logged in, it has already been done.
+//      */
+//
+//     /* Be default, the process is created on an invisible desktop.
+//      * that can't receive input.
+//      * By settings lpDesktop to an empty string, the system will
+//      * try to use the existing desktop of the impersonated user.
+//      */
+//     siStartInfo.lpDesktop = TEXT("");
+//     if ( !(flag = CreateProcessAsUser(prd->primary_token, NULL,
+// 	    command,  /* command line                       */
+// 	    NULL,          /* process security attributes        */
+// 	    NULL,          /* primary thread security attributes */
+// 	    TRUE,          /* handles are inherited              */
+// 	    CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
+// 	    env,           /* environment                        */
+// 	    NULL,          /* use parent's current directory     */
+// 	    &siStartInfo,  /* STARTUPINFO pointer                */
+// 	    &prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
+//        ) {
+// 	DWORD err = GetLastError();
+// 	wsprintf(buf, TEXT("CreateProcessAsUser failed, error code=%d\r\n"),
+// 	    err);
+// 	write_string_to_log(prd, buf);
+// 	write_error(prd, err);
+//     }
+//     if (flag && (prd->piProcInfo.hProcess == INVALID_HANDLE_VALUE))
+// 	flag = FALSE;
+//
+//     /* Close our copy of the pipe write handle, so pipe will close
+//      * when the other process terminates.
+//      */
+//     CloseHandle(hPipeWrite);
+//
+//     dwBytesRead = 0;
+//     buf[0] = '\0';
+//     buf[1] = '\0';
+//     /* Wait until the user enters a filename, */
+//     /* or timeout if they do nothing for 'delay' seconds */
+//     if (flag) {
+//         DWORD bytes_available = 0;
+//         BOOL result;
+// 	pHandles[0] = hPipeRead;
+// 	pHandles[1] = prd->piProcInfo.hProcess;
+//         for (i=0; i<prd->config.dwDelay; i++) {
+// 	    dwWait = WaitForMultipleObjects(2, pHandles, FALSE, 1000);
+// 	    if (dwWait == WAIT_OBJECT_0) {
+// 		/* Pipe has data */
+// write_string_to_log(prd, TEXT("Starting reading filename from pipe\r\n"));
+// 		    flag = ReadFile(hPipeRead, buf, sizeof(buf)-1,
+// 			&dwBytesRead, NULL);
+// write_string_to_log(prd, TEXT("Finished reading filename from pipe\r\n"));
+// 		break;
+// 	    }
+// 	    else if (dwWait == WAIT_OBJECT_0 + 1) {
+// write_string_to_log(prd, TEXT("GetFileNameW process has changed state\r\n"));
+// 		if (GetExitCodeProcess(prd->piProcInfo.hProcess,
+// 		    &exit_status)) {
+// 		    if (exit_status != STILL_ACTIVE) {
+// write_string_to_log(prd, TEXT("GetFileNameW has exited, so did not return a filename\r\n"));
+// 			break;
+// 		    }
+// 		}
+// 		/* Process ended without writing anything */
+// 		flag = FALSE;
+// 		break;
+// 	    }
+// 	    /* else if (dwWait == WAIT_TIMEOUT) */
+//             Sleep(1000);
+// 	}
+//     }
+//
+//     if (flag) {
+// 	if (dwBytesRead < sizeof(prd->tempname))
+// 	    CopyMemory(prd->tempname, buf, dwBytesRead);
+// write_string_to_log(prd, TEXT("GetFileNameW returns '"));
+// write_string_to_log(prd, buf);
+// write_string_to_log(prd, TEXT("'\r\n"));
+// wsprintf(buf, TEXT("  read %d bytes\r\n"), dwBytesRead);
+// write_string_to_log(prd, buf);
+//     }
+//     else {
+// 	write_string_to_log(prd, TEXT("GetFileNameW cancelled"));
+//     }
+//
+//
+//     if (prd->piProcInfo.hProcess != INVALID_HANDLE_VALUE) {
+// 	CloseHandle(prd->piProcInfo.hProcess);
+// 	prd->piProcInfo.hProcess = INVALID_HANDLE_VALUE;
+//     }
+//
+//     if (prd->piProcInfo.hThread != INVALID_HANDLE_VALUE) {
+// 	CloseHandle(prd->piProcInfo.hThread);
+// 	prd->piProcInfo.hThread = INVALID_HANDLE_VALUE;
+//     }
+//
+//     if (hPipeRead != INVALID_HANDLE_VALUE)
+//         CloseHandle(hPipeRead);
+//
+//     if (prd->environment)
+// 	GlobalUnlock(prd->environment);
+//
+//     return flag;
 }
 #endif
 

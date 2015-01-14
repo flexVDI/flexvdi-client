@@ -1,0 +1,9 @@
+LIBRARY REDMON
+EXPORTS
+    DllEntryPoint
+    DllMain
+    InitializePrintMonitor2
+    InitializePrintMonitorUI
+    InitializePrintMonitor
+    GetFileNameW
+    RedMonConfigurePortW
