@@ -45,32 +45,6 @@ private:
 };
 
 
-class No64Redirection {
-public:
-    typedef BOOL (__stdcall *disableProc)(PVOID *);
-    typedef BOOL (__stdcall *revertProc)(PVOID);
-    No64Redirection() : oldval(NULL), kernel(L"Kernel32.dll"), revert(nullptr) {
-        if (kernel.isOpen()) {
-            disableProc fp = (disableProc)kernel.getProcAddress("Wow64DisableWow64FsRedirection");
-            if (fp) {
-                fp(&oldval);
-                revert = (revertProc)kernel.getProcAddress("Wow64RevertWow64FsRedirection");
-            }
-        }
-    }
-    ~No64Redirection() {
-        if (revert) {
-            revert(oldval);
-        }
-    }
-
-private:
-    PVOID oldval;
-    WindowsLibrary kernel;
-    revertProc revert;
-};
-
-
 class PortInstaller {
 public:
     PortInstaller(const wchar_t * mon, const wchar_t * dll, const wchar_t * port)
@@ -138,7 +112,7 @@ int PortInstaller::addPort() {
         XcvDataWProc fp = (XcvDataWProc)spool.getProcAddress("XcvDataW");
         if (fp && fp(hPrinter, L"AddPort", xcvData, xcvSize, NULL, 0, &needed, &status)) {
             result = 0;
-            if (status != NO_ERROR) {
+            if (status != NO_ERROR && status != ERROR_ALREADY_EXISTS) {
                 std::cerr << "XcvData got status " << status << std::endl;
                 result = status;
             }
@@ -155,7 +129,6 @@ int PortInstaller::addPort() {
 
 
 int main(int argc, char * argv[]) {
-    No64Redirection no64r;
     auto wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
     int result = 1;
     if (argc == 4) {

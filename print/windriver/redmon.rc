@@ -1,0 +1,101 @@
+/* Copyright (C) 1997-2012, Ghostgum Software Pty Ltd.  All rights reserved.
+
+  This file is part of RedMon.
+
+  This software is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+  This software is distributed under licence and may not be copied, modified
+  or distributed except as expressly authorised under the terms of the
+  LICENCE.
+
+  Modified by Javier Celaya <javier.celaya@flexvm.es>
+  Copyright (C) Flexible Software Solutions S.L. 2015
+
+*/
+
+/* redmon.rc */
+
+#include <windows.h>
+#include "redmonrc.h"
+
+STRINGTABLE
+BEGIN
+    IDS_MONITORNAME, "flexVDI Redirection Port"
+	IDS_TITLE, "RedMon - Redirection Port Monitor"
+#ifdef BETA
+	IDS_BETAEXPIRED, "This BETA test version of RedMon has expired."
+#endif
+
+	IDS_ADDPORT, "Add Redirected Port"
+	IDS_NOTUNIQUE, "Port \042%s\042 is already used.  Please select a unique port name"
+
+	IDS_CONFIGPROP, "%s Properties"
+	IDS_CONFIGLOGFILE, "%s Log File Properties"
+	IDS_CONFIGUNKNOWN, "Unknown Port Properties"
+	IDS_HELPFILE, "redmon.chm"
+
+	/* These help strings must match the help file topic names */
+	IDS_HELPADD, "Add Port"
+	IDS_HELPCONFIG,"Port Settings"
+	IDS_HELPLOG, "Log File Properties"
+
+	/* These are the show window types */
+	IDS_SHOWNORMAL, "Normal"
+	IDS_SHOWMIN, "Minimized"
+	IDS_SHOWHIDE, "Hidden"
+
+	/* Possible output methods */
+	IDS_OUTPUTSELF , "Program handles output"
+	IDS_OUTPUTPROMPT, "Prompt for filename"
+	IDS_OUTPUTSTDOUT, "Copy stdout to printer"
+	IDS_OUTPUTFILE, "Copy temporary file to printer"
+	IDS_OUTPUTHANDLE, "Copy pipe to printer"
+
+	/* GetOpenFileName() filters */
+	IDS_FILTER_EXE, "Programs|*.exe;*.com|All Files (*.*)|*.*|"
+	IDS_FILTER_TXT, "Text Documents (*.txt)|*.txt|All Files (*.*)|*.*|"
+	IDS_FILTER_PROMPT, "All Files (*.*)|*.*|PRN Documents (*.prn)|*.prn|PDF Documents (*.pdf)|*.pdf|PostScript Documents (*.ps)|*.ps|"
+END
+
+IDD_ADDPORT DIALOG 48, 32, 192, 74
+STYLE DS_MODALFRAME | 0x4L | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Add Redirected Port"
+FONT 8, "MS Sans Serif"
+{
+ LTEXT "Port Name", -1, 6, 6, 180, 10
+ EDITTEXT IDC_PORTNAME, 6, 18, 180, 12, ES_LEFT | ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP | WS_CHILD
+ DEFPUSHBUTTON "OK", IDOK, 14, 52, 44, 14
+ PUSHBUTTON "Cancel", IDCANCEL, 74, 52, 44, 14
+ PUSHBUTTON "Help", IDC_HELPBUTTON, 134, 52, 44, 14
+}
+
+1 VERSIONINFO
+FILEVERSION 1, 0, 0, 0
+PRODUCTVERSION 1, 0, 0, 0
+{
+ BLOCK "StringFileInfo"
+ {
+  BLOCK "040904E4"
+  {
+   VALUE "CompanyName", "Ghostgum Software Pty Ltd\000"
+   VALUE "FileDescription", "Redirected Port Monitor DLL\000"
+   VALUE "FileVersion", "1.20.00\000"
+   VALUE "InternalName", "redmon.dll\000"
+   VALUE "LegalCopyright", "Copyright \251 Ghostgum Software Pty Ltd. 1997-1998\000"
+   VALUE "OriginalFilename", "REDMON\000"
+   VALUE "ProductName", "RedMon - Redirected Port Monitor\000"
+   VALUE "ProductVersion", "1.20.00\000"
+  }
+
+ }
+
+ BLOCK "VarFileInfo"
+ {
+  VALUE "Translation", 1033, 1252
+ }
+
+}
+
+/* end redmon.rc */

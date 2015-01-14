@@ -13,7 +13,11 @@
 */
 
 /* RedMon uninstall program */
+#include <iostream>
+#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
 #include <windows.h>
+#include <winspool.h>
+#include <shellapi.h>
 #include <string>
 
 /* Attempt to disconnect port from all printers, and then delete port.
@@ -32,6 +36,7 @@ void disconnect_port(LPTSTR port_name) {
     int rc;
     int len;
     unsigned int i;
+    std::wcout << L"Disconnecting port " << port_name << std::endl;
     /* Find printer that uses this port */
     rc = EnumPrinters(PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL,
                       NULL, 2, (LPBYTE)enumbuf, sizeof(enumbuf),
@@ -76,18 +81,22 @@ int main(int argc, char * argv[]) {
     std::wstring monitorName(wargv[1]);
     LocalFree(wargv);
 
+    std::wcout << L"Looking for " << monitorName << L"... ";
     /* Check that it really is installed */
     if (EnumMonitors(NULL, 1, (LPBYTE)buffer, sizeof(buffer), &needed, &returned)) {
         MONITOR_INFO_1 * mi = (MONITOR_INFO_1 *)buffer;
         for (i = 0; i < returned; i++) {
-            if (mi[i].pName == monitorName)
+            if (mi[i].pName == monitorName) {
+                std::cout << "Found" << std::endl;
                 break;
+            }
+        }
+        if (i == returned) {
+            std::cout << "Not found" << std::endl;
+            return 0;
         }
     } else
         return 1;
-
-    if (i == returned)
-        return 0;
 
     /* Check if monitor is still in use */
     if (EnumPorts(NULL, 2, (LPBYTE)buffer, sizeof(buffer), &needed, &returned)) {
@@ -99,13 +108,15 @@ int main(int argc, char * argv[]) {
                 disconnect_port(pi2[i].pPortName);
             }
         }
-    }
+    } else
+        return 1;
 
     /* Try again, hoping that we succeeded in deleting all ports */
     if (EnumPorts(NULL, 2, (LPBYTE)buffer, sizeof(buffer), &needed, &returned)) {
         PORT_INFO_2 * pi2 = (PORT_INFO_2 *)buffer;
         for (i = 0; i < returned; i++) {
             if (pi2[i].pMonitorName == monitorName) {
+                std::wcout << monitorName << L" still in use by port " << pi2[i].pPortName << std::endl;
                 /* A RedMon port still exists, and may be used by a printer */
                 /* Refuse to uninstall RedMon until the port is deleted */
                 return 2;
