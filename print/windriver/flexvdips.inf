@@ -3,30 +3,29 @@ Signature="$Windows NT$"
 DriverVer=09/01/2015
 Class=Printer
 Provider=%Provider%
+LayoutFile=ntprint.inf
 
 [DestinationDirs]
 DefaultDestDir=66000 ; DIRID_PRINTER_DRIVERS
 
-[ControlFlags]
-ExcludeFromSelect=*
-
 [Manufacturer]
-%Provider%=flexVDI
- 
+%Provider%=flexVDI, NTamd64
+
 [flexVDI]
 "flexVDI Printer" = flexvdips
- 
+
+[flexVDI.NTamd64]
+"flexVDI Printer" = flexvdips
+
 [flexvdips]
 CopyFiles=@flexvdips.ppd    ; PPD file.
 DataSection=PSCRIPT_DATA    ; PSCRIPT Data Section
 DataFile=flexvdips.ppd
 Include=NTPRINT.INF         ; Include NTPRINT.INF.
 Needs=PSCRIPT.OEM           ; Install PSCRIPT.
-;DriverCategory=3            ; PrintFax.Printer.Virtual
-
 
 ; ConfigFile=... ; ui plugin
 ; DriverFile=... ; rendering plugin
 
-[Strings] 
+[Strings]
 Provider = "Flexible Software Solutions S.L."
