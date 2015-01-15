@@ -20,8 +20,10 @@ OutFile "flexVDI_setup@WIN_BITS@_@FLEXVDI_VERSION@.exe"
 InstallDir $PROGRAMFILES@WIN_BITS@\flexVDI
 InstallDirRegKey HKLM "Software\${APPNAME}" "Install_Dir"
 RequestExecutionLevel admin
-SilentInstall silent
-SilentUnInstall silent
+;SilentInstall silent
+;SilentUnInstall silent
+ShowInstDetails show
+ShowUninstDetails show
 SetOverwrite try
 
 ;Version Information
@@ -35,12 +37,10 @@ VIAddVersionKey "ProductVersion" "@FLEXVDI_VERSION@"
 
 
 Section "flexVDI guest agent" install_section_id
+    ${DisableX64FSRedirection}
     ; Set output path to the installation directory.
     SetOutPath $INSTDIR
-    SetOverwrite try
-
-    ; Write the installation path into the registry
-    WriteRegStr HKLM "SOFTWARE\${APPNAME}" "Install_Dir" "$INSTDIR"
+    SetAutoClose true
 
     ; Write the uninstall keys for Windows
     WriteRegStr HKLM "${UNINSTALL_KEY}"   "DisplayName" "${APPNAME}"
@@ -55,26 +55,41 @@ Section "flexVDI guest agent" install_section_id
 
     ; Check architecture
     ${If} ${RunningX64}
-    ${AndIf} @WIN_BITS@ = 32
-        MessageBox MB_OK "Use the 64bit installer on x68_64 architecture"
-        Quit
-    ${ElseIf} !${RunningX64}
-    ${AndIf} @WIN_BITS@ = 64
-        MessageBox MB_OK "Use the 32bit installer on i686 architecture"
-        Quit
+        ${If} @WIN_BITS@ = 32
+            MessageBox MB_OK "Use the 64bit installer on x68_64 architecture"
+            Quit
+        ${EndIf}
+    ${Else}
+        ${If} @WIN_BITS@ = 64
+            MessageBox MB_OK "Use the 32bit installer on i686 architecture"
+            Quit
+        ${EndIf}
     ${EndIf}
 
     ; Stop flexVDI service, ignore if it does not exist
     nsExec::Exec 'sc stop flexvdi_service'
+    sleep 500
     nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
 
     ; Agent
     File "flexvdi-guest-agent.exe"
 
     ; start flexVDI service
-    nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" install'
-    nsExec::Exec 'sc start flexvdi_service'
-    ; TODO: Check errors installing the service
+    nsExec::ExecToStack '"$INSTDIR\flexvdi-guest-agent.exe" install'
+    Pop $0
+    ${If} $0 = 0
+        DetailPrint "Guest agent installed successfully"
+        nsExec::Exec 'sc start flexvdi_service'
+        Pop $0
+        ${If} $0 = 0
+            DetailPrint "Guest agent service started"
+        ${Else}
+            DetailPrint "ERROR Guest agent service failed to start (error code $0)"
+        ${EndIf}
+    ${Else}
+        Pop $0
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Guest agent failed to install: $0"
+    ${EndIf}
 
     ; SSO
     ${If} ${IsWinXP}
@@ -87,27 +102,37 @@ Section "flexVDI guest agent" install_section_id
         oldgina_present:
         WriteRegStr HKLM "${WINLOGON_KEY}" "GinaDLL" "flexVDIGina.dll"
     ${Else}
-        MessageBox MB_OK "Installed credential provider"
+        DetailPrint "Installed credential provider"
     ${EndIf}
 
     ; Print driver
     File "print/windriver/setredmon.exe" "print/windriver/unredmon.exe" "print/windriver/redmon.dll"
-    Rename /REBOOTOK "$INSTDIR\redmon.dll" "$SYSDIR\${REDMON_DLL}"
-    nsExec::ExecToStack '"$INSTDIR\setredmon.exe" "${REDMON_NAME}" "${REDMON_DLL}" "${PORT_NAME}"'
-    Pop $0
-    ${If} $0 != 0
-        Pop $1
-        MessageBox MB_OK "setredmon returned $0 $1"
-    ${EndIf}
-    Delete "$INSTDIR\setredmon.exe"
     SetOutPath "$INSTDIR\printdriver"
     File "@PROJECT_SOURCE_DIR@/print/windriver/flexvdips.*"
     File "@PROJECT_SOURCE_DIR@/print/windriver/gs9.15/gsdll@WIN_BITS@.dll"
     File "print/windriver/filter.exe"
-    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /if /n "flexVDI Printer" /f "$INSTDIR\printdriver\flexvdips.inf" /m "flexVDI Printer" /r "${PORT_NAME}"'
-    WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Command" '$INSTDIR\printdriver\filter.exe'
-    WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Arguments" ''
-    WriteRegDWORD HKLM "${PORT_CONFIG_KEY}" "RunUser" 0
+    Rename /REBOOTOK "$INSTDIR\redmon.dll" "$SYSDIR\${REDMON_DLL}"
+    nsExec::ExecToStack '"$INSTDIR\setredmon.exe" "${REDMON_NAME}" "${REDMON_DLL}" "${PORT_NAME}"'
+    Pop $0
+    ${If} $0 = 0
+        DetailPrint "Print monitor installed"
+        WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Command" '$INSTDIR\printdriver\filter.exe'
+        WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Arguments" ''
+        WriteRegDWORD HKLM "${PORT_CONFIG_KEY}" "RunUser" 0
+        DetailPrint "Installing flexVDI printer"
+        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "flexVDI Printer" /q'
+        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /if /n "flexVDI Printer" /f "$INSTDIR\printdriver\flexvdips.inf" /m "flexVDI Printer" /r "${PORT_NAME}"'
+        Pop $0
+        ${If} $0 = 0
+            DetailPrint "flexVDI printer successfully installed"
+        ${Else}
+            MessageBox MB_OK|MB_ICONEXCLAMATION "flexVDI printer NOT installed (error code $0)."
+        ${EndIf}
+    ${Else}
+        Pop $1
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Print monitor installation failed with code $0: $1"
+    ${EndIf}
+    Delete "$INSTDIR\setredmon.exe"
 
     ; Compute installed size
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
@@ -130,12 +155,18 @@ FunctionEnd
 
 
 Section "Uninstall"
-    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "flexVDI Printer"'
-    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dd /m "flexVDI Printer"'
+    SetAutoClose true
+    ${DisableX64FSRedirection}
+
+    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "flexVDI Printer" /q'
+    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dd /m "flexVDI Printer" /q'
     nsExec::Exec '"$INSTDIR\unredmon.exe" "${REDMON_NAME}"'
     Pop $0
     ${If} $0 = 0
         Delete /REBOOTOK "$SYSDIR\redmon.dll"
+    ${Else}
+        Pop $0
+        DetailPrint "ERROR Printer monitor could not be removed: $0"
     ${EndIf}
 
     ${If} ${IsWinXP}
@@ -143,14 +174,21 @@ Section "Uninstall"
         WriteRegStr HKLM "${WINLOGON_KEY}" "GinaDLL" "$0"
         Delete /REBOOTOK $SYSDIR\flexVDIGina.dll
     ${Else}
-        MessageBox MB_OK "Removed credential provider"
+        DetailPrint "Removed credential provider"
     ${EndIf}
 
     DeleteRegKey HKLM "${UNINSTALL_KEY}"
-    DeleteRegKey HKLM "SOFTWARE\${APPNAME}"
     nsExec::Exec 'sc stop flexvdi_service'
+    sleep 500
     nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
-    RMDir /r /REBOOTOK "$INSTDIR"
+    Pop $0
+    ${If} $0 = 0
+        DetailPrint "Guest agent service removed"
+        RMDir /r /REBOOTOK "$INSTDIR"
+    ${Else}
+        Pop $0
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Guest agent failed to uninstall: $0"
+    ${EndIf}
 
     IfRebootFlag 0 noreboot
         MessageBox MB_YESNO "System needs to be rebooted, reboot now?" IDNO noreboot
