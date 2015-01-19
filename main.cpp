@@ -9,7 +9,7 @@ using namespace flexvm;
 using std::string;
 
 int main(int argc, char * argv[]) {
-    FlexVDIGuestAgent agent;
+    FlexVDIGuestAgent & agent = FlexVDIGuestAgent::singleton();
     for (int i = 1; i < argc; ++i) {
         if (string("-e") == argv[i] && ++i < argc) {
             Log(L_DEBUG) << "Using endpoint " << argv[i];

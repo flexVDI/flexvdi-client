@@ -6,9 +6,8 @@
 #define _CREDENTIALSMANAGER_HPP_
 
 #include <memory>
-#include <boost/asio.hpp>
 #include "FlexVDIProto.h"
-#include "DispatcherRegistry.hpp"
+#include "Connection.hpp"
 
 namespace flexvm {
 
@@ -16,20 +15,16 @@ class CredentialsManager {
 public:
     typedef std::shared_ptr<FlexVDICredentialsMsg> FlexVDICredentialsMsgPtr;
 
-    CredentialsManager(boost::asio::io_service & io);
-    ~CredentialsManager();
-    void handle(const FlexVDICredentialsMsgPtr & msg);
-    void registerHandlers(DispatcherRegistry & registry);
-    void open();
-    void setEndpoint(const std::string & name) {
-        endpointName = name;
+    static CredentialsManager & singleton() {
+        static CredentialsManager instance;
+        return instance;
     }
 
-private:
-    std::string endpointName;
+    void handle(const Connection::Ptr & src, const FlexVDICredentialsMsgPtr & msg);
 
-    class Impl;
-    Impl * impl;
+private:
+    // TODO: protect these credentials
+    FlexVDICredentialsMsgPtr pendingCredentials;
 };
 
 }

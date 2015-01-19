@@ -5,31 +5,26 @@
 #ifndef _VIRTIOPORT_HPP_
 #define _VIRTIOPORT_HPP_
 
-#include <boost/asio.hpp>
 #include <memory>
+#include "Connection.hpp"
 
 namespace flexvm {
 
 class VirtioPort {
 public:
-    class Handler {
-    public:
-        virtual void handle(uint32_t type, const std::shared_ptr<uint8_t> & msgBuffer) = 0;
-    };
-
-    VirtioPort(boost::asio::io_service & io, Handler & handler);
-    ~VirtioPort();
+    VirtioPort(boost::asio::io_service & io, Connection::MessageHandler handler);
 
     void open();
     void setEndpoint(const std::string & name) {
         endpointName = name;
     }
+    Connection::Ptr spiceClient();
 
 private:
+    static constexpr const char * defaultPortName = "es.flexvdi.guest_agent";
     std::string endpointName;
-
-    class Impl;
-    Impl * impl;
+    class VirtioConnection;
+    std::shared_ptr<VirtioConnection> conn;
 };
 
 } // namespace flexvm

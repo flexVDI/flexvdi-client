@@ -12,17 +12,16 @@ DispatcherRegistry::DispatcherRegistry()
 {}
 
 
-bool DispatcherRegistry::dispatch(uint32_t type, const std::shared_ptr<uint8_t> & msgBuffer) {
-    bool dispatched = false;
+void DispatcherRegistry::handleMessage(const Connection::Ptr & src, uint32_t type,
+                                       const std::shared_ptr<uint8_t> & msgBuffer) {
     if (type < FLEXVDI_MAX_MESSAGE_TYPE) {
         for (auto & dispatcher : dispatchers[type]) {
-            Log(L_DEBUG) << "Dispatching message type " << type;
-            dispatcher->dispatch(msgBuffer);
-            dispatched = true;
+            Log(L_DEBUG) << "Dispatching message type " << type << " from connection " << src.get();
+            dispatcher->dispatch(src, msgBuffer);
         }
     }
-    return dispatched;
 }
+
 
 #define SET_TYPE(msg, t) \
     template<> const uint32_t DispatcherRegistry::MessageType<msg>::type = t

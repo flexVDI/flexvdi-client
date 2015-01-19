@@ -8,9 +8,8 @@ using namespace flexvm;
 
 int FlexVDIGuestAgent::run() {
     try {
-        registerHandlers();
         port.open();
-        creds.open();
+        pipe.open();
         io.run();
     } catch (std::exception & error) {
         Log(L_ERROR) << error.what();
@@ -22,16 +21,4 @@ int FlexVDIGuestAgent::run() {
 
 void FlexVDIGuestAgent::stop() {
     io.stop();
-}
-
-
-void FlexVDIGuestAgent::registerHandlers() {
-    creds.registerHandlers(dregistry);
-}
-
-
-void FlexVDIGuestAgent::handle(uint32_t type, const std::shared_ptr<uint8_t> & msgBuffer) {
-    if (!dregistry.dispatch(type, msgBuffer)) {
-        Log(L_WARNING) << "Undispatched message type " << type;
-    }
 }

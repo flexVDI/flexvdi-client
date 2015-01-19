@@ -6,32 +6,58 @@
 #define _FLEXVDIAGENT_HPP_
 
 #include <memory>
+#include <functional>
 #include <boost/asio.hpp>
 #include "DispatcherRegistry.hpp"
 #include "VirtioPort.hpp"
-#include "CredentialsManager.hpp"
+#include "LocalPipe.hpp"
 
 namespace flexvm {
 
-class FlexVDIGuestAgent : public VirtioPort::Handler {
+class FlexVDIGuestAgent {
 public:
-    FlexVDIGuestAgent() : port(io, *this), creds(io) {}
+    static FlexVDIGuestAgent & singleton() {
+        static FlexVDIGuestAgent instance;
+        return instance;
+    }
 
     int run();
     void stop();
-    virtual void handle(uint32_t type, const std::shared_ptr<uint8_t> & msgBuffer);
     void setVirtioEndpoint(const std::string & name) {
         port.setEndpoint(name);
     }
+    void setLocalEndpoint(const std::string & name) {
+        pipe.setEndpoint(name);
+    }
+    Connection::Ptr spiceClient() {
+        return port.spiceClient();
+    }
+    template <typename Handler, typename MsgClass, typename ... Rest>
+    void registerMessageHandler(Handler & handler) {
+        dregistry.registerMessageHandler<MsgClass, Handler>(handler);
+        registerMessageHandler<Handler, Rest...>(handler);
+    }
+    template <typename Handler>
+    void registerMessageHandler(Handler & handler) {}
 
 private:
+    FlexVDIGuestAgent() :
+    port(io, dregistry.asMessageHandler()),
+    pipe(io, dregistry.asMessageHandler()) {}
+
     boost::asio::io_service io;
     DispatcherRegistry dregistry;
     VirtioPort port;
-    CredentialsManager creds;
-
-    void registerHandlers();
+    LocalPipe pipe;
 };
+
+#define COMPONENT(component, messages...) \
+static int dummy_reg_ ## component = []() { \
+    FlexVDIGuestAgent::singleton(). \
+        registerMessageHandler<component, messages>(component::singleton()); \
+    return 0; \
+}()
+
 
 } // namespace flexvm
 

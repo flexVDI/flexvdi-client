@@ -33,12 +33,20 @@ int main(int argc, char * argv[]) {
     std::copy_n("domi", 5, msgBuffer + 10);
     asio::io_service io;
 #ifdef BOOST_ASIO_HAS_POSIX_STREAM_DESCRIPTOR
-    asio::posix::stream_descriptor stream(io, ::open(argv[1], O_RDWR));
+    try {
+        asio::posix::stream_descriptor stream(io, ::open(argv[1], O_RDWR));
+        asio::write<>(stream, flexvm::SharedConstBuffer(mHeader)(msg)(msgBuffer, 15));
+    } catch (...) {
+        asio::local::stream_protocol::endpoint ep(argv[1]);
+        asio::local::stream_protocol::socket stream(io);
+        stream.connect(ep);
+        asio::write<>(stream, flexvm::SharedConstBuffer(mHeader)(msg)(msgBuffer, 15));
+    }
 #else
     HANDLE h = ::CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, 0, NULL,
                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     asio::windows::stream_handle stream(io, h);
-#endif
     asio::write<>(stream, flexvm::SharedConstBuffer(mHeader)(msg)(msgBuffer, 15));
+#endif
     return 0;
 }
