@@ -24,5 +24,6 @@ void DispatcherRegistry::handleMessage(const Connection::Ptr & src, uint32_t typ
 
 
 #define SET_TYPE(msg, t) \
-    template<> const uint32_t DispatcherRegistry::MessageType<msg>::type = t
+template<> const uint32_t DispatcherRegistry::MessageType<msg>::type = t
 SET_TYPE(FlexVDICredentialsMsg, FLEXVDI_CREDENTIALS);
+SET_TYPE(FlexVDIAskCredentialsMsg, FLEXVDI_ASKCREDENTIALS);

@@ -14,6 +14,7 @@ namespace flexvm {
 class CredentialsManager {
 public:
     typedef std::shared_ptr<FlexVDICredentialsMsg> FlexVDICredentialsMsgPtr;
+    typedef std::shared_ptr<FlexVDIAskCredentialsMsg> FlexVDIAskCredentialsMsgPtr;
 
     static CredentialsManager & singleton() {
         static CredentialsManager instance;
@@ -21,6 +22,7 @@ public:
     }
 
     void handle(const Connection::Ptr & src, const FlexVDICredentialsMsgPtr & msg);
+    void handle(const Connection::Ptr & src, const FlexVDIAskCredentialsMsgPtr & msg);
 
 private:
     // TODO: protect these credentials

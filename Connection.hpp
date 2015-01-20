@@ -51,8 +51,10 @@ private:
     std::shared_ptr<uint8_t> readBuffer;
     FlexVDIMessageHeader header;
 
-    void readComplete(const boost::system::error_code & error, std::size_t bytes_transferred);
-    void writeComplete(const boost::system::error_code & error, std::size_t bytes_transferred);
+    void readComplete(Ptr This, const boost::system::error_code & error,
+                      std::size_t bytes_transferred);
+    void writeComplete(Ptr This, const boost::system::error_code & error,
+                       std::size_t bytes_transferred);
 };
 
 

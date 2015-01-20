@@ -26,12 +26,10 @@ struct LocalPipe::Listener {
 #ifdef WIN32
     : stream(io) {}
     std::string pipeName;
-    void disconnect() { DisconnectNamedPipe(stream.native_handle()); }
     typedef asio::windows::stream_handle stream_t;
 #else
     : acceptor(io), stream(io) {}
     asio::local::stream_protocol::acceptor acceptor;
-    void disconnect() { stream.close(); }
     typedef asio::local::stream_protocol::socket stream_t;
 #endif
     stream_t stream;
@@ -43,8 +41,9 @@ public:
     LocalConnection(Listener::stream_t & s, Connection::MessageHandler handler)
     : StreamConnection(s.get_io_service(), handler) {
         stream = std::move(s);
-        readNextMessage();
     }
+
+    void accepted() { readNextMessage(); }
 };
 
 
@@ -84,6 +83,7 @@ void LocalPipe::open() {
 void LocalPipe::listen() {
     auto acceptHandler = std::bind(&LocalPipe::connectionAccepted, this, ph::_1);
 #ifdef WIN32
+    DisconnectNamedPipe(listener->stream.native_handle());
     SECURITY_ATTRIBUTES secAttr;
     secAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
     secAttr.bInheritHandle = FALSE;
@@ -103,6 +103,7 @@ void LocalPipe::listen() {
     // OVERLAPPED-derived object has passed to the io_service.
     overlappedPtr.release();
 #else
+    listener->stream.close();
     listener->acceptor.async_accept(listener->stream, acceptHandler);
 #endif
 }
@@ -111,11 +112,10 @@ void LocalPipe::listen() {
 void LocalPipe::connectionAccepted(const error_code & error) {
     if (error) {
         Log(L_WARNING) << "Local connection failed: " << error.message();
-        listener->disconnect();
-        listen();
     } else {
         Log(L_DEBUG) << "Connection accepted on pipe";
         connections.emplace_back(new LocalConnection(listener->stream, handler));
+        connections.back()->accepted();
         connections.back()->registerErrorHandler(
             [this](const Connection::Ptr & conn, const boost::system::error_code & error) {
                 auto it = std::find(connections.begin(), connections.end(), conn);
@@ -125,6 +125,7 @@ void LocalPipe::connectionAccepted(const error_code & error) {
                 }
             });
     }
+    listen();
 }
 
 

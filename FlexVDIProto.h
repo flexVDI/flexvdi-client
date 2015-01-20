@@ -31,8 +31,10 @@ int marshallMessage(uint32_t type, uint8_t * data, size_t bytes);
 
 enum {
     FLEXVDI_CREDENTIALS = 0,
+    FLEXVDI_ASKCREDENTIALS,
     FLEXVDI_MAX_MESSAGE_TYPE // Must be the last one
 };
+
 
 typedef struct FlexVDICredentialsMsg {
     uint32_t userLength;
@@ -55,8 +57,17 @@ static inline uint32_t getCredentialsMsgSize(const FlexVDICredentialsMsg * msg) 
         msg->userLength + msg->passLength + msg->domainLength + 3;
 }
 
+
+typedef struct FlexVDIEmptyMsg {
+} FlexVDIAskCredentialsMsg;
+
+
 #ifdef FLEXVDI_PROTO_IMPL
 typedef int (*MarshallingFunction)(uint8_t *, size_t bytes);
+
+static int marshallEmptyMsg(uint8_t * data, size_t bytes) {
+    return TRUE;
+}
 
 static int marshallFlexVDICredentialsMsg(uint8_t * data, size_t bytes) {
     if (bytes < sizeof(FlexVDICredentialsMsg)) {
@@ -71,6 +82,7 @@ static int marshallFlexVDICredentialsMsg(uint8_t * data, size_t bytes) {
 
 static MarshallingFunction marshallers[FLEXVDI_MAX_MESSAGE_TYPE] = {
     [FLEXVDI_CREDENTIALS] = marshallFlexVDICredentialsMsg,
+    [FLEXVDI_ASKCREDENTIALS] = marshallEmptyMsg,
 };
 
 int marshallMessage(uint32_t type, uint8_t * data, size_t bytes) {

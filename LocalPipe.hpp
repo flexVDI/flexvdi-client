@@ -26,7 +26,7 @@ private:
     std::string endpointName;
     Connection::MessageHandler handler;
     class LocalConnection;
-    std::list<std::shared_ptr<Connection>> connections;
+    std::list<std::shared_ptr<LocalConnection>> connections;
     struct Listener;
     Listener * listener;
 
