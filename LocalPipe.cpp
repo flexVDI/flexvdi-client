@@ -44,6 +44,13 @@ public:
     }
 
     void accepted() { readNextMessage(); }
+
+#ifdef WIN32
+    virtual void close() {
+        DisconnectNamedPipe(stream.native_handle());
+        StreamConnection<Listener::stream_t>::close();
+    }
+#endif
 };
 
 
@@ -118,6 +125,7 @@ void LocalPipe::connectionAccepted(const error_code & error) {
         connections.back()->accepted();
         connections.back()->registerErrorHandler(
             [this](const Connection::Ptr & conn, const boost::system::error_code & error) {
+                conn->close();
                 auto it = std::find(connections.begin(), connections.end(), conn);
                 if (it != connections.end()) {
                     Log(L_DEBUG) << "Removing failed connection " << conn.get();
@@ -127,17 +135,3 @@ void LocalPipe::connectionAccepted(const error_code & error) {
     }
     listen();
 }
-
-
-// void LocalPipe::sendMessage(const FlexVDICredentialsMsgPtr & msg) {
-//     // TODO: Cancel the last sending, so that connectors only receive one set of credentials
-//     if (connected) {
-//         Log(L_DEBUG) << "Connection open, sending credentials";
-//         std::size_t size = getCredentialsMsgSize(msg.get());
-//         asio::async_write(stream, asio::buffer(msg.get(), size),
-//                           std::bind(&sentMessage, this, ph::_1, ph::_2));
-//     } else {
-//         Log(L_DEBUG) << "Connection not open yet, pending credentials";
-//         pendingCredentials = msg;
-//     }
-// }

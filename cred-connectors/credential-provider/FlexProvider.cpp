@@ -14,7 +14,7 @@ void DllRelease();
 
 
 FlexProvider::FlexProvider(HINSTANCE h) : refCount(1), dllHInst(h),
-credential(nullptr), receivedCredentials(false), cpe(nullptr) {
+credential(nullptr), thread(*this), receivedCredentials(false), cpe(nullptr) {
     LogCall cl(__FUNCTION__);
     DllAddRef();
 }
@@ -44,18 +44,16 @@ HRESULT FlexProvider::QueryInterface(REFIID riid, void ** ppv) {
 
 // This method acts as a callback for the hardware emulator. When it's called, it simply
 // tells the infrastructure that it needs to re-enumerate the credentials.
-void FlexProvider::credentialsChanged(wchar_t * username, wchar_t * password,
-                                      wchar_t * domain) {
+void FlexProvider::credentialsChanged(const char * u, const char * p, const char * d) {
     LogCall cl(__FUNCTION__);
     if (credential) {
         receivedCredentials = true;
-        credential->setCredentials(username, password, domain);
+        credential->setCredentials(u, p, d);
         if (cpe) {
             cpe->CredentialsChanged(adviseContext);
         }
     }
 }
-
 
 // SetUsageScenario is the provider's cue that it's going to be asked for tiles
 // in a subsequent call.
@@ -89,8 +87,7 @@ HRESULT FlexProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO scenar
                     credential->Release();
                     credential = nullptr;
                 }
-                thread.reset(new ReaderThread());
-                thread->Initialize(this);
+                thread.requestCredentials();
             } else {
                 hr = E_OUTOFMEMORY;
             }

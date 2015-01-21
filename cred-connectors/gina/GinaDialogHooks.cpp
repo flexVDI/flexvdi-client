@@ -5,6 +5,7 @@
 #include "FlexVDIProto.h"
 #include "GinaDialogHooks.hpp"
 #include "util.hpp"
+#include <winwlx.h>
 
 using namespace flexvm;
 
@@ -72,7 +73,9 @@ int WINAPI GinaDialogHooks::WlxDialogBoxParam(HANDLE hWlx, HANDLE hInst, LPWSTR 
 
 INT_PTR CALLBACK GinaDialogHooks::PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     GinaDialogHooks & s = GinaDialogHooks::singleton();
-    s.creds.setCurrentDialog(hwndDlg);
+    EnterCriticalSection(&s.mutex);
+    s.currentDialog = hwndDlg;
+    LeaveCriticalSection(&s.mutex);
     BOOL result = s.LogonDlgProc(hwndDlg, uMsg, wParam, lParam);
     if (uMsg == WM_INITDIALOG && s.passwordIDC == 0) {
         // This may be the annoying dialog askig for Ctrl+Alt+Del
@@ -83,19 +86,30 @@ INT_PTR CALLBACK GinaDialogHooks::PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wP
 }
 
 
+void GinaDialogHooks::credentialsChanged(const char * u, const char * p, const char * d) {
+    EnterCriticalSection(&mutex);
+    username = u;
+    password = p;
+    domain = d;
+    PostMessage(currentDialog, WM_USER + 5, 0, 0);
+    LeaveCriticalSection(&mutex);
+}
+
+
 BOOL GinaDialogHooks::LogonDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (uMsg == WM_INITDIALOG) {
         findCredentialControls(hwndDlg);
         if (passwordIDC != 0)
-            thread.start();
+            thread.requestCredentials();
     }
 
     if (uMsg == WM_USER + 5) {
-        std::string username, password, domain;
-        creds.getCredentials(username, password, domain);
+        EnterCriticalSection(&mutex);
         SetDlgItemTextA(hwndDlg, usernameIDC, username.c_str());
         SetDlgItemTextA(hwndDlg, passwordIDC, password.c_str());
         SetDlgItemTextA(hwndDlg, domainIDC, domain.c_str());
+        clearCredentials();
+        LeaveCriticalSection(&mutex);
         uMsg = WM_COMMAND;
         wParam = IDOK;
         lParam = 0;

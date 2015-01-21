@@ -7,7 +7,6 @@
 #include "FlexProvider.hpp"
 #include "util.hpp"
 #include "guid.h"
-#include <strsafe.h>
 using namespace flexvm;
 
 
@@ -67,7 +66,7 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv) {
 static std::ofstream logFile;
 static const char * getLogPath() {
     static char logPath[1024];
-    if (StringCbPrintfA(logPath, 1024, "%s\\credprov.log", Log::getDefaultLogPath()) == S_OK)
+    if (sprintf_s(logPath, 1024, "%s\\credprov.log", Log::getDefaultLogPath()) == S_OK)
         return logPath;
     else
         return "c:\\flexvdi_credprov.log";

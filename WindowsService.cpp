@@ -7,7 +7,6 @@
 #include <fstream>
 #include "FlexVDIGuestAgent.hpp"
 #include <windows.h>
-#include <strsafe.h>
 #include "util.hpp"
 using std::string;
 using namespace flexvm;
@@ -113,9 +112,8 @@ int WindowsService::uninstall() {
 
 
 const char * WindowsService::getLogPath() {
-    static char logPath[1024] = "c:\\flexvdi_service.log";
-    if (StringCbPrintfA(logPath, 1024, "%s\\flexvdi_service.log",
-                        Log::getDefaultLogPath()) == S_OK)
+    static char logPath[MAX_PATH] = "c:\\flexvdi_service.log";
+    if (sprintf_s(logPath, MAX_PATH, "%s\\flexvdi_service.log", Log::getDefaultLogPath()) != -1)
         return logPath;
     else
         return "c:\\flexvdi_service.log";
@@ -207,7 +205,6 @@ DWORD WindowsService::controlHandler(DWORD control, DWORD event_type,
 //         break;
 //     }
     default:
-        Log(L_WARNING) << "Unsupported control " << control;
         return ERROR_CALL_NOT_IMPLEMENTED;
     }
     return NO_ERROR;

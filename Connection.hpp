@@ -29,6 +29,8 @@ public:
     void registerErrorHandler(ErrorHandler e) {
         eHandlers.push_back(e);
     }
+    virtual bool isOpen() const = 0;
+    virtual void close() = 0;
 
 protected:
     MessageHandler mHandler;
@@ -66,6 +68,8 @@ public:
     virtual ~StreamConnection() {
         stream.close();
     }
+    virtual bool isOpen() const { return stream.is_open(); }
+    virtual void close() {boost::system::error_code ec; stream.close(ec); }
 
 protected:
     stream_t stream;

@@ -300,15 +300,23 @@ HRESULT FlexCredential::SetStringValue(DWORD dwFieldID, PCWSTR pwz) {
 }
 
 
-void FlexCredential::setCredentials(wchar_t * username, wchar_t * password,
-                                     wchar_t * domain) {
+static wchar_t * copyToUnicode(const char * s) {
+    size_t newsize = strlen(s) + 1;
+    wchar_t * wcstring = (wchar_t *)CoTaskMemAlloc(newsize * sizeof(wchar_t));
+    size_t convertedChars = 0;
+    mbstowcs_s(&convertedChars, wcstring, newsize, s, _TRUNCATE);
+    return wcstring;
+}
+
+
+void FlexCredential::setCredentials(const char * u, const char * p, const char * d) {
     Lock lock(mutex);
     CoTaskMemFree(fieldContent[SFI_USERNAME]);
-    fieldContent[SFI_USERNAME] = username;
+    fieldContent[SFI_USERNAME] = copyToUnicode(u);
     clearPassword();
-    fieldContent[SFI_PASSWORD] = password;
+    fieldContent[SFI_PASSWORD] = copyToUnicode(p);
     CoTaskMemFree(fieldContent[SFI_DOMAIN]);
-    fieldContent[SFI_DOMAIN] = domain;
+    fieldContent[SFI_DOMAIN] = copyToUnicode(d);
 }
 
 

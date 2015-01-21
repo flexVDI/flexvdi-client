@@ -7,12 +7,11 @@
 
 #include <memory>
 #include <windows.h>
-#include <winwlx.h>
-#include "CredentialsConnectorThread.hpp"
+#include "../CredentialsThread.hpp"
 
 namespace flexvm {
 
-class GinaDialogHooks {
+class GinaDialogHooks : public CredentialsThread::Listener {
 public:
     static GinaDialogHooks & singleton() {
         static GinaDialogHooks instance;
@@ -38,15 +37,21 @@ private:
     };
     friend BaseWinlogonProxy;
 
-    Credentials creds;
-    CredentialsConnectorThread thread;
+    virtual void credentialsChanged(const char * u, const char * p, const char * d);
+
+    std::string username, password, domain;
+    CRITICAL_SECTION mutex;
+    CredentialsThread thread;
     std::unique_ptr<BaseWinlogonProxy> winlogon;
     DWORD wlxVersion;
     HANDLE hWlx;
     DLGPROC currentDlgProc;
+    HWND currentDialog;
     int usernameIDC, passwordIDC, domainIDC;
 
-    GinaDialogHooks() : thread(creds) {}
+    GinaDialogHooks() : thread(*this) {
+        InitializeCriticalSection(&mutex);
+    }
     void sendCtrlAltDel() {
         winlogon->sendCtrlAltDel(hWlx);
     }
@@ -55,6 +60,11 @@ private:
                                         HWND hwndOwner, DLGPROC dlgprc, LPARAM  dwInitParam);
     static INT_PTR CALLBACK PassDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     BOOL LogonDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    void clearCredentials() {
+        for (auto & c : username) c = 0;
+        for (auto & c : password) c = 0;
+        for (auto & c : domain) c = 0;
+    }
 };
 
 } // namespace flexvm

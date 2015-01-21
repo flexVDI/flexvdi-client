@@ -7,12 +7,12 @@
 
 #include <credentialprovider.h>
 #include <memory>
-#include "ReaderThread.hpp"
+#include "../CredentialsThread.hpp"
 
 namespace flexvm {
 
 class FlexCredential;
-class FlexProvider : public ICredentialProvider, public CredentialConsumer {
+class FlexProvider : public ICredentialProvider, public CredentialsThread::Listener {
 public:
     FlexProvider(HINSTANCE h);
     virtual ~FlexProvider();
@@ -45,13 +45,13 @@ public:
     IFACEMETHODIMP GetCredentialAt(DWORD dwIndex,
                                    ICredentialProviderCredential ** ppcpc);
 
-    virtual void credentialsChanged(wchar_t * username, wchar_t * password, wchar_t * domain);
+    virtual void credentialsChanged(const char * u, const char * p, const char * d);
 
 private:
     int refCount;
     HINSTANCE dllHInst;
     FlexCredential * credential;      // Our "connected" credential.
-    std::unique_ptr<ReaderThread> thread;
+    CredentialsThread thread;
     bool receivedCredentials;
     ICredentialProviderEvents * cpe;   // Used to tell our owner to re-enumerate credentials.
     UINT_PTR adviseContext;            // Used to tell our owner who we are when asking to

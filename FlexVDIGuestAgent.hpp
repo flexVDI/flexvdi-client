@@ -51,13 +51,28 @@ private:
     LocalPipe pipe;
 };
 
-#define COMPONENT(component, messages...) \
-static int dummy_reg_ ## component = []() { \
-    FlexVDIGuestAgent::singleton(). \
-        registerMessageHandler<component, messages>(component::singleton()); \
-    return 0; \
-}()
 
+template <typename Component, typename ... Messages>
+class FlexVDIComponent {
+public:
+    typedef FlexVDIComponent<Component, Messages...> ComponentClass;
+
+    static Component & singleton() {
+        static Component instance;
+        return instance;
+    }
+
+private:
+    static int regVar;
+    static int registerComponent() {
+        FlexVDIGuestAgent::singleton().
+        registerMessageHandler<Component, Messages...>(singleton());
+        return 0;
+    }
+};
+
+#define REGISTER_COMPONENT(Component) \
+template<> int Component::ComponentClass::regVar = registerComponent()
 
 } // namespace flexvm
 

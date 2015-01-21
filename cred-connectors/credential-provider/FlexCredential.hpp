@@ -59,7 +59,7 @@ public:
 
     HRESULT Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus);
 
-    void setCredentials(wchar_t * username, wchar_t * password, wchar_t * domain);
+    void setCredentials(const char * u, const char * p, const char * d);
 
     static const FIELD_STATE_PAIR fieldStatePairs[SFI_NUM_FIELDS];
     static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR fieldDescriptors[SFI_NUM_FIELDS];
