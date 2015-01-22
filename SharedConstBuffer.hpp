@@ -17,10 +17,8 @@ public:
     SharedConstBuffer(T * header) {
         operator()(header);
     }
-    SharedConstBuffer(uint8_t * payload, std::size_t bytes) {
-        operator()(payload, bytes);
-    }
-    SharedConstBuffer(const std::shared_ptr<uint8_t> & payload, std::size_t bytes) {
+    template <typename T>
+    SharedConstBuffer(const std::shared_ptr<T> & payload, std::size_t bytes) {
         operator()(payload, bytes);
     }
     template <typename T>
@@ -29,20 +27,29 @@ public:
         buffers.emplace_back(boost::asio::buffer(header, sizeof(T)));
         return *this;
     }
-    SharedConstBuffer & operator()(const std::shared_ptr<uint8_t> & payload,
-                                   std::size_t bytes) {
+    template <typename T>
+    SharedConstBuffer & operator()(const std::shared_ptr<T> & payload, std::size_t bytes) {
         data.emplace_back(payload);
         buffers.emplace_back(boost::asio::buffer(payload.get(), bytes));
         return *this;
     }
-    SharedConstBuffer & operator()(uint8_t * payload, std::size_t bytes) {
-        return operator()(std::shared_ptr<uint8_t>(payload, std::default_delete<uint8_t[]>()),
-                          bytes);
+    SharedConstBuffer & operator()(const SharedConstBuffer & buffer) {
+        data.insert(data.end(), buffer.data.begin(), buffer.data.end());
+        buffers.insert(buffers.end(), buffer.buffers.begin(), buffer.buffers.end());
+        return *this;
+    }
+
+    std::size_t size() const {
+        std::size_t result = 0;
+        for (auto & buffer : buffers) {
+            result += boost::asio::buffer_size(buffer);
+        }
+        return result;
     }
 
     // Implement the ConstBufferSequence requirements.
-    typedef boost::asio::const_buffer value_type;
-    typedef std::list<boost::asio::const_buffer>::const_iterator const_iterator;
+    typedef boost::asio::mutable_buffer value_type;
+    typedef std::list<value_type>::const_iterator const_iterator;
     const_iterator begin() const {
         return buffers.begin();
     }
@@ -50,9 +57,17 @@ public:
         return buffers.end();
     }
 
+    typedef std::list<value_type>::iterator iterator;
+    iterator begin() {
+        return buffers.begin();
+    }
+    iterator end() {
+        return buffers.end();
+    }
+
 private:
     std::list<std::shared_ptr<void>> data;
-    std::list<boost::asio::const_buffer> buffers;
+    std::list<value_type> buffers;
 };
 
 } // namespace flexvm

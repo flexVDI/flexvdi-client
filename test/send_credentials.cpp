@@ -28,11 +28,12 @@ SharedConstBuffer sampleCredentials(const char * user, const char * pass, const 
     uint32_t bufSize = userlen + passlen + domlen + 3;
     auto mHeader = new FlexVDIMessageHeader{FLEXVDI_CREDENTIALS, CRED_SIZE + bufSize};
     auto msg = new FlexVDICredentialsMsg{userlen, passlen, domlen};
-    auto msgBuffer = new uint8_t[bufSize];
+    uint8_t * msgBuffer = new uint8_t[bufSize];
     std::copy_n(user, userlen + 1, msgBuffer);
     std::copy_n(pass, passlen + 1, msgBuffer + userlen + 1);
     std::copy_n(dom, domlen + 1, msgBuffer + userlen + passlen + 2);
-    return SharedConstBuffer(mHeader)(msg)(msgBuffer, bufSize);
+    return SharedConstBuffer(mHeader)(msg)
+        (shared_ptr<uint8_t>(msgBuffer, std::default_delete<uint8_t[]>()), bufSize);
 }
 
 

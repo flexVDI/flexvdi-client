@@ -14,8 +14,8 @@ REGISTER_COMPONENT(CredentialsManager);
 void CredentialsManager::sendPendingCredentials() {
     Log(L_DEBUG) << "Sending credentials";
     std::size_t size = getCredentialsMsgSize(pendingCredentials.get());
-    std::shared_ptr<uint8_t> buffer(pendingCredentials, (uint8_t *)pendingCredentials.get());
-    waitingForCredentials->send(FLEXVDI_CREDENTIALS, size, buffer);
+    waitingForCredentials->send(FLEXVDI_CREDENTIALS,
+                                SharedConstBuffer(pendingCredentials, size));
     waitingForCredentials.reset();
     pendingCredentials.reset();
 }

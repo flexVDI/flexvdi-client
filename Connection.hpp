@@ -25,7 +25,8 @@ public:
     Connection(MessageHandler h) : mHandler(h) {}
     virtual ~Connection() {}
 
-    void send(uint32_t type, uint32_t size, const std::shared_ptr<uint8_t> & msgBuffer);
+    void send(uint32_t type, const SharedConstBuffer & msgBuffer,
+              std::function<void(void)> onSuccess = [](){});
     void registerErrorHandler(ErrorHandler e) {
         eHandlers.push_back(e);
     }
@@ -53,10 +54,9 @@ private:
     std::shared_ptr<uint8_t> readBuffer;
     FlexVDIMessageHeader header;
 
-    void readComplete(Ptr This, const boost::system::error_code & error,
-                      std::size_t bytes_transferred);
+    void readComplete(Ptr This, const boost::system::error_code & error, std::size_t bytes);
     void writeComplete(Ptr This, const boost::system::error_code & error,
-                       std::size_t bytes_transferred);
+                       std::size_t bytes, std::function<void(void)> onSuccess);
 };
 
 
@@ -83,6 +83,7 @@ private:
         boost:: asio::async_write(stream, buffers, handler);
     }
 };
+
 
 } // namespace flexvm
 
