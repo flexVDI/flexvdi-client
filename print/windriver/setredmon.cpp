@@ -14,7 +14,6 @@
 
 /* RedMon setup program */
 #include <iostream>
-#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
 #include <windows.h>
 #include <winspool.h>
 #include <shellapi.h>
