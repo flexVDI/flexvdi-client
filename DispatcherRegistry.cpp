@@ -28,3 +28,4 @@ template<> const uint32_t DispatcherRegistry::MessageType<msg>::type = t
 SET_TYPE(FlexVDICredentialsMsg, FLEXVDI_CREDENTIALS);
 SET_TYPE(FlexVDIAskCredentialsMsg, FLEXVDI_ASKCREDENTIALS);
 SET_TYPE(FlexVDIPrintJobMsg, FLEXVDI_PRINTJOB);
+SET_TYPE(FlexVDIPrintJobDataMsg, FLEXVDI_PRINTJOBDATA);
