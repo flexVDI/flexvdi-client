@@ -357,7 +357,7 @@ HRESULT FlexCredential::GetSerialization(
     hr = ProtectIfNecessaryAndCopyPassword(fieldContent[SFI_PASSWORD],
                                            cpus, &protectedPassword);
     return_if(FAILED(hr), "Protect password failed", HRESULT_FROM_WIN32(GetLastError()));
-    on_return r([&] () { CoTaskMemFree(protectedPassword); });
+    on_return([protectedPassword](){ CoTaskMemFree(protectedPassword); });
     KERB_INTERACTIVE_UNLOCK_LOGON kiul;
     // Initialize kiul with weak references to our credential.
     hr = KerbInteractiveUnlockLogonInit(effectiveDomain, fieldContent[SFI_USERNAME],

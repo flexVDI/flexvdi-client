@@ -9,6 +9,7 @@
 #include <ostream>
 #include <functional>
 #include <wchar.h>
+#include <boost/preprocessor/cat.hpp>
 
 namespace flexvm {
 
@@ -18,11 +19,13 @@ do { if (cond) throw lastSystemError(msg); } while(0)
 #define return_if(cond, msg, ret) \
 do { if (cond) { Log(L_ERROR) << msg << lastSystemError("").what(); return ret; }} while(0)
 
-struct on_return {
+struct on_return_struct {
     std::function<void(void)> f;
-    template <typename T> on_return(T c) : f(c) {}
-    ~on_return() { f(); }
+    template <typename T> on_return_struct(T c) : f(c) {}
+    ~on_return_struct() { f(); }
 };
+#define on_return(code) \
+on_return_struct BOOST_PP_CAT(on_return_, __LINE__)(code)
 
 enum LogLevel {
     L_DEBUG = 0,
