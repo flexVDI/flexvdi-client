@@ -4,12 +4,14 @@
 
 #include <iostream>
 #include <fstream>
+#include <memory>
+#include <algorithm>
 #include <windows.h>
-using std::cin;
 #include "iapi.h"
 #include "../../util.hpp"
 #include "../../FlexVDIProto.h"
 using namespace flexvm;
+using namespace std;
 
 
 static int GSDLLCALL gsInputCB(void *instance, char *buf, int len) {
@@ -24,31 +26,60 @@ static int GSDLLCALL gsInputCB(void *instance, char *buf, int len) {
 
 
 static int GSDLLCALL gsOutputCB(void *instance, const char *str, int len) {
-    Log(L_DEBUG) << std::string(str, len);
+    Log(L_DEBUG) << string(str, len);
     return len;
 }
 
 
 static int GSDLLCALL gsErrorCB(void *instance, const char *str, int len) {
-    Log(L_ERROR) << std::string(str, len);
+    Log(L_ERROR) << string(str, len);
     return len;
 }
 
 
-static std::string getTempFileName() {
+static string getTempFileName() {
     char tempPath[MAX_PATH] = ".\\";
     GetTempPathA(MAX_PATH, tempPath);
     char tempFilePath[MAX_PATH];
     GetTempFileNameA(tempPath, "fpj", 0, tempFilePath); // fpj = FlexVDI Print Job
-    return std::string(tempFilePath);
+    return string(tempFilePath);
 }
 
 
-static void notifyJob(const std::string fileName) {
+static void notifyJob(const string fileName) {
+    // TODO: Configurable
+    static const char * pipeName = "\\\\.\\pipe\\flexvdi_pipe";
+    HANDLE pipe = ::CreateFileA(pipeName, GENERIC_READ | GENERIC_WRITE,
+                                0, NULL, OPEN_EXISTING, 0, NULL);
+    return_if(pipe == INVALID_HANDLE_VALUE, "Failed opening pipe", );
+    size_t optionsLength = fileName.length() + 9; // 9 = length of "filename="
+    size_t bufSize = sizeof(FlexVDIMessageHeader) + sizeof(FlexVDIPrintJobMsg) + optionsLength;
+    unique_ptr<uint8_t[]> buffer(new uint8_t[bufSize]);
+    FlexVDIMessageHeader * header = (FlexVDIMessageHeader *)buffer.get();
+    header->type = FLEXVDI_PRINTJOB;
+    header->size = bufSize - sizeof(FlexVDIMessageHeader);
+    FlexVDIPrintJobMsg * msg = (FlexVDIPrintJobMsg *)(header + 1);
+    msg->optionsLength = optionsLength;
+    copy_n("filename=", 9, msg->options);
+    copy_n(fileName.c_str(), fileName.length(), &msg->options[9]);
+    DWORD bytesWritten;
+    if (!::WriteFile(pipe, buffer.get(), bufSize, &bytesWritten, NULL)
+        || bytesWritten < bufSize) {
+        Log(L_ERROR) << "Error notifying print job" << lastSystemError("").what();
+    }
+    ReadFile(pipe, buffer.get(), 1, &bytesWritten, NULL);
+    // When the connection is closed, the pdf file can be removed
+    DeleteFileA(fileName.c_str());
 }
 
 
 int main(int argc, char * argv[]) {
+    ofstream logFile;
+    logFile.open(Log::getDefaultLogPath() + string("\\flexvdi_print_filter.log"),
+                 ios_base::app);
+    logFile << endl << endl;
+    Log::setLogOstream(&logFile);
+
     /// Command line options used by GhostScript
     const char * gsArgv[] = {
         "PS2PDF",
@@ -62,12 +93,6 @@ int main(int argc, char * argv[]) {
         ".setpdfwrite",
         "-"
     };
-
-    std::ofstream logFile;
-    logFile.open(Log::getDefaultLogPath() + std::string("\\flexvdi_print_filter.log"),
-                 std::ios_base::app);
-    logFile << std::endl << std::endl;
-    Log::setLogOstream(&logFile);
 
     // Add the include directories to the command line flags we'll use with GhostScript:
 //     if (::GetModuleFileName(NULL, cPath, MAX_PATH)) {
@@ -84,9 +109,9 @@ int main(int argc, char * argv[]) {
 
     // TODO: Read the first line with job options
 
-    std::string fileName = getTempFileName();
+    string fileName = getTempFileName();
     Log(L_DEBUG) << "Saving output to " << fileName;
-    std::string fileOption = "-sOutputFile=" + fileName;
+    string fileOption = "-sOutputFile=" + fileName;
     gsArgv[5] = fileOption.c_str();
 
     void * gsInstance;

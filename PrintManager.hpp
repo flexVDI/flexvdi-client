@@ -24,6 +24,19 @@ private:
     struct Job {
         std::ifstream pdfFile;
         uint32_t id;
+        Connection::Ptr src;
+
+        Job(const std::string & filename, uint32_t id) : id(id) {
+            pdfFile.open(filename.c_str(), std::ios::binary);
+        }
+        uint32_t getFileLength() {
+            pdfFile.seekg (0, pdfFile.end);
+            uint32_t length = pdfFile.tellg();
+            pdfFile.seekg (0, pdfFile.beg);
+            return length;
+        }
+
+        ~Job() { pdfFile.close(); src->close(); }
     };
 
     std::list<Job> jobs;
