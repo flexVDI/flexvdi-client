@@ -67,8 +67,6 @@ Section "flexVDI guest agent" install_section_id
     ${EndIf}
 
     ; Stop flexVDI service, ignore if it does not exist
-    nsExec::Exec 'sc stop flexvdi_service'
-    sleep 500
     nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
 
     ; Agent
@@ -79,13 +77,6 @@ Section "flexVDI guest agent" install_section_id
     Pop $0
     ${If} $0 = 0
         DetailPrint "Guest agent installed successfully"
-        nsExec::Exec 'sc start flexvdi_service'
-        Pop $0
-        ${If} $0 = 0
-            DetailPrint "Guest agent service started"
-        ${Else}
-            DetailPrint "ERROR Guest agent service failed to start (error code $0)"
-        ${EndIf}
     ${Else}
         Pop $0
         MessageBox MB_OK|MB_ICONEXCLAMATION "Guest agent failed to install: $0"
@@ -138,11 +129,6 @@ Section "flexVDI guest agent" install_section_id
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
     IntFmt $0 "0x%08X" $0
     WriteRegDWORD HKLM "${UNINSTALL_KEY}" "EstimatedSize" "$0"
-
-    IfRebootFlag 0 noreboot
-        MessageBox MB_YESNO "System needs to be rebooted, reboot now?" IDNO noreboot
-            Reboot
-    noreboot:
 SectionEnd
 
 Function .onInit
@@ -178,8 +164,6 @@ Section "Uninstall"
     ${EndIf}
 
     DeleteRegKey HKLM "${UNINSTALL_KEY}"
-    nsExec::Exec 'sc stop flexvdi_service'
-    sleep 500
     nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
     Pop $0
     ${If} $0 = 0
@@ -189,9 +173,4 @@ Section "Uninstall"
         Pop $0
         MessageBox MB_OK|MB_ICONEXCLAMATION "Guest agent failed to uninstall: $0"
     ${EndIf}
-
-    IfRebootFlag 0 noreboot
-        MessageBox MB_YESNO "System needs to be rebooted, reboot now?" IDNO noreboot
-            Reboot
-    noreboot:
 SectionEnd

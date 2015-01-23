@@ -63,8 +63,6 @@ int main(int argc, char * argv[]) {
     HANDLE h;
     h = ::CreateFileA(argv[2], GENERIC_READ | GENERIC_WRITE, 0, NULL,
                       OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-    DWORD dwMode = PIPE_READMODE_MESSAGE;
-    SetNamedPipeHandleState(h, &dwMode, NULL, NULL);
     asio::windows::stream_handle pipe(io, h);
 #endif
 

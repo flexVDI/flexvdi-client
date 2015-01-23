@@ -66,6 +66,7 @@ int main(int argc, char * argv[]) {
 int WindowsService::install() {
     SC_HANDLE service_control_manager = OpenSCManager(0, 0, SC_MANAGER_CREATE_SERVICE);
     return_if(!service_control_manager, "OpenSCManager failed", 1);
+    on_return([service_control_manager]() { CloseServiceHandle(service_control_manager); });
     wchar_t path[_MAX_PATH + 2];
     DWORD len = GetModuleFileName(0, path + 1, _MAX_PATH);
     return_if(len == 0 || len == _MAX_PATH, "GetModuleFileName failed", 1);
@@ -79,17 +80,17 @@ int WindowsService::install() {
                                       0, 0, 0, 0);
     return_if(!service && GetLastError() != ERROR_SERVICE_EXISTS, "CreateService failed", 1);
     if (service) {
+        on_return([service]() { CloseServiceHandle(service); });
         SERVICE_DESCRIPTION descr;
         descr.lpDescription = serviceDescription;
         if (!ChangeServiceConfig2(service, SERVICE_CONFIG_DESCRIPTION, &descr)) {
             Log(L_WARNING) << "ChangeServiceConfig2 failed";
         }
-        CloseServiceHandle(service);
         Log(L_DEBUG) << "Service installed successfully from " << path;
+        return_if(!StartService(service, 0, NULL), "ServiceStart failed", 1);
     } else {
         Log(L_WARNING) << "Service already exists";
     }
-    CloseServiceHandle(service_control_manager);
     return 0;
 }
 
@@ -97,17 +98,22 @@ int WindowsService::install() {
 int WindowsService::uninstall() {
     SC_HANDLE service_control_manager = OpenSCManager(0, 0, SC_MANAGER_CONNECT);
     return_if(!service_control_manager, "OpenSCManager failed", 1);
-    SC_HANDLE service = OpenService(service_control_manager, serviceName,
-                                    SERVICE_QUERY_STATUS | DELETE);
+    on_return([service_control_manager]() { CloseServiceHandle(service_control_manager); });
+    SC_HANDLE service = OpenService(service_control_manager, serviceName, SERVICE_ALL_ACCESS);
     return_if(!service, "OpenService failed", 1);
+    on_return([service]() { CloseServiceHandle(service); });
     SERVICE_STATUS status;
-    return_if(!QueryServiceStatus(service, &status), "QueryServiceStatus failed", 1);
-    if (status.dwCurrentState != SERVICE_STOPPED) {
-        Log(L_WARNING) << "Service is still running";
-    } else return_if(!DeleteService(service), "DeleteService failed", 1);
-    CloseServiceHandle(service);
-    CloseServiceHandle(service_control_manager);
-    return 0;
+    ControlService(service, SERVICE_CONTROL_STOP, &status);
+    for (int i = 0; i < 3; ++i) {
+        Sleep(500);
+        return_if(!QueryServiceStatus(service, &status), "QueryServiceStatus failed", 1);
+        if (status.dwCurrentState == SERVICE_STOPPED) {
+            return_if(!DeleteService(service), "DeleteService failed", 1);
+            return 0;
+        }
+    }
+    Log(L_WARNING) << "Service is still running";
+    return 1;
 }
 
 
