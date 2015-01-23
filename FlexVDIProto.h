@@ -72,7 +72,7 @@ typedef struct FlexVDIPrintJobMsg {
 } FlexVDIPrintJobMsg;
 
 static inline uint32_t getPrintJobMsgSize(const FlexVDIPrintJobMsg * msg) {
-    return sizeof(FlexVDIPrintJobMsg) + msg->optionsLength + msg->dataLength;
+    return sizeof(FlexVDIPrintJobMsg) + msg->optionsLength;
 }
 
 
