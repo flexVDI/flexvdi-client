@@ -10,5 +10,5 @@ set_target_properties(redmon PROPERTIES LINK_FLAGS
 
 add_executable(setredmon setredmon.cpp)
 add_executable(unredmon unredmon.cpp)
-add_executable(filter filter.cpp $<TARGET_OBJECTS:util_o>)
+add_executable(filter WIN32 filter.cpp $<TARGET_OBJECTS:util_o>)
 target_link_libraries(filter gsdll${WIN_BITS})
