@@ -97,7 +97,7 @@ void LocalPipe::listen() {
     // Only current user may access the named pipe
     secAttr.lpSecurityDescriptor = NULL;
     uint32_t mode = PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED;
-    uint32_t type = PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT;
+    uint32_t type = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT;
     HANDLE pipeFd = ::CreateNamedPipeA(listener->pipeName.c_str(), mode, type,
                                        PIPE_UNLIMITED_INSTANCES, 1024, 1024, 0, &secAttr);
     throw_if(pipeFd == INVALID_HANDLE_VALUE, listener->pipeName);
@@ -120,7 +120,6 @@ void LocalPipe::connectionAccepted(const error_code & error) {
     if (error) {
         Log(L_WARNING) << "Local connection failed: " << error.message();
     } else {
-        Log(L_DEBUG) << "Connection accepted on pipe";
         connections.emplace_back(new LocalConnection(listener->stream, handler));
         connections.back()->accepted();
         connections.back()->registerErrorHandler(
@@ -132,6 +131,8 @@ void LocalPipe::connectionAccepted(const error_code & error) {
                     connections.erase(it);
                 }
             });
+        Log(L_DEBUG) << "Connection " << static_cast<Connection *>(connections.back().get())
+            << " accepted on pipe";
     }
     listen();
 }
