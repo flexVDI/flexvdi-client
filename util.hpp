@@ -12,21 +12,11 @@
 
 namespace flexvm {
 
-#define throw_code_if(cond, code, msg) \
-do { if (cond) throw std::system_error(code, std::system_category(), msg); } while(0)
-#define return_code_if(cond, code, msg, ret) \
-do { if (cond) { \
-    Log(L_ERROR) << msg << ": " << std::system_category().message(code); return ret; \
-}} while(0)
-
-#ifdef WIN32
-#define throw_if(cond, msg) throw_code_if(cond, GetLastError(), msg)
-#define return_if(cond, msg, ret) return_code_if(cond, GetLastError(), msg, ret)
-#else
-#include <cerrno>
-#define throw_if(cond, msg) throw_code_if(cond, errno, msg)
-#define return_if(cond, msg, ret) return_code_if(cond, errno, msg, ret)
-#endif
+std::system_error lastSystemError(const std::string & msg);
+#define throw_if(cond, msg) \
+do { if (cond) throw lastSystemError(msg); } while(0)
+#define return_if(cond, msg, ret) \
+do { if (cond) { Log(L_ERROR) << msg << lastSystemError("").what(); return ret; }} while(0)
 
 struct on_return {
     std::function<void(void)> f;
@@ -100,7 +90,6 @@ struct LogCall {
         Log(L_DEBUG) << "<--" << fn;
     }
 };
-
 
 }
 

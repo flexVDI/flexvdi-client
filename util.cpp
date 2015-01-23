@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <shlobj.h>
 #else
+#include <cerrno>
 #include <sys/stat.h>
 #include <sys/types.h>
 #endif
@@ -37,8 +38,8 @@ void Log::logDate() {
 }
 
 
-const char * Log::getDefaultLogPath() {
 #ifdef WIN32
+const char * Log::getDefaultLogPath() {
     static char logPath[MAX_PATH + 9] = "c:";
     SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA, NULL, 0, logPath);
     size_t length = strlen(logPath);
@@ -47,10 +48,24 @@ const char * Log::getDefaultLogPath() {
         return logPath;
     else
         return "c:";
+}
+
+
+std::system_error flexvm::lastSystemError(const std::string & msg) {
+    return std::system_error(GetLastError(), std::system_category(), msg);
+}
+
+
 #else
+const char * Log::getDefaultLogPath() {
     if (!mkdir("/var/log/flexVDI", 0755) || errno == EEXIST)
         return "/var/log/flexVDI";
     else
         return "/tmp";
-#endif
 }
+
+
+std::system_error flexvm::lastSystemError(const std::string & msg) {
+    return std::system_error(errno, std::system_category(), msg);
+}
+#endif
