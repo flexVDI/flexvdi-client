@@ -55,4 +55,5 @@ configure_file("${PROJECT_SOURCE_DIR}/setup.nsi" "${PROJECT_BINARY_DIR}/setup.ns
 
 add_subdirectory(cred-connectors)
 add_subdirectory(print)
+add_subdirectory(client)
 add_subdirectory(test)
