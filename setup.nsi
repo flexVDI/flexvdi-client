@@ -14,17 +14,17 @@
 !define REDMON_NAME "flexVDI Redirection Port"
 !define PORT_NAME "flexVDIprint"
 !define PORT_CONFIG_KEY "SYSTEM\CurrentControlSet\Control\Print\Monitors\${REDMON_NAME}\Ports\${PORT_NAME}"
+!define PDF_PRINTER_NAME "flexVDI PDF Printer"
 
 Name "${APPNAME} v@FLEXVDI_VERSION@"
 OutFile "flexVDI_setup@WIN_BITS@_@FLEXVDI_VERSION@.exe"
 InstallDir $PROGRAMFILES@WIN_BITS@\flexVDI
 InstallDirRegKey HKLM "Software\${APPNAME}" "Install_Dir"
 RequestExecutionLevel admin
-;SilentInstall silent
-;SilentUnInstall silent
 ShowInstDetails show
 ShowUninstDetails show
 SetOverwrite try
+SetPluginUnload  alwaysoff
 
 ;Version Information
 VIProductVersion "@FLEXVDI_VERSION@.0"
@@ -66,13 +66,9 @@ Section "flexVDI guest agent" install_section_id
         ${EndIf}
     ${EndIf}
 
-    ; Stop flexVDI service, ignore if it does not exist
-    nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
-
     ; Agent
+    nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
     File "flexvdi-guest-agent.exe"
-
-    ; start flexVDI service
     nsExec::ExecToStack '"$INSTDIR\flexvdi-guest-agent.exe" install'
     Pop $0
     ${If} $0 = 0
@@ -97,33 +93,32 @@ Section "flexVDI guest agent" install_section_id
     ${EndIf}
 
     ; Print driver
-    File "print/windriver/setredmon.exe" "print/windriver/unredmon.exe" "print/windriver/redmon.dll"
     SetOutPath "$INSTDIR\printdriver"
     File "@PROJECT_SOURCE_DIR@/print/windriver/flexvdips.*"
     File "@PROJECT_SOURCE_DIR@/print/windriver/gs9.15/gsdll@WIN_BITS@.dll"
     File "print/windriver/filter.exe"
+    SetOutPath "$INSTDIR"
+    File "print/windriver/redmon.dll" "print/windriver/setup.dll"
     Rename /REBOOTOK "$INSTDIR\redmon.dll" "$SYSDIR\${REDMON_DLL}"
-    nsExec::ExecToStack '"$INSTDIR\setredmon.exe" "${REDMON_NAME}" "${REDMON_DLL}" "${PORT_NAME}"'
-    Pop $0
+    System::Call 'setup::installRedMon(w "${REDMON_NAME}", w "${REDMON_DLL}", w "${PORT_NAME}", w .r1) i .r0'
     ${If} $0 = 0
         DetailPrint "Print monitor installed"
         WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Command" '$INSTDIR\printdriver\filter.exe'
         WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Arguments" ''
         WriteRegDWORD HKLM "${PORT_CONFIG_KEY}" "RunUser" 0
         DetailPrint "Installing flexVDI printer"
-        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "flexVDI Printer" /q'
-        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /if /n "flexVDI Printer" /f "$INSTDIR\printdriver\flexvdips.inf" /m "flexVDI Printer" /r "${PORT_NAME}"'
+        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "${PDF_PRINTER_NAME}" /q'
+        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /if /f "$INSTDIR\printdriver\flexvdips.inf" /m "flexVDI Printer" /r "${PORT_NAME}"'
         Pop $0
         ${If} $0 = 0
             DetailPrint "flexVDI printer successfully installed"
         ${Else}
             MessageBox MB_OK|MB_ICONEXCLAMATION "flexVDI printer NOT installed (error code $0)."
         ${EndIf}
+        System::Call 'setup::renamePrinter(w "flexVDI Printer", w "${PDF_PRINTER_NAME}", w .r1) i .r0'
     ${Else}
-        Pop $1
         MessageBox MB_OK|MB_ICONEXCLAMATION "Print monitor installation failed with code $0: $1"
     ${EndIf}
-    Delete "$INSTDIR\setredmon.exe"
 
     ; Compute installed size
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
@@ -144,16 +139,17 @@ Section "Uninstall"
     SetAutoClose true
     ${DisableX64FSRedirection}
 
-    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "flexVDI Printer" /q'
+    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "${PDF_PRINTER_NAME}" /q'
     nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dd /m "flexVDI Printer" /q'
-    nsExec::Exec '"$INSTDIR\unredmon.exe" "${REDMON_NAME}"'
-    Pop $0
+    SetOutPath "$INSTDIR"
+    System::Call 'setup::uninstallRedMon(w "${REDMON_NAME}", w .r1) i .r0 u'
     ${If} $0 = 0
         Delete /REBOOTOK "$SYSDIR\redmon.dll"
     ${Else}
-        Pop $0
-        DetailPrint "ERROR Printer monitor could not be removed: $0"
+        DetailPrint "ERROR Printer monitor could not be removed: $1"
     ${EndIf}
+    SetPluginUnload manual
+    System::Free 0
 
     ${If} ${IsWinXP}
         ReadRegStr $0 HKLM "${UNINSTALL_KEY}" "OldGinaDLL"

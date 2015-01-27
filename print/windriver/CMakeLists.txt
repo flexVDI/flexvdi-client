@@ -7,8 +7,9 @@ target_link_libraries(redmon psapi userenv)
 set_target_properties(redmon PROPERTIES LINK_FLAGS
     "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static-libgcc -static-libstdc++"
     PREFIX "")
-
-add_executable(setredmon setredmon.cpp)
-add_executable(unredmon unredmon.cpp)
+add_library(setup SHARED setup.cpp)
+set_target_properties(setup PROPERTIES
+    LINK_FLAGS "-static-libgcc -static-libstdc++"
+    PREFIX "")
 add_executable(filter WIN32 filter.cpp $<TARGET_OBJECTS:util_o>)
 target_link_libraries(filter gsdll${WIN_BITS})
