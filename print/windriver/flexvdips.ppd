@@ -1,34 +1,24 @@
 *PPD-Adobe: "4.3"
-*FileVersion: "1.1"
-*FormatVersion: "4.3" 
+*% Postscript-Printer-Description for flexVDI
+*% Version 1.0
+
+*FileVersion: "1.0"
+*FormatVersion: "4.3"
 *LanguageEncoding: ISOLatin1
 *LanguageVersion: English
-*Manufacturer: "Ghostscript"
-*ModelName: "Ghostscript PDF Writer"
-*ShortNickName: "Ghostscript"
-*NickName: "Ghostscript"
-*% PCFileName should be of the form XXNNNNNN.PPD where XX is an assigned
-*% manufacturer code.
-*PCFileName: "CCPDFPrn.PPD"
-*Product: "(CC PDF Converter)"
+*Manufacturer: "Flexible Software Solutions S.L."
+*ModelName: "flexVDI Printer"
+*ShortNickName: "flexVDI"
+*NickName: "flexVDI"
+*PCFileName: "flexvdips.ppd"
+*Product: "flexVDI Printer"
 *PSVersion: "(3010) 815"
 
-*% *DefaultImageableArea:
-*% *DefaultPageRegion:
-*% *PageRegion:
-*% *ImageableArea:
-*% *DefaultPageSize:
-*% *PageSize:
-*% *DefaultPaperDimension:
-*% *PaperDimension:
+*% This file was adapted by Flexible Software Solutions for flexVDI
 
-*% == Above are required
-
-*% This file was adapted by Cogniview for CC PDF Converter
-
-*Copyright: "2004-2006 Ghostgum Software Pty Ltd"
+*Copyright: "2014-2015 Flexible Software Solutions S.L."
 *%
-*%  Copyright (C) 2004-2006, Ghostgum Software Pty Ltd.  All rights reserved.
+*%  Copyright (C) 2014-2015 Flexible Software Solutions S.L. All rights reserved.
 *%
 *%  Permission is hereby granted, free of charge, to any person obtaining
 *%  a copy of this file ("Software"), to deal in the Software without
@@ -45,7 +35,7 @@
 *%  The above copyright notice and this permission notice shall be included
 *%  in all copies or substantial portions of the Software.
 
-*% There is an accompanying file ghostpdf.inf that is used to 
+*% There is an accompanying file ghostpdf.inf that is used to
 *% install this PPD on Windows 2k/XP.
 *% This PPD includes configuration items specific to generating
 *% PDF files with ghostscript.
@@ -107,7 +97,7 @@
   3 -2 roll exch 3 2 roll
   [ {}
     {90 rotate 0 currentpagedevice /PageSize get 0 get neg translate}
-    {180 rotate currentpagedevice /PageSize get 
+    {180 rotate currentpagedevice /PageSize get
      dup 0 get neg exch 1 get neg translate}
     {270 rotate currentpagedevice /PageSize get 1 get neg 0 translate}
   ] exch get
@@ -124,7 +114,7 @@
 *LandscapeOrientation: Any
 
 *OpenUI *PageSize: PickOne
-*DefaultPageSize: Letter
+*DefaultPageSize: A4
 *OrderDependency: 20 AnySetup *PageSize
 *PageSize Tabloid: "<< /PageSize [792 1224] /ImagingBBox null >> setpagedevice"
 *PageSize Ledger: "<< /PageSize [1224 792] /ImagingBBox null >> setpagedevice"
@@ -177,7 +167,7 @@
 *CloseUI: *PageSize
 
 *OpenUI *PageRegion: PickOne
-*DefaultPageRegion: Letter
+*DefaultPageRegion: A4
 *OrderDependency: 20 AnySetup *PageRegion
 *PageRegion Tabloid: "<< /PageSize [792 1224] /ImagingBBox null >> setpagedevice"
 *PageRegion Ledger: "<< /PageSize [1224 792] /ImagingBBox null >> setpagedevice"
@@ -229,7 +219,7 @@
 *PageRegion PA4: "<< /PageSize [595 792] /ImagingBBox null >> setpagedevice"
 *CloseUI: *PageRegion
 
-*DefaultImageableArea: Letter
+*DefaultImageableArea: A4
 *ImageableArea Tabloid: "0 0 792 1224"
 *ImageableArea Ledger: "0 0 1224 792"
 *ImageableArea Legal: "0 0 612 1008"
@@ -279,7 +269,7 @@
 *ImageableArea FLSE: "0 0 612 936"
 *ImageableArea PA4: "0 0 595 792"
 
-*DefaultPaperDimension: Letter
+*DefaultPaperDimension: A4
 *PaperDimension Tabloid: "792 1224"
 *PaperDimension Ledger: "1224 792"
 *PaperDimension Legal: "612 1008"

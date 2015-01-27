@@ -2,7 +2,6 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
@@ -62,9 +61,7 @@ int flexvdiSpiceData(void * data, size_t size) {
     static FlexVDIMessageHeader curHeader;
     static uint8_t * buffer, * bufpos, * bufend;
 
-    printf("Received %d bytes of data\n", size);
     void * end = data + size;
-
     while (data < end) {
         switch (state) {
             case WAIT_NEW_MESSAGE:
