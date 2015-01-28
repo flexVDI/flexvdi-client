@@ -5,11 +5,15 @@ set(DEF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/redmon.def")
 add_library(redmon SHARED redmon.c portmon.c redmon.rc)
 target_link_libraries(redmon psapi userenv)
 set_target_properties(redmon PROPERTIES LINK_FLAGS
-    "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static-libgcc -static-libstdc++"
+    "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static"
     PREFIX "")
+
+# The following targets must be 32-bit
+if (WIN_BITS EQUAL 32)
 add_library(setup SHARED setup.cpp)
 set_target_properties(setup PROPERTIES
-    LINK_FLAGS "-static-libgcc -static-libstdc++"
+    LINK_FLAGS "-static"
     PREFIX "")
 add_executable(filter WIN32 filter.cpp $<TARGET_OBJECTS:util_o>)
-target_link_libraries(filter gsdll${WIN_BITS})
+target_link_libraries(filter gsdll32)
+endif (WIN_BITS EQUAL 32)
