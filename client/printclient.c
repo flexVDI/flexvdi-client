@@ -25,7 +25,12 @@ void initPrintClient() {
 
 static void openWithApp(const char * file) {
     char command[1024];
+#ifdef WIN32
+    snprintf(command, 1024, "start %s", file);
+#else
     snprintf(command, 1024, "xdg-open %s", file);
+    // TODO: on Mac OS X, the command is 'open'
+#endif
     system(command);
 }
 
