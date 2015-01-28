@@ -6,15 +6,12 @@
 !include Sections.nsh
 !include WinVer.nsh
 !include x64.nsh
+!include cred-connectors/credential-provider/setup.nsi
+!include cred-connectors/gina/setup.nsi
+!include print/windriver/setup.nsi
 
 !define APPNAME "flexVDI guest agent"
-!define WINLOGON_KEY "SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
-!define REDMON_DLL "flexVDIprint_redmon.dll"
-!define REDMON_NAME "flexVDI Redirection Port"
-!define PORT_NAME "flexVDIprint"
-!define PORT_CONFIG_KEY "SYSTEM\CurrentControlSet\Control\Print\Monitors\${REDMON_NAME}\Ports\${PORT_NAME}"
-!define PDF_PRINTER_NAME "flexVDI PDF Printer"
 
 Name "${APPNAME} v@FLEXVDI_VERSION@"
 OutFile "flexVDI_setup@WIN_BITS@_@FLEXVDI_VERSION@.exe"
@@ -24,7 +21,7 @@ RequestExecutionLevel admin
 ShowInstDetails show
 ShowUninstDetails show
 SetOverwrite try
-SetPluginUnload  alwaysoff
+SetPluginUnload alwaysoff
 
 ;Version Information
 VIProductVersion "@FLEXVDI_VERSION@.0"
@@ -38,7 +35,6 @@ VIAddVersionKey "ProductVersion" "@FLEXVDI_VERSION@"
 
 Section "flexVDI guest agent" install_section_id
     ${DisableX64FSRedirection}
-    ; Set output path to the installation directory.
     SetOutPath $INSTDIR
     SetAutoClose true
 
@@ -80,51 +76,20 @@ Section "flexVDI guest agent" install_section_id
 
     ; SSO
     ${If} ${IsWinXP}
-        File "cred-connectors/gina/flexVDIGina.dll"
-        Rename /REBOOTOK $INSTDIR\flexVDIGina.dll $SYSDIR\flexVDIGina.dll
-        ReadRegStr $0 HKLM "${UNINSTALL_KEY}" "OldGinaDLL"
-        IfErrors 0 oldgina_present
-            ReadRegStr $0 HKLM "${WINLOGON_KEY}" "GinaDLL"
-            WriteRegStr HKLM "${UNINSTALL_KEY}" "OldGinaDLL" "$0"
-        oldgina_present:
-        WriteRegStr HKLM "${WINLOGON_KEY}" "GinaDLL" "flexVDIGina.dll"
+        !insertmacro installGina
     ${Else}
-        DetailPrint "Installed credential provider"
+        !insertmacro installCredProvider
     ${EndIf}
 
     ; Print driver
-    SetOutPath "$INSTDIR\printdriver"
-    File "@PROJECT_SOURCE_DIR@/print/windriver/flexvdips.*"
-    File "@PROJECT_SOURCE_DIR@/print/windriver/gs9.15/gsdll@WIN_BITS@.dll"
-    File "print/windriver/filter.exe"
-    SetOutPath "$INSTDIR"
-    File "print/windriver/redmon.dll" "print/windriver/setup.dll"
-    Rename /REBOOTOK "$INSTDIR\redmon.dll" "$SYSDIR\${REDMON_DLL}"
-    System::Call 'setup::installRedMon(w "${REDMON_NAME}", w "${REDMON_DLL}", w "${PORT_NAME}", w .r1) i .r0'
-    ${If} $0 = 0
-        DetailPrint "Print monitor installed"
-        WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Command" '$INSTDIR\printdriver\filter.exe'
-        WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Arguments" ''
-        WriteRegDWORD HKLM "${PORT_CONFIG_KEY}" "RunUser" 0
-        DetailPrint "Installing flexVDI printer"
-        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "${PDF_PRINTER_NAME}" /q'
-        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /if /f "$INSTDIR\printdriver\flexvdips.inf" /m "flexVDI Printer" /r "${PORT_NAME}"'
-        Pop $0
-        ${If} $0 = 0
-            DetailPrint "flexVDI printer successfully installed"
-        ${Else}
-            MessageBox MB_OK|MB_ICONEXCLAMATION "flexVDI printer NOT installed (error code $0)."
-        ${EndIf}
-        System::Call 'setup::renamePrinter(w "flexVDI Printer", w "${PDF_PRINTER_NAME}", w .r1) i .r0'
-    ${Else}
-        MessageBox MB_OK|MB_ICONEXCLAMATION "Print monitor installation failed with code $0: $1"
-    ${EndIf}
+    !insertmacro installPrintDriver
 
     ; Compute installed size
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
     IntFmt $0 "0x%08X" $0
     WriteRegDWORD HKLM "${UNINSTALL_KEY}" "EstimatedSize" "$0"
 SectionEnd
+
 
 Function .onInit
     SectionSetFlags ${install_section_id} ${SF_SELECTED}
@@ -139,25 +104,13 @@ Section "Uninstall"
     SetAutoClose true
     ${DisableX64FSRedirection}
 
-    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "${PDF_PRINTER_NAME}" /q'
-    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dd /m "flexVDI Printer" /q'
-    SetOutPath "$INSTDIR"
-    System::Call 'setup::uninstallRedMon(w "${REDMON_NAME}", w .r1) i .r0 u'
-    ${If} $0 = 0
-        Delete /REBOOTOK "$SYSDIR\redmon.dll"
-    ${Else}
-        DetailPrint "ERROR Printer monitor could not be removed: $1"
-    ${EndIf}
-    SetPluginUnload manual
-    System::Free 0
-
     ${If} ${IsWinXP}
-        ReadRegStr $0 HKLM "${UNINSTALL_KEY}" "OldGinaDLL"
-        WriteRegStr HKLM "${WINLOGON_KEY}" "GinaDLL" "$0"
-        Delete /REBOOTOK $SYSDIR\flexVDIGina.dll
+        !insertmacro uninstallGina
     ${Else}
-        DetailPrint "Removed credential provider"
+        !insertmacro uninstallCredProvider
     ${EndIf}
+
+    !insertmacro uninstallPrintDriver
 
     DeleteRegKey HKLM "${UNINSTALL_KEY}"
     nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'

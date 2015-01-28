@@ -2,6 +2,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/winddk)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/gs9.15)
 add_definitions(-DNT50)
 set(DEF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/redmon.def")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/setup.nsi"
+               "${CMAKE_CURRENT_BINARY_DIR}/setup.nsi" @ONLY)
 add_library(redmon SHARED redmon.c portmon.c redmon.rc)
 target_link_libraries(redmon psapi userenv)
 set_target_properties(redmon PROPERTIES LINK_FLAGS
