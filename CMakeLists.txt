@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
 
 # Project information
-project(flexvm_agent)
-set(FLEXVDI_VERSION 2.1.1)
+project(flexvdi-guest-agent)
+set(FLEXVDI_VERSION_MAJOR 2)
+set(FLEXVDI_VERSION_MINOR 1)
+set(FLEXVDI_VERSION_PATCH 1)
+set(FLEXVDI_VERSION ${FLEXVDI_VERSION_MAJOR}.${FLEXVDI_VERSION_MINOR}.${FLEXVDI_VERSION_PATCH})
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
@@ -61,3 +64,23 @@ add_subdirectory(cred-connectors)
 add_subdirectory(print)
 add_subdirectory(client)
 add_subdirectory(test)
+
+# CPack commands
+set(CPACK_PACKAGE_FILE_NAME "flexvdi-guest-agent-${FLEXVDI_VERSION}-${CMAKE_SYSTEM_NAME}")
+set(CPACK_SOURCE_GENERATOR "TBZ2")
+execute_process(COMMAND git status -unormal --porcelain --ignored
+                COMMAND awk "/^[?!][?!]/ {printf \";/%s\", substr($0, 4)}"
+                WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+                OUTPUT_VARIABLE GIT_UNTRACKED)
+set(CPACK_SOURCE_IGNORE_FILES "/.git/;.*swp;.*~;/.gitignore${GIT_UNTRACKED}")
+set(CPACK_PACKAGE_VENDOR "Flexible Software Solutions")
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+set(CPACK_PACKAGE_VERSION_MAJOR ${FLEXVDI_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${FLEXVDI_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${FLEXVDI_VERSION_PATCH})
+if (WIN32)
+else (WIN32)
+    set(CPACK_GENERATOR "STGZ")
+endif (WIN32)
+
+include (CPack)
