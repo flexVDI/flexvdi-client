@@ -66,7 +66,7 @@ add_subdirectory(client)
 add_subdirectory(test)
 
 # CPack commands
-set(CPACK_PACKAGE_FILE_NAME "flexvdi-guest-agent-${FLEXVDI_VERSION}-${CMAKE_SYSTEM_NAME}")
+set(CPACK_PACKAGE_FILE_NAME "flexvdi-guest-tools-${FLEXVDI_VERSION}-${CMAKE_SYSTEM_NAME}")
 set(CPACK_SOURCE_GENERATOR "TBZ2")
 execute_process(COMMAND git status -unormal --porcelain --ignored
                 COMMAND awk "/^[?!][?!]/ {printf \";/%s\", substr($0, 4)}"
@@ -74,13 +74,18 @@ execute_process(COMMAND git status -unormal --porcelain --ignored
                 OUTPUT_VARIABLE GIT_UNTRACKED)
 set(CPACK_SOURCE_IGNORE_FILES "/.git/;.*swp;.*~;/.gitignore${GIT_UNTRACKED}")
 set(CPACK_PACKAGE_VENDOR "Flexible Software Solutions")
-set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+# set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_VERSION_MAJOR ${FLEXVDI_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${FLEXVDI_VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${FLEXVDI_VERSION_PATCH})
 if (WIN32)
+    set(CPACK_GENERATOR "NSIS")
+    set(CPACK_NSIS_WORKING_DIR "${PROJECT_BINARY_DIR}")
+    set(CPACK_NSIS_WIN_BITS "${WIN_BITS}")
+    set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}-${WIN_ARCH}")
 else (WIN32)
     set(CPACK_GENERATOR "STGZ")
+    set(CPACK_PACKAGING_INSTALL_PREFIX /usr)
 endif (WIN32)
 
 include (CPack)

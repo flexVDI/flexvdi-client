@@ -1,0 +1,72 @@
+;
+; Copyright Flexible Software Solutions S.L. 2014
+;
+
+!include FileFunc.nsh
+!include Sections.nsh
+!include WinVer.nsh
+!include x64.nsh
+
+!define APPNAME "flexVDI guest agent"
+!define APPVERSION @CPACK_PACKAGE_VERSION_MAJOR@.@CPACK_PACKAGE_VERSION_MINOR@.@CPACK_PACKAGE_VERSION_PATCH@
+!cd @CPACK_NSIS_WORKING_DIR@
+!include setup.nsi
+
+Name "${APPNAME} v${APPVERSION}"
+OutFile "@CPACK_TOPLEVEL_DIRECTORY@/@CPACK_OUTPUT_FILE_NAME@"
+;OutFile "flexVDI_setup@CPACK_NSIS_WIN_BITS@_${APPVERSION}.exe"
+InstallDir $PROGRAMFILES@CPACK_NSIS_WIN_BITS@\flexVDI
+InstallDirRegKey HKLM "Software\${APPNAME}" "Install_Dir"
+RequestExecutionLevel admin
+ShowInstDetails show
+ShowUninstDetails show
+SetOverwrite try
+SetPluginUnload alwaysoff
+
+;Version Information
+VIProductVersion "${APPVERSION}.0"
+VIAddVersionKey "ProductName" "${APPNAME}"
+VIAddVersionKey "CompanyName" "Flexible Software Solutions S.L."
+VIAddVersionKey "LegalCopyright" "Copyright Flexible Software Solutions S.L. 2014"
+VIAddVersionKey "FileDescription" "${APPNAME}"
+VIAddVersionKey "FileVersion" "${APPVERSION}"
+VIAddVersionKey "ProductVersion" "${APPVERSION}"
+
+
+Section "flexVDI guest agent" install_section_id
+    ${DisableX64FSRedirection}
+    SetOutPath $INSTDIR
+    SetAutoClose true
+
+    ; Check architecture
+    ${If} ${RunningX64}
+        ${If} @CPACK_NSIS_WIN_BITS@ = 32
+            MessageBox MB_OK "Use the 64bit installer on x68_64 architecture"
+            Quit
+        ${EndIf}
+    ${Else}
+        ${If} @CPACK_NSIS_WIN_BITS@ = 64
+            MessageBox MB_OK "Use the 32bit installer on i686 architecture"
+            Quit
+        ${EndIf}
+    ${EndIf}
+
+    !insertmacro installMacro
+SectionEnd
+
+
+Function .onInit
+    SectionSetFlags ${install_section_id} ${SF_SELECTED}
+    ${IfNot} ${AtLeastWinXP}
+        MessageBox MB_OK "XP and above required"
+        Quit
+    ${EndIf}
+FunctionEnd
+
+
+Section "Uninstall"
+    SetAutoClose true
+    ${DisableX64FSRedirection}
+
+    !insertmacro uninstallMacro
+SectionEnd
