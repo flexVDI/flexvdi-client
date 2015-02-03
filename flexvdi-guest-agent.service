@@ -1,0 +1,8 @@
+[Unit]
+Description=flexVDI Guest Agent
+
+[Service]
+ExecStart=/usr/local/bin/flexvdi-guest-agent
+
+[Install]
+WantedBy=multi-user.target

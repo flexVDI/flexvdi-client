@@ -56,6 +56,7 @@ else (WIN32)
     add_executable(flexvdi-guest-agent main.cpp
                    $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
     install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
+    install(FILES "${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.service" DESTINATION share/flexvdi-guest-agent)
 endif (WIN32)
 target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}" pthread)
 
@@ -66,7 +67,7 @@ add_subdirectory(client)
 add_subdirectory(test)
 
 # CPack commands
-set(CPACK_PACKAGE_FILE_NAME "flexvdi-guest-tools-${FLEXVDI_VERSION}-${CMAKE_SYSTEM_NAME}")
+set(CPACK_PACKAGE_FILE_NAME "flexvdi-guest-tools-${FLEXVDI_VERSION}")
 set(CPACK_SOURCE_GENERATOR "TBZ2")
 execute_process(COMMAND git status -unormal --porcelain --ignored
                 COMMAND awk "/^[?!][?!]/ {printf \";/%s\", substr($0, 4)}"
@@ -85,7 +86,6 @@ if (WIN32)
     set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}-${WIN_ARCH}")
 else (WIN32)
     set(CPACK_GENERATOR "STGZ")
-    set(CPACK_PACKAGING_INSTALL_PREFIX /usr)
 endif (WIN32)
 
 include (CPack)
