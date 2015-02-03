@@ -41,7 +41,7 @@ void CredentialsThread::readCredentials() {
                  [](uint8_t * p) { delete (FlexVDIMessageHeader *)p; });
     asio::async_write(pipe, asio::buffer(buffer.get(), sizeof(FlexVDIMessageHeader)),
                       std::bind(&CredentialsThread::requestSent, this, ph::_1, ph::_2));
-    io.run();
+    Log(L_DEBUG) << "Finished, handled " << io.run() << " events";
     io.reset();
     pipe.close();
     if (lastError)
@@ -99,6 +99,7 @@ void CredentialsThread::stop() {
         try {
             io.stop();
             thread.join();
+            io.reset();
             Log(L_DEBUG) << "Stopped credentials thread";
         } catch (std::exception & e) {
             Log(L_ERROR) << "Exception caught: " << e.what();
