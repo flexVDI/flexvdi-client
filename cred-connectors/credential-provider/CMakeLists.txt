@@ -9,7 +9,7 @@ set(FLEXVDI_GUID_PARAMS "0x858F113B,0x553C,0x5FD6,0xDE,0xDB,0xA8,0x90,0x65,0xFB,
 # message("Generated GUID: ${FLEXVDI_GUID}")
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/guid.h.in" "${CMAKE_CURRENT_BINARY_DIR}/guid.h")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/setup.nsi"
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/setup.nsi.in"
                "${CMAKE_CURRENT_BINARY_DIR}/setup.nsi" @ONLY)
 
 set(DEF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/FlexVDICredentialProvider.def")
