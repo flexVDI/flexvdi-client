@@ -21,7 +21,11 @@
 
     ; Agent
     nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
-    File "flexvdi-guest-agent.exe"
+    ${If} ${RunningX64}
+        File "../win64/flexvdi-guest-agent.exe"
+    ${Else}
+        File "../win32/flexvdi-guest-agent.exe"
+    ${EndIf}
     nsExec::ExecToStack '"$INSTDIR\flexvdi-guest-agent.exe" install'
     Pop $0
     ${If} $0 = 0

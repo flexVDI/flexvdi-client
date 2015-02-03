@@ -10,8 +10,13 @@
     File "@PROJECT_SOURCE_DIR@/print/windriver/gs9.15/gsdll32.dll"
     File "../win32/print/windriver/filter.exe"
     SetOutPath "$INSTDIR"
-    File "print/windriver/redmon.dll" "../win32/print/windriver/setup.dll"
+    ${If} ${RunningX64}
+        File "../win64/print/windriver/redmon.dll"
+    ${Else}
+        File "../win32/print/windriver/redmon.dll"
+    ${EndIf}
     Rename /REBOOTOK "$INSTDIR\redmon.dll" "$SYSDIR\${REDMON_DLL}"
+    File "../win32/print/windriver/setup.dll"
     System::Call 'setup::installRedMon(w "${REDMON_NAME}", w "${REDMON_DLL}", w "${PORT_NAME}", w .r1) i .r0'
     ${If} $0 = 0
         DetailPrint "Print monitor installed"

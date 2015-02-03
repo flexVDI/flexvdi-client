@@ -14,8 +14,6 @@
 
 Name "${APPNAME} v${APPVERSION}"
 OutFile "@CPACK_TOPLEVEL_DIRECTORY@/@CPACK_OUTPUT_FILE_NAME@"
-;OutFile "flexVDI_setup@CPACK_NSIS_WIN_BITS@_${APPVERSION}.exe"
-InstallDir $PROGRAMFILES@CPACK_NSIS_WIN_BITS@\flexVDI
 InstallDirRegKey HKLM "Software\${APPNAME}" "Install_Dir"
 RequestExecutionLevel admin
 ShowInstDetails show
@@ -38,19 +36,6 @@ Section "flexVDI guest agent" install_section_id
     SetOutPath $INSTDIR
     SetAutoClose true
 
-    ; Check architecture
-    ${If} ${RunningX64}
-        ${If} @CPACK_NSIS_WIN_BITS@ = 32
-            MessageBox MB_OK "Use the 64bit installer on x68_64 architecture"
-            Quit
-        ${EndIf}
-    ${Else}
-        ${If} @CPACK_NSIS_WIN_BITS@ = 64
-            MessageBox MB_OK "Use the 32bit installer on i686 architecture"
-            Quit
-        ${EndIf}
-    ${EndIf}
-
     !insertmacro installMacro
 SectionEnd
 
@@ -60,6 +45,11 @@ Function .onInit
     ${IfNot} ${AtLeastWinXP}
         MessageBox MB_OK "XP and above required"
         Quit
+    ${EndIf}
+    ${If} ${RunningX64}
+        StrCpy $INSTDIR "$PROGRAMFILES64\flexVDI"
+    ${Else}
+        StrCpy $INSTDIR "$PROGRAMFILES32\flexVDI"
     ${EndIf}
 FunctionEnd
 

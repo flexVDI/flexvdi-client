@@ -1,7 +1,11 @@
 !define WINLOGON_KEY "SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 
 !macro installGina
-    File "cred-connectors/gina/flexVDIGina.dll"
+    ${If} ${RunningX64}
+        File "../win64/cred-connectors/gina/flexVDIGina.dll"
+    ${Else}
+        File "../win32/cred-connectors/gina/flexVDIGina.dll"
+    ${EndIf}
     Rename /REBOOTOK $INSTDIR\flexVDIGina.dll $SYSDIR\flexVDIGina.dll
     ReadRegStr $0 HKLM "${UNINSTALL_KEY}" "OldGinaDLL"
     IfErrors 0 oldgina_present
