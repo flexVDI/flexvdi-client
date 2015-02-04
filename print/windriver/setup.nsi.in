@@ -6,7 +6,8 @@
 
 !macro installPrintDriver
     SetOutPath "$INSTDIR\printdriver"
-    File "@PROJECT_SOURCE_DIR@/print/windriver/flexvdips.*"
+    File "@PROJECT_SOURCE_DIR@/print/windriver/flexvdips.inf"
+    File "@PROJECT_SOURCE_DIR@/print/flexvdips.ppd"
     File "@PROJECT_SOURCE_DIR@/print/windriver/gs9.15/gsdll32.dll"
     File "../win32/print/windriver/filter.exe"
     SetOutPath "$INSTDIR"
