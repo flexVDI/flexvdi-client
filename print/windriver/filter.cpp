@@ -66,10 +66,10 @@ static void notifyJob(const string fileName) {
     if (!::WriteFile(pipe, buffer.get(), bufSize, &bytesWritten, NULL)
         || bytesWritten < bufSize) {
         Log(L_ERROR) << "Error notifying print job" << lastSystemError("").what();
+        return;
     }
-    ReadFile(pipe, buffer.get(), 1, &bytesWritten, NULL);
     // When the connection is closed, the pdf file can be removed
-    DeleteFileA(fileName.c_str());
+    ReadFile(pipe, buffer.get(), 1, &bytesWritten, NULL);
 }
 
 
@@ -134,6 +134,7 @@ int main(int argc, char * argv[]) {
     gsapi_delete_instance(gsInstance);
 
     notifyJob(fileName);
+    DeleteFileA(fileName.c_str());
 
     return result;
 }
