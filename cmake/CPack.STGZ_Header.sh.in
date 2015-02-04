@@ -21,7 +21,8 @@ cpack_echo_exit()
 # Display version
 cpack_version()
 {
-  echo "@CPACK_PACKAGE_NAME@ Installer Version: @CPACK_PACKAGE_VERSION@, Copyright (c) @CPACK_PACKAGE_VENDOR@"
+  echo "@CPACK_PACKAGE_NAME@ Installer Version: @CPACK_PACKAGE_VERSION@" \
+    ", Copyright (c) @CPACK_PACKAGE_VENDOR@"
 }
 
 # Helper function to fix windows paths.
@@ -62,6 +63,11 @@ done
 use_new_tail_syntax="-n"
 tail $use_new_tail_syntax +1 "$0" > /dev/null 2> /dev/null || use_new_tail_syntax=""
 
+get_tar()
+{
+    tail $use_new_tail_syntax +###CPACK_HEADER_LENGTH### "$0" | gunzip
+}
+
 cpack_version
 echo "This is a self-extracting archive."
 toplevel="/usr/local"
@@ -99,7 +105,8 @@ ____cpack__here_doc____
     echo "Extracting, please wait..."
     echo ""
 
-    tail $use_new_tail_syntax +###CPACK_HEADER_LENGTH### "$0" | gunzip | (cd "${toplevel}" && tar xf -) || cpack_echo_exit "Problem unpacking the @CPACK_PACKAGE_FILE_NAME@"
+    get_tar | (cd "${toplevel}" && tar xf - --no-same-owner) \
+        || cpack_echo_exit "Problem unpacking the @CPACK_PACKAGE_FILE_NAME@"
 
     echo "Unpacking finished successfully"
 
@@ -114,12 +121,22 @@ ____cpack__here_doc____
         systemctl daemon-reload
         systemctl start ${SERVICE}
     fi
+
+    ln -s ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint /usr/lib/cups/backend
+    lpadmin -p flexvdiprinter -D "flexVDI PDF Printer" -E -v flexvdiprint: \
+        -P ${toplevel}/share/flexvdi-guest-agent/flexvdips.ppd
+    lpadmin -d flexvdiprinter
+
 else
     # Pre-uninstall
     systemctl stop flexvdi-guest-agent.service > /dev/null 2> /dev/null
     systemctl disable flexvdi-guest-agent.service > /dev/null 2> /dev/null
 
-    tail $use_new_tail_syntax +###CPACK_HEADER_LENGTH### "$0" | gunzip | tar tf - | (cd "${toplevel}" && xargs -d '\n' rm -f) || cpack_echo_exit "Problem uninstalling @CPACK_PACKAGE_FILE_NAME@"
+    lpadmin -x flexvdiprinter
+    rm -f /usr/lib/cups/backend/flexvdiprint
+
+    get_tar | tar tf - | (cd "${toplevel}" && xargs -d '\n' rm -f) \
+        || cpack_echo_exit "Problem uninstalling @CPACK_PACKAGE_FILE_NAME@"
 
     echo "Uninstalling finished successfully"
 fi
