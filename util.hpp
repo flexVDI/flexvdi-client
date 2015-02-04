@@ -39,8 +39,7 @@ class Log {
 public:
     Log(LogLevel level) : enabled(level >= minLevel) {
         if (enabled) {
-            logDate();
-            *out << " [" << levelStr[level] << "] ";
+            prefix(*this, level);
         }
     }
     virtual ~Log() {
@@ -68,11 +67,18 @@ public:
         return operator<<(const_cast<const wchar_t *>(par));
     }
 
+    struct date {};
+    Log & operator<<(const date & par) {
+        logDate();
+        return *this;
+    }
+
     static void setLogOstream(std::ostream * logout) { out = logout; }
     static const char * getDefaultLogPath();
+    template <typename P> static void setPrefix(P p) { prefix = p; }
 
 private:
-    bool enabled;
+    const bool enabled;
     #ifdef NDEBUG
     static const LogLevel minLevel = L_INFO;
     #else
@@ -80,7 +86,11 @@ private:
     #endif
     static const char * levelStr[L_MAX_LEVEL];
     static std::ostream * out;
+    static std::function<void(Log &, LogLevel)> prefix;
     static void logDate();
+    static void defaultPrefix(Log & log, LogLevel level) {
+        log << date() << " [" << levelStr[level] << "] ";
+    };
 };
 
 
