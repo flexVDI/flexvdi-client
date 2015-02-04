@@ -26,7 +26,7 @@ bool CredentialsThread::openPipe() {
 #else
     sys::error_code error;
     // TODO: configurable
-    const char * pipeName = "/tmp/flexvdi_pipe";
+    const char * pipeName = "/var/run/flexvdi_pipe";
     asio::local::stream_protocol::endpoint ep(pipeName);
     return_if(pipe.connect(ep, error), "Error opening pipe: " << error.message(), false);
 #endif

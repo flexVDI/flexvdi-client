@@ -72,7 +72,7 @@ struct LocalPipe::Listener {
     void open(const std::string & endpointName) {
         std::string name = endpointName;
         if (name[0] != '/')
-            name = "/tmp/" + name;
+            name = "/var/run/" + name;
         ::unlink(name.c_str());
         // TODO: protect the access to the local socket
         asio::local::stream_protocol::endpoint ep(name);

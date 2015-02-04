@@ -18,8 +18,7 @@ namespace asio = boost::asio;
 
 static int notifyJob(const string fileName) {
     asio::io_service io;
-    // TODO: Configurable
-    asio::local::stream_protocol::endpoint ep("/tmp/flexvdi_pipe");
+    asio::local::stream_protocol::endpoint ep("/var/run/flexvdi_pipe");
     asio::local::stream_protocol::socket pipe(io);
     boost::system::error_code error;
     return_if(pipe.connect(ep, error), "Failed opening pipe", 1);
