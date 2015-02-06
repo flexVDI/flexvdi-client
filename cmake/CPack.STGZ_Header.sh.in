@@ -113,19 +113,22 @@ ____cpack__here_doc____
     # Post-install
     if [ -d /etc/systemd/system ]; then
         SERVICE=flexvdi-guest-agent.service
-        SERVICE_DIR="${toplevel}/share/flexvdi-guest-agent"
+        SERVICE_DIR="${toplevel}/lib/systemd/system"
         systemctl stop ${SERVICE} > /dev/null 2> /dev/null
         systemctl disable ${SERVICE} > /dev/null 2> /dev/null
         sed -i "s;/usr/local;${toplevel};" "${SERVICE_DIR}/${SERVICE}"
-        ln -s "${SERVICE_DIR}/${SERVICE}" /etc/systemd/system
-        systemctl daemon-reload
+        systemctl enable ${SERVICE}
+#         systemctl daemon-reload
         systemctl start ${SERVICE}
     fi
 
-    ln -s ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint /usr/lib/cups/backend
-    lpadmin -p flexvdiprinter -D "flexVDI PDF Printer" -E -v flexvdiprint: \
-        -P ${toplevel}/share/flexvdi-guest-agent/flexvdips.ppd
-    lpadmin -d flexvdiprinter
+    if which lpadmin > /dev/null 2> /dev/null; then
+        lpadmin -x flexvdiprinter > /dev/null 2> /dev/null
+        ln -s ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint /usr/lib/cups/backend
+        lpadmin -p flexvdiprinter -D "flexVDI PDF Printer" -E -v flexvdiprint: \
+            -P ${toplevel}/share/flexvdi-guest-agent/flexvdips.ppd
+        lpadmin -d flexvdiprinter
+    fi
 
 else
     # Pre-uninstall

@@ -52,12 +52,14 @@ if (WIN32)
     add_executable(flexvdi-guest-agent WindowsService.cpp
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc"
                    $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
-    configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in" "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
+    configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
+                   "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
 else (WIN32)
     add_executable(flexvdi-guest-agent main.cpp
                    $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
     install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
-    install(FILES "${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.service" DESTINATION share/flexvdi-guest-agent)
+    install(FILES "${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.service"
+            DESTINATION lib/systemd/system)
 endif (WIN32)
 target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}")
 
