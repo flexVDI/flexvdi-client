@@ -14,17 +14,6 @@ using namespace flexvm;
 using namespace std;
 
 
-static int GSDLLCALL gsInputCB(void *instance, char *buf, int len) {
-    // Read from cin len chars or until a newline
-    int count = 0;
-    while (cin && count < len) {
-        cin.get(buf[count]);
-        if (buf[count++] == '\n') break;
-    }
-    return count;
-}
-
-
 static int GSDLLCALL gsOutputCB(void *instance, const char *str, int len) {
     Log(L_DEBUG) << string(str, len);
     return len;
@@ -121,7 +110,7 @@ int main(int argc, char * argv[]) {
     }
     Log(L_DEBUG) << "Instance created";
 
-    if (gsapi_set_stdio(gsInstance, gsInputCB, gsOutputCB, gsErrorCB) < 0) {
+    if (gsapi_set_stdio(gsInstance, NULL, gsOutputCB, gsErrorCB) < 0) {
         Log(L_ERROR) << "Could not set GhostScript callbacks.";
         gsapi_delete_instance(gsInstance);
         return 2;
