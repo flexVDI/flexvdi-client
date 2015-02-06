@@ -49,19 +49,18 @@ struct CredentialsListener : public CredentialsThread::Listener {
 
 
 int main(int argc, char * argv[]) {
-    if (argc != 3) {
-        clog << "Use: send_credentials port pipe" << endl;
+    if (argc != 2) {
+        clog << "Use: send_credentials socket|pipe" << endl;
         return 1;
     }
     asio::io_service io;
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS)
-    asio::posix::stream_descriptor port(io, ::open(argv[1], O_RDWR));
-    asio::local::stream_protocol::endpoint ep(argv[2]);
+    asio::local::stream_protocol::endpoint ep(argv[1]);
     asio::local::stream_protocol::socket pipe(io);
     pipe.connect(ep);
 #else
     HANDLE h;
-    h = ::CreateFileA(argv[2], GENERIC_READ | GENERIC_WRITE, 0, NULL,
+    h = ::CreateFileA(argv[1], GENERIC_READ | GENERIC_WRITE, 0, NULL,
                       OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     asio::windows::stream_handle pipe(io, h);
 #endif
