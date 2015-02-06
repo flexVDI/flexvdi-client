@@ -26,7 +26,8 @@ private:
         uint32_t id;
         Connection::Ptr src;
 
-        Job(const std::string & filename, uint32_t id) : id(id) {
+        Job(const Connection::Ptr & src, const std::string & filename, uint32_t id)
+        : id(id), src(src) {
             pdfFile.open(filename.c_str(), std::ios::binary);
         }
         uint32_t getFileLength() {

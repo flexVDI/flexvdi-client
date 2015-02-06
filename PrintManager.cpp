@@ -40,14 +40,13 @@ void PrintManager::handle(const Connection::Ptr & src, const FlexVDIPrintJobMsgP
         Log(L_ERROR) << "No filename supplied for this print job";
     } else {
         Log(L_DEBUG) << "Reading file " << filename;
-        jobs.emplace_back(filename, getNewId());
+        jobs.emplace_back(src, filename, getNewId());
         Job & job = jobs.back();
         if (!job.pdfFile) {
             jobs.pop_back();
             Log(L_ERROR) << "Could not open " << filename << lastSystemError("").what();
             return;
         }
-        job.src = src;
         msg->id = job.id;
         msg->dataLength = job.getFileLength();
         Connection::Ptr spiceClient = FlexVDIGuestAgent::singleton().spiceClient();
