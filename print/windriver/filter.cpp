@@ -10,6 +10,7 @@
 #include "iapi.h"
 #include "../../util.hpp"
 #include "../../FlexVDIProto.h"
+#include "../send-job.hpp"
 using namespace flexvm;
 using namespace std;
 
@@ -32,33 +33,6 @@ static string getTempFileName() {
     char tempFilePath[MAX_PATH];
     GetTempFileNameA(tempPath, "fpj", 0, tempFilePath); // fpj = FlexVDI Print Job
     return string(tempFilePath);
-}
-
-
-static void notifyJob(const string fileName) {
-    // TODO: Configurable
-    static const char * pipeName = "\\\\.\\pipe\\flexvdi_pipe";
-    HANDLE pipe = ::CreateFileA(pipeName, GENERIC_READ | GENERIC_WRITE,
-                                0, NULL, OPEN_EXISTING, 0, NULL);
-    return_if(pipe == INVALID_HANDLE_VALUE, "Failed opening pipe", );
-    size_t optionsLength = fileName.length() + 9; // 9 = length of "filename="
-    size_t bufSize = sizeof(FlexVDIMessageHeader) + sizeof(FlexVDIPrintJobMsg) + optionsLength;
-    unique_ptr<uint8_t[]> buffer(new uint8_t[bufSize]);
-    FlexVDIMessageHeader * header = (FlexVDIMessageHeader *)buffer.get();
-    header->type = FLEXVDI_PRINTJOB;
-    header->size = bufSize - sizeof(FlexVDIMessageHeader);
-    FlexVDIPrintJobMsg * msg = (FlexVDIPrintJobMsg *)(header + 1);
-    msg->optionsLength = optionsLength;
-    copy_n("filename=", 9, msg->options);
-    copy_n(fileName.c_str(), fileName.length(), &msg->options[9]);
-    DWORD bytesWritten;
-    if (!::WriteFile(pipe, buffer.get(), bufSize, &bytesWritten, NULL)
-        || bytesWritten < bufSize) {
-        Log(L_ERROR) << "Error notifying print job" << lastSystemError("").what();
-        return;
-    }
-    // When the connection is closed, the pdf file can be removed
-    ReadFile(pipe, buffer.get(), 1, &bytesWritten, NULL);
 }
 
 
@@ -121,9 +95,15 @@ int main(int argc, char * argv[]) {
     int result = gsapi_init_with_args(gsInstance, sizeof(gsArgv)/sizeof(char*), (char**)gsArgv);
     gsapi_exit(gsInstance);
     gsapi_delete_instance(gsInstance);
+    Log(L_DEBUG) << "GS returned " << result;
 
-    notifyJob(fileName);
-    DeleteFileA(fileName.c_str());
+    ifstream pdfFile(fileName.c_str(), ios::binary);
+    if (pdfFile) {
+        Log(L_DEBUG) << "PDF file correctly created, sending to guest agent";
+        result = sendJob(pdfFile) ? 0 : 1;
+        pdfFile.close();
+        DeleteFileA(fileName.c_str());
+    }
 
     return result;
 }

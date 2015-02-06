@@ -14,39 +14,32 @@ namespace flexvm {
 
 class PrintManager : public FlexVDIComponent<PrintManager
 ,FlexVDIPrintJobMsg
+,FlexVDIPrintJobDataMsg
 > {
 public:
     typedef std::shared_ptr<FlexVDIPrintJobMsg> FlexVDIPrintJobMsgPtr;
+    typedef std::shared_ptr<FlexVDIPrintJobDataMsg> FlexVDIPrintJobDataMsgPtr;
 
     void handle(const Connection::Ptr & src, const FlexVDIPrintJobMsgPtr & msg);
+    void handle(const Connection::Ptr & src, const FlexVDIPrintJobDataMsgPtr & msg);
 
 private:
     struct Job {
-        std::ifstream pdfFile;
-        uint32_t id;
         Connection::Ptr src;
+        uint32_t id;
 
-        Job(const Connection::Ptr & src, const std::string & filename, uint32_t id)
-        : id(id), src(src) {
-            pdfFile.open(filename.c_str(), std::ios::binary);
-        }
-        uint32_t getFileLength() {
-            pdfFile.seekg (0, pdfFile.end);
-            uint32_t length = pdfFile.tellg();
-            pdfFile.seekg (0, pdfFile.beg);
-            return length;
-        }
-
-        ~Job() { pdfFile.close(); src->close(); }
+        Job(const Connection::Ptr & src, uint32_t id) : src(src), id(id) {}
+        ~Job() { src->close(); }
     };
 
     std::list<Job> jobs;
 
-    void sendNextBlock(Job & job);
     uint32_t getNewId() const {
         if (jobs.empty()) return 1;
         else return jobs.back().id + 1;
     }
+
+    void closed(const Connection::Ptr & src, const boost::system::error_code & error);
 };
 
 }

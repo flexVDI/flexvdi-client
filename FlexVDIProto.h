@@ -67,7 +67,6 @@ typedef struct FlexVDIEmptyMsg {
 typedef struct FlexVDIPrintJobMsg {
     uint32_t id;
     uint32_t optionsLength;
-    uint32_t dataLength;
     char options[0];
 } FlexVDIPrintJobMsg;
 
@@ -112,7 +111,6 @@ static int marshallFlexVDIPrintJobMsg(uint8_t * data, size_t bytes) {
     FlexVDIPrintJobMsg * msg = (FlexVDIPrintJobMsg *)data;
     BYTESWAP32(msg->id);
     BYTESWAP32(msg->optionsLength);
-    BYTESWAP32(msg->dataLength);
     return bytes >= getPrintJobMsgSize(msg);
 }
 

@@ -118,12 +118,12 @@ ____cpack__here_doc____
         systemctl disable ${SERVICE} > /dev/null 2> /dev/null
         sed -i "s;/usr/local;${toplevel};" "${SERVICE_DIR}/${SERVICE}"
         systemctl enable ${SERVICE}
-#         systemctl daemon-reload
         systemctl start ${SERVICE}
     fi
 
     if which lpadmin > /dev/null 2> /dev/null; then
         lpadmin -x flexvdiprinter > /dev/null 2> /dev/null
+        chmod 700 ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint
         ln -s ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint /usr/lib/cups/backend
         lpadmin -p flexvdiprinter -D "flexVDI PDF Printer" -E -v flexvdiprint: \
             -P ${toplevel}/share/flexvdi-guest-agent/flexvdips.ppd

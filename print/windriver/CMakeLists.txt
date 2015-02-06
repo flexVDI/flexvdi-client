@@ -16,6 +16,6 @@ add_library(setup SHARED setup.cpp)
 set_target_properties(setup PROPERTIES
     LINK_FLAGS "-static"
     PREFIX "")
-add_executable(filter WIN32 filter.cpp $<TARGET_OBJECTS:util_o>)
-target_link_libraries(filter gsdll32)
+add_executable(filter WIN32 filter.cpp ../send-job.cpp $<TARGET_OBJECTS:util_o>)
+target_link_libraries(filter ${Boost_LIBRARIES} gsdll32)
 endif (WIN_BITS EQUAL 32)
