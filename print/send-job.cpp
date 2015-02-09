@@ -54,9 +54,6 @@ static bool sendData(std::istream & pdfFile, Pipe & pipe) {
                   "Error sending print job data", false);
     }
 
-    // Send a last block of 0 bytes to signal the end of the job
-    asio::write(pipe, getPrintJobData(pdfFile));
-
     return true;
 }
 

@@ -43,6 +43,16 @@ void PrintManager::handle(const Connection::Ptr & src,
 
 void PrintManager::closed(const Connection::Ptr & src,
                           const boost::system::error_code & error) {
+    auto job = std::find_if(jobs.begin(), jobs.end(),
+                            [&src](const Job & j) { return src == j.src; });
+    if (job == jobs.end()) {
+        Log(L_WARNING) << "No print job associated with this connection";
+        return;
+    }
     Log(L_DEBUG) << "Finished sending the PDF file, remove the job";
-    jobs.remove_if([&src](const Job & j) { return src == j.src; });
+    // Send a last block of 0 bytes to signal the end of the job
+    auto * msg = new FlexVDIPrintJobDataMsg{job->id, 0};
+    Connection::Ptr client = FlexVDIGuestAgent::singleton().spiceClient();
+    client->send(FLEXVDI_PRINTJOBDATA, SharedConstBuffer(msg));
+    jobs.erase(job);
 }
