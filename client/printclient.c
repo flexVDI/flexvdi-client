@@ -4,7 +4,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <unistd.h>
 #include "printclient.h"
 
@@ -17,11 +19,6 @@ typedef struct PrintJob {
 static GHashTable * printJobs;
 
 
-void initPrintClient() {
-    printJobs = g_hash_table_new_full(g_direct_hash, NULL, NULL, g_free);
-}
-
-
 static void openWithApp(const char * file) {
     char command[1024];
 #ifdef WIN32
@@ -31,6 +28,31 @@ static void openWithApp(const char * file) {
     // TODO: on Mac OS X, the command is 'open'
 #endif
     system(command);
+}
+
+
+static gboolean removeTempFiles(gpointer user_data) {
+    const gchar * tmpDirName = g_get_tmp_dir();
+    GDir * tmpDir = g_dir_open(tmpDirName, 0, NULL);
+    if (tmpDir) {
+        gchar file[1024];
+        const gchar * basename;
+        GStatBuf fileStat;
+        time_t now = time(NULL);
+        GRegex * regex = g_regex_new("fpj......\\.pdf$", 0, 0, NULL);
+        while (basename = g_dir_read_name(tmpDir)) {
+            snprintf(file, 1024, "%s/%s", tmpDirName, basename);
+            g_stat(file, &fileStat);
+            time_t elapsed = now - fileStat.st_mtime;
+            // Remove job files that were last modified at least 5 minutes ago
+            if (g_regex_match(regex, file, 0, NULL) && elapsed > 300) {
+                g_unlink(file);
+            }
+        }
+        g_dir_close(tmpDir);
+        g_regex_unref(regex);
+    }
+    return TRUE;
 }
 
 
@@ -49,11 +71,16 @@ void handlePrintJobData(FlexVDIPrintJobDataMsg * msg) {
             openWithApp(job->name);
             g_free(job->name);
             g_hash_table_remove(printJobs, GINT_TO_POINTER(msg->id));
-            // TODO: Remove the temporary file
         } else {
             write(job->fileHandle, msg->data, msg->dataLength);
         }
     } else {
         printf("Job %d not found\n", msg->id);
     }
+}
+
+
+void initPrintClient() {
+    printJobs = g_hash_table_new_full(g_direct_hash, NULL, NULL, g_free);
+    g_timeout_add_seconds(300, removeTempFiles, NULL);
 }
