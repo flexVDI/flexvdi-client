@@ -1,9 +1,14 @@
 #!/bin/sh
 
+exec 3>&1 > /dev/null 2> /dev/null
+_echo() {
+    echo "$@" >&3
+}
+
 # Display usage
 cpack_usage()
 {
-  cat <<EOF
+  cat <<EOF >&3
 Usage: $0 [options]
 Options:
   --help            print this message
@@ -14,14 +19,14 @@ EOF
 
 cpack_echo_exit()
 {
-  echo $1
+  _echo $1
   exit 1
 }
 
 # Display version
 cpack_version()
 {
-  echo "@CPACK_PACKAGE_NAME@ Installer Version: @CPACK_PACKAGE_VERSION@" \
+  _echo "@CPACK_PACKAGE_NAME@ Installer Version: @CPACK_PACKAGE_VERSION@" \
     ", Copyright (c) @CPACK_PACKAGE_VENDOR@"
 }
 
@@ -34,21 +39,21 @@ cpack_fix_slashes ()
 # cpack_skip_license=FALSE
 cpack_uninstall=FALSE
 for a in "$@CPACK_AT_SIGN@"; do
-  if echo $a | grep "^--prefix=" > /dev/null 2> /dev/null; then
+  if echo $a | grep "^--prefix="; then
     cpack_prefix_dir=`echo $a | sed "s/^--prefix=//"`
     cpack_prefix_dir=`cpack_fix_slashes "${cpack_prefix_dir}"`
   fi
-  if echo $a | grep "^--help" > /dev/null 2> /dev/null; then
+  if echo $a | grep "^--help"; then
     cpack_usage
   fi
-  if echo $a | grep "^--version" > /dev/null 2> /dev/null; then
+  if echo $a | grep "^--version"; then
     cpack_version
     exit 2
   fi
-  if echo $a | grep "^--uninstall" > /dev/null 2> /dev/null; then
+  if echo $a | grep "^--uninstall"; then
     cpack_uninstall=TRUE
   fi
-#   if echo $a | grep "^--skip-license" > /dev/null 2> /dev/null; then
+#   if echo $a | grep "^--skip-license"; then
 #     cpack_skip_license=TRUE
 #   fi
 done
@@ -61,7 +66,7 @@ done
 # so at first try to tail some file to see if tail fails if used with "-n"
 # if so, don't use "-n"
 use_new_tail_syntax="-n"
-tail $use_new_tail_syntax +1 "$0" > /dev/null 2> /dev/null || use_new_tail_syntax=""
+tail $use_new_tail_syntax +1 "$0" || use_new_tail_syntax=""
 
 get_tar()
 {
@@ -69,7 +74,6 @@ get_tar()
 }
 
 cpack_version
-echo "This is a self-extracting archive."
 toplevel="/usr/local"
 if [ "x${cpack_prefix_dir}x" != "xx" ]
 then
@@ -77,12 +81,12 @@ then
 fi
 
 if [ "x${cpack_uninstall}x" = "xFALSEx" ]; then
-    echo "The archive will be extracted to: ${toplevel}"
+    _echo "The archive will be extracted to: ${toplevel}"
 
     if [ "x${cpack_skip_license}x" = "xFALSEx" ]
     then
-    echo ""
-    echo "If you want to stop extracting, please press <ctrl-C>."
+    _echo ""
+    _echo "If you want to stop extracting, please press <ctrl-C>."
 
     if [ "x${cpack_skip_license}x" != "xTRUEx" ]
     then
@@ -90,39 +94,46 @@ if [ "x${cpack_uninstall}x" = "xFALSEx" ]; then
 @CPACK_RESOURCE_FILE_LICENSE_CONTENT@
 ____cpack__here_doc____
         echo
-        echo "Do you accept the license? [yN]: "
+        _echo "Do you accept the license? [yN]: "
         read line leftover
         case ${line} in
         y* | Y*)
             cpack_license_accepted=TRUE;;
         *)
-            echo "License not accepted. Exiting ..."
+            _echo "License not accepted. Exiting ..."
             exit 1;;
         esac
     fi
     fi
 
-    echo "Extracting, please wait..."
-    echo ""
+    _echo "Extracting, please wait..."
+    _echo ""
 
     get_tar | (cd "${toplevel}" && tar xf - --no-same-owner) \
         || cpack_echo_exit "Problem unpacking the @CPACK_PACKAGE_FILE_NAME@"
 
-    echo "Unpacking finished successfully"
+    _echo "Unpacking finished successfully"
 
     # Post-install
+    if sestatus; then
+        _echo "Installing SELinux policy"
+        semodule -i "${toplevel}/share/selinux/targeted/flexvdi-guest-agent.pp"
+        semanage fcontext -a -t flexvdi_exec_t "${toplevel}/bin/flexvdi-guest-agent"
+        restorecon "${toplevel}/bin/flexvdi-guest-agent"
+    fi
+
     if [ -d /etc/systemd/system ]; then
         SERVICE=flexvdi-guest-agent.service
         SERVICE_DIR="${toplevel}/lib/systemd/system"
-        systemctl stop ${SERVICE} > /dev/null 2> /dev/null
-        systemctl disable ${SERVICE} > /dev/null 2> /dev/null
+        systemctl stop ${SERVICE}
+        systemctl disable ${SERVICE}
         sed -i "s;/usr/local;${toplevel};" "${SERVICE_DIR}/${SERVICE}"
         systemctl enable ${SERVICE}
         systemctl start ${SERVICE}
     fi
 
-    if which lpadmin > /dev/null 2> /dev/null; then
-        lpadmin -x flexvdiprinter > /dev/null 2> /dev/null
+    if which lpadmin; then
+        lpadmin -x flexvdiprinter
         chmod 700 ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint
         ln -s ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint /usr/lib/cups/backend
         lpadmin -p flexvdiprinter -D "flexVDI PDF Printer" -E -v flexvdiprint: \
@@ -132,16 +143,22 @@ ____cpack__here_doc____
 
 else
     # Pre-uninstall
-    systemctl stop flexvdi-guest-agent.service > /dev/null 2> /dev/null
-    systemctl disable flexvdi-guest-agent.service > /dev/null 2> /dev/null
+    systemctl stop flexvdi-guest-agent.service
+    systemctl disable flexvdi-guest-agent.service
+    rm -f /var/run/flexvdi_pipe
 
     lpadmin -x flexvdiprinter
     rm -f /usr/lib/cups/backend/flexvdiprint
 
+    if sestatus; then
+        _echo "Uninstalling SELinux policy"
+        semodule -r "${toplevel}/share/selinux/targeted/flexvdi-guest-agent.pp"
+    fi
+
     get_tar | tar tf - | (cd "${toplevel}" && xargs -d '\n' rm -f) \
         || cpack_echo_exit "Problem uninstalling @CPACK_PACKAGE_FILE_NAME@"
 
-    echo "Uninstalling finished successfully"
+    _echo "Uninstalling finished successfully"
 fi
 
 exit 0
