@@ -19,6 +19,7 @@ find_package(Boost 1.50.0 REQUIRED system thread)
 include_directories("${spice_protocol_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}")
 include(TestBigEndian)
 test_big_endian(BIG_ENDIAN)
+set(SELINUX_MAKEFILE /usr/share/selinux/devel/Makefile)
 
 # Build options
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
@@ -52,16 +53,26 @@ if (WIN32)
     add_executable(flexvdi-guest-agent WindowsService.cpp
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc"
                    $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
+    target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}")
     configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
                    "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
 else (WIN32)
     add_executable(flexvdi-guest-agent main.cpp
                    $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
+    target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}")
+    configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.te.in"
+                   "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te")
+    add_custom_command(OUTPUT flexvdi-guest-agent.pp
+                       COMMAND make -f "${SELINUX_MAKEFILE}" flexvdi-guest-agent.pp
+                       MAIN_DEPENDENCY "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te"
+                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
+    add_custom_target(flexvdi-selinux-policy ALL DEPENDS flexvdi-guest-agent.pp)
     install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
     install(FILES "${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.service"
             DESTINATION lib/systemd/system)
+    install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.pp"
+            DESTINATION share/selinux/targeted)
 endif (WIN32)
-target_link_libraries(flexvdi-guest-agent "${Boost_LIBRARIES}")
 
 # Build components
 add_subdirectory(cred-connectors)

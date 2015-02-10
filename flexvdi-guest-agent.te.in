@@ -1,0 +1,33 @@
+policy_module(flexvdi-gest-agent, 1.0)
+
+gen_require(`
+    type cupsd_t;
+    type virtio_device_t;
+    type var_run_t;
+    type var_log_t;
+')
+
+
+type flexvdi_t;
+domain_type(flexvdi_t)
+
+type flexvdi_exec_t;
+domain_entry_file(flexvdi_t,flexvdi_exec_t)
+init_daemon_domain(flexvdi_t, flexvdi_exec_t)
+
+type flexvdi_socket_t;
+files_type(flexvdi_socket_t)
+
+# Agent rules
+allow flexvdi_t var_run_t : file { open setattr };
+allow flexvdi_t var_run_t : dir { write add_name };
+type_transition flexvdi_t var_run_t : sock_file flexvdi_socket_t;
+allow flexvdi_t var_log_t : file { open create setattr write };
+allow flexvdi_t var_log_t : dir { write add_name };
+allow flexvdi_t flexvdi_socket_t : sock_file { create read write };
+allow flexvdi_t virtio_device_t : chr_file { read write open };
+
+# CUPS rules
+allow cupsd_t flexvdi_t : unix_stream_socket connectto;
+allow cupsd_t flexvdi_socket_t : sock_file { write };
+
