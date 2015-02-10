@@ -13,7 +13,7 @@
 *PCFileName: "flexvdips.ppd"
 *Product: "flexVDI Printer"
 *PSVersion: "(3010) 815"
-*cupsFilter: "application/pdf  0  -"
+*cupsFilter: "application/pdf  0  pdftopdf-nocopies"
 
 *% This file was adapted by Flexible Software Solutions for flexVDI
 

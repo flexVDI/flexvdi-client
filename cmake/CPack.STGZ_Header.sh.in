@@ -107,7 +107,6 @@ ____cpack__here_doc____
     fi
 
     _echo "Extracting, please wait..."
-    _echo ""
 
     get_tar | (cd "${toplevel}" && tar xf - --no-same-owner) \
         || cpack_echo_exit "Problem unpacking the @CPACK_PACKAGE_FILE_NAME@"
@@ -115,7 +114,7 @@ ____cpack__here_doc____
     _echo "Unpacking finished successfully"
 
     # Post-install
-    if sestatus; then
+    if which semodule; then
         _echo "Installing SELinux policy"
         semodule -i "${toplevel}/share/selinux/targeted/flexvdi-guest-agent.pp"
         semanage fcontext -a -t flexvdi_exec_t "${toplevel}/bin/flexvdi-guest-agent"
@@ -136,6 +135,7 @@ ____cpack__here_doc____
         lpadmin -x flexvdiprinter
         chmod 700 ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint
         ln -s ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint /usr/lib/cups/backend
+        ln -s ${toplevel}/libexec/flexvdi-guest-agent/pdftopdf-nocopies /usr/lib/cups/filter
         lpadmin -p flexvdiprinter -D "flexVDI PDF Printer" -E -v flexvdiprint: \
             -P ${toplevel}/share/flexvdi-guest-agent/flexvdips.ppd
         lpadmin -d flexvdiprinter
