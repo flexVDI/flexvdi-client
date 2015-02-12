@@ -18,20 +18,21 @@ using namespace flexvm;
 namespace asio = boost::asio;
 
 
-static SharedConstBuffer getPrintJobMsg() {
+static SharedConstBuffer getPrintJobMsg(const string & options) {
     auto * header = new FlexVDIMessageHeader;
     header->type = FLEXVDI_PRINTJOB;
     header->size = sizeof(FlexVDIPrintJobMsg);
     auto * msg = new FlexVDIPrintJobMsg;
-    // TODO: add job options
-    msg->optionsLength = 0;
-    return SharedConstBuffer(header)(msg);
+    msg->optionsLength = options.length();
+    shared_ptr<char> optsBuffer(new char[msg->optionsLength], default_delete<char[]>());
+    copy_n(options.c_str(), msg->optionsLength, optsBuffer.get());
+    return SharedConstBuffer(header)(msg)(optsBuffer, msg->optionsLength);
 }
 
 
 static SharedConstBuffer getPrintJobData(istream & pdfFile) {
-    const std::size_t BLOCK_SIZE = 4096;
-    std::shared_ptr<char> block(new char[BLOCK_SIZE], std::default_delete<char[]>());
+    const size_t BLOCK_SIZE = 4096;
+    shared_ptr<char> block(new char[BLOCK_SIZE], default_delete<char[]>());
     pdfFile.read(block.get(), BLOCK_SIZE);
     uint32_t size = pdfFile.gcount();
     auto * header = new FlexVDIMessageHeader;
@@ -44,8 +45,8 @@ static SharedConstBuffer getPrintJobData(istream & pdfFile) {
 
 
 template <class Pipe>
-static bool sendData(std::istream & pdfFile, Pipe & pipe) {
-    SharedConstBuffer jobMsgBuffer = getPrintJobMsg();
+static bool sendData(istream & pdfFile, Pipe & pipe, const string & options) {
+    SharedConstBuffer jobMsgBuffer = getPrintJobMsg(options);
     return_if(asio::write(pipe, jobMsgBuffer) < jobMsgBuffer.size(),
               "Error notifying print job", false);
     while (pdfFile) {
@@ -53,12 +54,11 @@ static bool sendData(std::istream & pdfFile, Pipe & pipe) {
         return_if(asio::write(pipe, jobDataBuffer) < jobDataBuffer.size(),
                   "Error sending print job data", false);
     }
-
     return true;
 }
 
 
-bool flexvm::sendJob(std::istream & pdfFile) {
+bool flexvm::sendJob(istream & pdfFile, const string & options) {
     asio::io_service io;
     boost::system::error_code error;
 #ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
@@ -73,7 +73,7 @@ bool flexvm::sendJob(std::istream & pdfFile) {
     return_if(pipe.connect(ep, error), "Failed opening pipe", false);
 #endif
 
-    bool result = sendData(pdfFile, pipe);
+    bool result = sendData(pdfFile, pipe, options);
     pipe.close();
     return result;
 }

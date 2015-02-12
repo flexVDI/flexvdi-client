@@ -6,10 +6,11 @@
 #define _SEND_JOB_HPP_
 
 #include <istream>
+#include <string>
 
 namespace flexvm {
 
-bool sendJob(std::istream & pdfFile);
+bool sendJob(std::istream & pdfFile, const std::string & options);
 
 } // namespace flexvm
 

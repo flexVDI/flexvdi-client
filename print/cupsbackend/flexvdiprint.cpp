@@ -33,16 +33,17 @@ int main(int argc, char * argv[]) {
         log << levelStr[level] << ": ";
     });
 
-    int jobId = stoi(argv[1]), jobCopies = stoi(argv[4]);
+    string jobId(argv[1]), jobCopies(argv[4]);
     string cupsUser(argv[2]), jobTitle(argv[3]), jobOptions(argv[5]);
 
     Log(L_DEBUG) << "Printing " << jobCopies << " copies of job " << jobId <<
     ": \"" << jobTitle << "\", from " << cupsUser << " with options: " << jobOptions;
-    Log(L_DEBUG) << "Running as uid " << getuid();
 
+    jobOptions += string("copies=") + jobCopies;
+    jobOptions += string("title=\"") + jobTitle + "\"";
     ifstream inFile;
     if (argc > 6) inFile.open(argv[6]);
-    bool result = sendJob(argc > 6 ? inFile : cin);
+    bool result = sendJob(argc > 6 ? inFile : cin, jobOptions);
     Log(L_DEBUG) << "Finished sending the PDF file";
 
     return result ? 0 : 1;

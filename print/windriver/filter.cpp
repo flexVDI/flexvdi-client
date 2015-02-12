@@ -70,7 +70,8 @@ int main(int argc, char * argv[]) {
 //         gsArgv[6] = cInclude;
 //     }
 
-    // TODO: Read the first line with job options
+    string options;
+    if (argc >= 2) options = argv[1];
 
     string fileName = getTempFileName();
     Log(L_DEBUG) << "Saving output to " << fileName;
@@ -100,7 +101,7 @@ int main(int argc, char * argv[]) {
     ifstream pdfFile(fileName.c_str(), ios::binary);
     if (pdfFile) {
         Log(L_DEBUG) << "PDF file correctly created, sending to guest agent";
-        result = sendJob(pdfFile) ? 0 : 1;
+        result = sendJob(pdfFile, options) ? 0 : 1;
         pdfFile.close();
         DeleteFileA(fileName.c_str());
     }
