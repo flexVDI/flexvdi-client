@@ -7,7 +7,7 @@
 !include WinVer.nsh
 !include x64.nsh
 
-!define APPNAME "flexVDI guest agent"
+!define APPNAME "flexVDI Guest Tools"
 !define APPVERSION @CPACK_PACKAGE_VERSION_MAJOR@.@CPACK_PACKAGE_VERSION_MINOR@.@CPACK_PACKAGE_VERSION_PATCH@
 !cd @CPACK_NSIS_WORKING_DIR@
 !include setup.nsi
@@ -35,6 +35,7 @@ Section "flexVDI guest agent" install_section_id
     ${DisableX64FSRedirection}
     SetOutPath $INSTDIR
     SetAutoClose true
+    SetRegView 64
 
     !insertmacro installMacro
 SectionEnd
