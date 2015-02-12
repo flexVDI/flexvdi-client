@@ -2,6 +2,7 @@
 Description=flexVDI Guest Agent
 
 [Service]
+ExecStartPre=/bin/rm -f /var/run/flexvdi_pipe
 ExecStart=/usr/local/bin/flexvdi-guest-agent
 
 [Install]
