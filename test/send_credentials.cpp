@@ -7,10 +7,10 @@
 #include <algorithm>
 #include <cstring>
 #include <boost/asio.hpp>
-#include "../FlexVDIProto.h"
-#include "../SharedConstBuffer.hpp"
-#include "../util.hpp"
-#include "../cred-connectors/CredentialsThread.hpp"
+#include "FlexVDIProto.h"
+#include "MessageBuffer.hpp"
+#include "util.hpp"
+#include "cred-connectors/CredentialsThread.hpp"
 
 #ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
 #include <windows.h>
@@ -23,17 +23,18 @@ namespace asio = boost::asio;
 static constexpr uint32_t CRED_SIZE = sizeof(FlexVDICredentialsMsg);
 
 
-SharedConstBuffer sampleCredentials(const char * user, const char * pass, const char * dom) {
+MessageBuffer sampleCredentials(const char * user, const char * pass, const char * dom) {
     uint32_t userlen = strlen(user), passlen = strlen(pass), domlen = strlen(dom);
     uint32_t bufSize = userlen + passlen + domlen + 3;
-    auto mHeader = new FlexVDIMessageHeader{FLEXVDI_CREDENTIALS, CRED_SIZE + bufSize};
-    auto msg = new FlexVDICredentialsMsg{userlen, passlen, domlen};
-    uint8_t * msgBuffer = new uint8_t[bufSize];
-    std::copy_n(user, userlen + 1, msgBuffer);
-    std::copy_n(pass, passlen + 1, msgBuffer + userlen + 1);
-    std::copy_n(dom, domlen + 1, msgBuffer + userlen + passlen + 2);
-    return SharedConstBuffer(mHeader)(msg)
-        (shared_ptr<uint8_t>(msgBuffer, std::default_delete<uint8_t[]>()), bufSize);
+    MessageBuffer result(FLEXVDI_CREDENTIALS, CRED_SIZE + bufSize);
+    auto msg = result.getMessagePtr<FlexVDICredentialsMsg>();
+    msg->userLength = userlen;
+    msg->passLength = passlen;
+    msg->domainLength = domlen;
+    std::copy_n(user, userlen + 1, msg->strings);
+    std::copy_n(pass, passlen + 1, msg->strings + userlen + 1);
+    std::copy_n(dom, domlen + 1, msg->strings + userlen + passlen + 2);
+    return result;
 }
 
 

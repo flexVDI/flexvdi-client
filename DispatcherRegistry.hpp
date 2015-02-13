@@ -15,7 +15,7 @@ class BaseMessageDispatcher {
 public:
     virtual ~BaseMessageDispatcher() {}
     virtual void dispatch(const Connection::Ptr & src,
-                          const std::shared_ptr<uint8_t> & msgBuffer) = 0;
+                          const MessageBuffer & msgBuffer) = 0;
 };
 
 template <typename MsgClass, typename Handler>
@@ -27,9 +27,8 @@ protected:
     Handler & handler;
 
     virtual void dispatch(const Connection::Ptr & src,
-                          const std::shared_ptr<uint8_t> & msgBuffer) {
-        std::shared_ptr<MsgClass> msg(msgBuffer, (MsgClass *)msgBuffer.get());
-        handler.handle(src, msg);
+                          const MessageBuffer & msgBuffer) {
+        handler.handle(src, msgBuffer.getMessagePtr<MsgClass>());
     }
 };
 
@@ -43,12 +42,11 @@ public:
             new MessageDispatcher<MsgClass, Handler>(handler));
     }
 
-    void handleMessage(const Connection::Ptr & src, uint32_t type,
-                       const std::shared_ptr<uint8_t> & msgBuffer);
+    void handleMessage(const Connection::Ptr & src, const MessageBuffer & msgBuffer);
 
     Connection::MessageHandler asMessageHandler() {
         using namespace std::placeholders;
-        return std::bind(&DispatcherRegistry::handleMessage, this, _1, _2, _3);
+        return std::bind(&DispatcherRegistry::handleMessage, this, _1, _2);
     }
 
 private:

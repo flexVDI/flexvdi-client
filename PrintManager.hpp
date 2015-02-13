@@ -17,8 +17,8 @@ class PrintManager : public FlexVDIComponent<PrintManager
 ,FlexVDIPrintJobDataMsg
 > {
 public:
-    typedef std::shared_ptr<FlexVDIPrintJobMsg> FlexVDIPrintJobMsgPtr;
-    typedef std::shared_ptr<FlexVDIPrintJobDataMsg> FlexVDIPrintJobDataMsgPtr;
+    typedef MessagePtr<FlexVDIPrintJobMsg> FlexVDIPrintJobMsgPtr;
+    typedef MessagePtr<FlexVDIPrintJobDataMsg> FlexVDIPrintJobDataMsgPtr;
 
     void handle(const Connection::Ptr & src, const FlexVDIPrintJobMsgPtr & msg);
     void handle(const Connection::Ptr & src, const FlexVDIPrintJobDataMsgPtr & msg);

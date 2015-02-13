@@ -22,7 +22,7 @@ void PrintManager::handle(const Connection::Ptr & src, const FlexVDIPrintJobMsgP
     msg->id = job.id;
     src->registerErrorHandler(std::bind(&PrintManager::closed, this, ph::_1, ph::_2));
     Connection::Ptr client = FlexVDIGuestAgent::singleton().spiceClient();
-    client->send(FLEXVDI_PRINTJOB, SharedConstBuffer(msg, getPrintJobMsgSize(msg.get())));
+    client->send(MessageBuffer(msg));
 }
 
 
@@ -36,8 +36,7 @@ void PrintManager::handle(const Connection::Ptr & src,
     }
     msg->id = job->id;
     Connection::Ptr client = FlexVDIGuestAgent::singleton().spiceClient();
-    client->send(FLEXVDI_PRINTJOBDATA,
-                 SharedConstBuffer(msg, getPrintJobDataMsgSize(msg.get())));
+    client->send(MessageBuffer(msg));
 }
 
 
@@ -51,8 +50,11 @@ void PrintManager::closed(const Connection::Ptr & src,
     }
     Log(L_DEBUG) << "Finished sending the PDF file, remove the job";
     // Send a last block of 0 bytes to signal the end of the job
-    auto * msg = new FlexVDIPrintJobDataMsg{job->id, 0};
+    MessageBuffer buffer(FLEXVDI_PRINTJOBDATA, sizeof(FlexVDIPrintJobDataMsg));
+    auto msg = (FlexVDIPrintJobDataMsg *)buffer.getMsgData();
+    msg->id = job->id;
+    msg->dataLength = 0;
     Connection::Ptr client = FlexVDIGuestAgent::singleton().spiceClient();
-    client->send(FLEXVDI_PRINTJOBDATA, SharedConstBuffer(msg));
+    client->send(buffer);
     jobs.erase(job);
 }

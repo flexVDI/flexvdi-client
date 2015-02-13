@@ -5,9 +5,9 @@
 #include <fstream>
 #include <boost/asio.hpp>
 #include "send-job.hpp"
-#include "../util.hpp"
-#include "../FlexVDIProto.h"
-#include "../SharedConstBuffer.hpp"
+#include "util.hpp"
+#include "FlexVDIProto.h"
+#include "MessageBuffer.hpp"
 
 #ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
 #include <windows.h>
@@ -18,39 +18,35 @@ using namespace flexvm;
 namespace asio = boost::asio;
 
 
-static SharedConstBuffer getPrintJobMsg(const string & options) {
-    auto * header = new FlexVDIMessageHeader;
-    header->type = FLEXVDI_PRINTJOB;
-    header->size = sizeof(FlexVDIPrintJobMsg);
-    auto * msg = new FlexVDIPrintJobMsg;
+static MessageBuffer getPrintJobMsg(const string & options) {
+    std::size_t size = sizeof(FlexVDIPrintJobMsg) + options.length();
+    MessageBuffer result(FLEXVDI_PRINTJOB, size);
+    auto msg = result.getMessagePtr<FlexVDIPrintJobMsg>();
     msg->optionsLength = options.length();
-    shared_ptr<char> optsBuffer(new char[msg->optionsLength], default_delete<char[]>());
-    copy_n(options.c_str(), msg->optionsLength, optsBuffer.get());
-    return SharedConstBuffer(header)(msg)(optsBuffer, msg->optionsLength);
+    copy_n(options.c_str(), msg->optionsLength, msg->options);
+    return result;
 }
 
 
-static SharedConstBuffer getPrintJobData(istream & pdfFile) {
+static MessageBuffer getPrintJobData(istream & pdfFile) {
     const size_t BLOCK_SIZE = 4096;
-    shared_ptr<char> block(new char[BLOCK_SIZE], default_delete<char[]>());
-    pdfFile.read(block.get(), BLOCK_SIZE);
-    uint32_t size = pdfFile.gcount();
-    auto * header = new FlexVDIMessageHeader;
-    header->type = FLEXVDI_PRINTJOBDATA;
-    header->size = sizeof(FlexVDIPrintJobDataMsg) + size;
-    auto * msg = new FlexVDIPrintJobDataMsg;
-    msg->dataLength = size;
-    return SharedConstBuffer(header)(msg)(block, size);
+    std::size_t size = sizeof(FlexVDIPrintJobDataMsg) + BLOCK_SIZE;
+    MessageBuffer result(FLEXVDI_PRINTJOBDATA, size);
+    auto msg = result.getMessagePtr<FlexVDIPrintJobDataMsg>();
+    pdfFile.read(msg->data, BLOCK_SIZE);
+    msg->dataLength = pdfFile.gcount();
+    result.header().size = sizeof(FlexVDIPrintJobDataMsg) + msg->dataLength;
+    return result;
 }
 
 
 template <class Pipe>
 static bool sendData(istream & pdfFile, Pipe & pipe, const string & options) {
-    SharedConstBuffer jobMsgBuffer = getPrintJobMsg(options);
+    MessageBuffer jobMsgBuffer = getPrintJobMsg(options);
     return_if(asio::write(pipe, jobMsgBuffer) < jobMsgBuffer.size(),
               "Error notifying print job", false);
     while (pdfFile) {
-        SharedConstBuffer jobDataBuffer = getPrintJobData(pdfFile);
+        MessageBuffer jobDataBuffer = getPrintJobData(pdfFile);
         return_if(asio::write(pipe, jobDataBuffer) < jobDataBuffer.size(),
                   "Error sending print job data", false);
     }

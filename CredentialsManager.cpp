@@ -13,28 +13,23 @@ REGISTER_COMPONENT(CredentialsManager);
 
 void CredentialsManager::sendPendingCredentials() {
     Log(L_DEBUG) << "Sending credentials";
-    std::size_t size = getCredentialsMsgSize(pendingCredentials.get());
-    waitingForCredentials->send(FLEXVDI_CREDENTIALS,
-                                SharedConstBuffer(pendingCredentials, size));
+    waitingForCredentials->send(pendingCredentials);
     waitingForCredentials.reset();
-    pendingCredentials.reset();
+    pendingCredentials = MessageBuffer();
 }
 
 
 void CredentialsManager::securePendingCredentials(const FlexVDICredentialsMsgPtr & msg) {
     std::size_t size = getCredentialsMsgSize(msg.get());
     uint8_t * buffer = (uint8_t *)msg.get();
-    std::shared_ptr<uint8_t> secureBuffer;
-    secureBuffer.reset(new uint8_t[size], [size](uint8_t * p) {
+    pendingCredentials = MessageBuffer(FLEXVDI_CREDENTIALS, size, [size](uint8_t * p) {
         // Manually zero memory, standard algorithms have some issues
         for (std::size_t i = 0; i < size; ++i) p[i] = 0;
         delete[] p;
     });
-    std::copy_n(buffer, size, secureBuffer.get());
+    std::copy_n(buffer, size, pendingCredentials.getMsgData());
     for (std::size_t i = 0; i < size; ++i)
         buffer[i] = 0;
-    pendingCredentials = FlexVDICredentialsMsgPtr(secureBuffer,
-                                                  (FlexVDICredentialsMsg *)secureBuffer.get());
 }
 
 
@@ -63,7 +58,7 @@ void CredentialsManager::handle(const Connection::Ptr & src,
         waitingForCredentials = src;
     }
 
-    if (pendingCredentials) {
+    if (pendingCredentials.isValid()) {
         sendPendingCredentials();
     } else {
         Log(L_DEBUG) << "No pending credentials, waiting";

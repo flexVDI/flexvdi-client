@@ -12,11 +12,13 @@ DispatcherRegistry::DispatcherRegistry()
 {}
 
 
-void DispatcherRegistry::handleMessage(const Connection::Ptr & src, uint32_t type,
-                                       const std::shared_ptr<uint8_t> & msgBuffer) {
-    if (type < FLEXVDI_MAX_MESSAGE_TYPE) {
-        for (auto & dispatcher : dispatchers[type]) {
-            Log(L_DEBUG) << "Dispatching message type " << type << " from connection " << src.get();
+void DispatcherRegistry::handleMessage(const Connection::Ptr & src,
+                                       const MessageBuffer & msgBuffer) {
+    auto & header = msgBuffer.header();
+    if (header.type < FLEXVDI_MAX_MESSAGE_TYPE) {
+        for (auto & dispatcher : dispatchers[header.type]) {
+            Log(L_DEBUG) << "Dispatching message type " << header.type
+                         << " from connection " << src.get();
             dispatcher->dispatch(src, msgBuffer);
         }
     }

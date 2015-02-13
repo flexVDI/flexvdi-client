@@ -15,14 +15,14 @@ class CredentialsManager : public FlexVDIComponent<CredentialsManager
 ,FlexVDIAskCredentialsMsg
 > {
 public:
-    typedef std::shared_ptr<FlexVDICredentialsMsg> FlexVDICredentialsMsgPtr;
-    typedef std::shared_ptr<FlexVDIAskCredentialsMsg> FlexVDIAskCredentialsMsgPtr;
+    typedef MessagePtr<FlexVDICredentialsMsg> FlexVDICredentialsMsgPtr;
+    typedef MessagePtr<FlexVDIAskCredentialsMsg> FlexVDIAskCredentialsMsgPtr;
 
     void handle(const Connection::Ptr & src, const FlexVDICredentialsMsgPtr & msg);
     void handle(const Connection::Ptr & src, const FlexVDIAskCredentialsMsgPtr & msg);
 
 private:
-    FlexVDICredentialsMsgPtr pendingCredentials;
+    MessageBuffer pendingCredentials;
     Connection::Ptr waitingForCredentials;
 
     void sendPendingCredentials();

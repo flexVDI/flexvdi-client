@@ -10,7 +10,7 @@
 #include <list>
 #include <boost/asio.hpp>
 #include "FlexVDIProto.h"
-#include "SharedConstBuffer.hpp"
+#include "MessageBuffer.hpp"
 #include "util.hpp"
 
 namespace flexvm {
@@ -18,15 +18,13 @@ namespace flexvm {
 class Connection : public std::enable_shared_from_this<Connection> {
 public:
     typedef std::shared_ptr<Connection> Ptr;
-    typedef std::function<void(const Ptr &, uint32_t,
-                               const std::shared_ptr<uint8_t> &)> MessageHandler;
+    typedef std::function<void(const Ptr &, const MessageBuffer &)> MessageHandler;
     typedef std::function<void(const Ptr &, const boost::system::error_code &)> ErrorHandler;
 
     Connection(MessageHandler h) : mHandler(h) {}
     virtual ~Connection() {}
 
-    void send(uint32_t type, const SharedConstBuffer & msgBuffer,
-              std::function<void(void)> onSuccess = [](){});
+    void send(const MessageBuffer & msgBuffer, std::function<void(void)> onSuccess = [](){});
     void registerErrorHandler(ErrorHandler e) {
         eHandlers.push_back(e);
     }
@@ -48,13 +46,17 @@ protected:
     typedef std::function<void(const boost::system::error_code &, std::size_t)> AsyncHandler;
     virtual void asyncRead(const boost::asio::mutable_buffers_1 & buffers,
                            AsyncHandler handler) = 0;
-    virtual void asyncWrite(const SharedConstBuffer & buffers, AsyncHandler handler) = 0;
+    virtual void asyncWrite(const MessageBuffer & buffer, AsyncHandler handler) = 0;
 
 private:
-    std::shared_ptr<uint8_t> readBuffer;
+    MessageBuffer readBuffer;
     FlexVDIMessageHeader header;
 
-    void readComplete(Ptr This, const boost::system::error_code & error, std::size_t bytes);
+    void readCompleteHeader(Ptr This, const boost::system::error_code & error,
+                            std::size_t bytes);
+    void readCompleteBody(Ptr This, const boost::system::error_code & error,
+                          std::size_t bytes);
+    void readError(const boost::system::error_code & error);
     void writeComplete(Ptr This, const boost::system::error_code & error,
                        std::size_t bytes, std::function<void(void)> onSuccess);
 };
@@ -79,8 +81,8 @@ private:
                            AsyncHandler handler) {
         boost::asio::async_read(stream, buffers, handler);
     }
-    virtual void asyncWrite(const SharedConstBuffer & buffers, AsyncHandler handler) {
-        boost:: asio::async_write(stream, buffers, handler);
+    virtual void asyncWrite(const MessageBuffer & buffer, AsyncHandler handler) {
+        boost::asio::async_write(stream, buffer, handler);
     }
 };
 
