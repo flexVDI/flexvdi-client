@@ -1,6 +1,8 @@
 add_executable(unit-tests unit-main.cpp
-               $<TARGET_OBJECTS:util_o>)
-target_link_libraries(unit-tests "${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
+               unit-DispatcherRegistry.cpp
+               $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
+target_link_libraries(unit-tests "${FLEXVDI_LIBRARIES}"
+                      "${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}")
 
 add_executable(send_credentials send_credentials.cpp
                ../cred-connectors/CredentialsThread.cpp
