@@ -6,7 +6,7 @@
 #define _CREDENTIALSMANAGER_HPP_
 
 #include <memory>
-#include "FlexVDIGuestAgent.hpp"
+#include "DispatcherRegistry.hpp"
 
 namespace flexvm {
 

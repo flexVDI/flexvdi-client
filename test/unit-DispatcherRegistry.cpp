@@ -12,7 +12,9 @@ struct MockBadMsg {
 };
 
 
-struct MockHandler {
+struct MockHandler : public FlexVDIComponent<MockHandler
+,FlexVDICredentialsMsg
+> {
     typedef MessagePtr<FlexVDICredentialsMsg> FlexVDICredentialsMsgPtr;
     typedef MessagePtr<MockBadMsg> MockBadMsgPtr;
 
@@ -38,14 +40,14 @@ struct DispatcherRegistryFixture {
 
 
 BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_registerHandler, DispatcherRegistryFixture) {
-    dregistry.registerMessageHandler<FlexVDICredentialsMsg>(handler);
+    handler.registerComponent(dregistry);
     // The next line must raise a compilation error on MessageType<MockBadMsg>
-//     dregistry.registerMessageHandler<MockBadMsg>(handler);
+//     dregistry.registerMessageHandler<MockHandler, MockBadMsg>(handler);
 }
 
 
 BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_handleMsg, DispatcherRegistryFixture) {
-    dregistry.registerMessageHandler<FlexVDICredentialsMsg>(handler);
+    handler.registerComponent(dregistry);
     MessageBuffer buffer(FLEXVDI_CREDENTIALS, 0);
     dregistry.handleMessage(Connection::Ptr(), buffer);
     BOOST_CHECK(handler.handled);
@@ -53,7 +55,7 @@ BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_handleMsg, DispatcherRegistryFixture)
 
 
 BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_handleMsgFail, DispatcherRegistryFixture) {
-    dregistry.registerMessageHandler<FlexVDICredentialsMsg>(handler);
+    handler.registerComponent(dregistry);
     MessageBuffer buffer(FLEXVDI_CREDENTIALS, 0);
     dregistry.handleMessage(Connection::Ptr(), MessageBuffer(23465, 0));
     BOOST_CHECK(!handler.handled);

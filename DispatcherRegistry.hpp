@@ -32,15 +32,19 @@ protected:
     }
 };
 
+
 class DispatcherRegistry {
 public:
     DispatcherRegistry();
 
-    template <typename MsgClass, typename Handler>
+    template <typename Handler, typename MsgClass, typename ... Rest>
     void registerMessageHandler(Handler & handler) {
         dispatchers[MessageType<MsgClass>::type].emplace_back(
             new MessageDispatcher<MsgClass, Handler>(handler));
+        registerMessageHandler<Handler, Rest...>(handler);
     }
+    template <typename Handler>
+    void registerMessageHandler(Handler & handler) {}
 
     void handleMessage(const Connection::Ptr & src, const MessageBuffer & msgBuffer);
 
@@ -56,6 +60,31 @@ private:
 
     std::unique_ptr<std::list<std::unique_ptr<BaseMessageDispatcher>>[]> dispatchers;
 };
+
+
+template <typename Component, typename ... Messages>
+class FlexVDIComponent {
+public:
+    typedef FlexVDIComponent<Component, Messages...> ComponentClass;
+
+    static Component & singleton() {
+        static Component instance;
+        return instance;
+    }
+
+    int registerComponent(DispatcherRegistry & dregistry) {
+        Component * This = static_cast<Component *>(this);
+        dregistry.registerMessageHandler<Component, Messages...>(*This);
+        return 0;
+    }
+
+private:
+    static int regVar;
+};
+
+#define REGISTER_COMPONENT_WITH_DISPATCHER(Component, Dispatcher) \
+template<> int Component::ComponentClass::regVar = \
+    Component::singleton().registerComponent(Dispatcher)
 
 } // namespace flexvm
 

@@ -3,6 +3,7 @@
  **/
 
 #include "CredentialsManager.hpp"
+#include "FlexVDIGuestAgent.hpp"
 #include "util.hpp"
 
 using namespace flexvm;

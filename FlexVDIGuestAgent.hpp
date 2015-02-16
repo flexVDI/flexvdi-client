@@ -32,13 +32,7 @@ public:
     Connection::Ptr spiceClient() {
         return port.spiceClient();
     }
-    template <typename Handler, typename MsgClass, typename ... Rest>
-    void registerMessageHandler(Handler & handler) {
-        dregistry.registerMessageHandler<MsgClass, Handler>(handler);
-        registerMessageHandler<Handler, Rest...>(handler);
-    }
-    template <typename Handler>
-    void registerMessageHandler(Handler & handler) {}
+    DispatcherRegistry & getDispatcherRegistry() { return dregistry; }
 
 private:
     FlexVDIGuestAgent() :
@@ -52,27 +46,9 @@ private:
 };
 
 
-template <typename Component, typename ... Messages>
-class FlexVDIComponent {
-public:
-    typedef FlexVDIComponent<Component, Messages...> ComponentClass;
-
-    static Component & singleton() {
-        static Component instance;
-        return instance;
-    }
-
-private:
-    static int regVar;
-    static int registerComponent() {
-        FlexVDIGuestAgent::singleton().
-        registerMessageHandler<Component, Messages...>(singleton());
-        return 0;
-    }
-};
-
 #define REGISTER_COMPONENT(Component) \
-template<> int Component::ComponentClass::regVar = registerComponent()
+REGISTER_COMPONENT_WITH_DISPATCHER(Component, \
+    FlexVDIGuestAgent::singleton().getDispatcherRegistry())
 
 } // namespace flexvm
 

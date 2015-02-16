@@ -8,7 +8,7 @@
 #include <memory>
 #include <fstream>
 #include <list>
-#include "FlexVDIGuestAgent.hpp"
+#include "DispatcherRegistry.hpp"
 
 namespace flexvm {
 

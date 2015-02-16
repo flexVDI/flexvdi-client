@@ -5,6 +5,7 @@
 #include <map>
 #include <fstream>
 #include "PrintManager.hpp"
+#include "FlexVDIGuestAgent.hpp"
 #include "util.hpp"
 
 using namespace flexvm;
