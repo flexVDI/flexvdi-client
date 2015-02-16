@@ -1,4 +1,5 @@
 add_executable(unit-tests unit-main.cpp
+               unit-MessageBuffer.cpp
                unit-DispatcherRegistry.cpp
                $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
 target_link_libraries(unit-tests "${FLEXVDI_LIBRARIES}"
