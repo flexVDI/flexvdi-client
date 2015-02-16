@@ -29,24 +29,25 @@ struct MockHandler : public FlexVDIComponent<MockHandler
 };
 
 
-struct DispatcherRegistryFixture {
+#define FIXTURE DispatcherRegistry_fixture
+struct FIXTURE {
     DispatcherRegistry dregistry;
     MockHandler handler;
 
-    DispatcherRegistryFixture() {}
-    ~DispatcherRegistryFixture() {
+    FIXTURE() {}
+    ~FIXTURE() {
     }
 };
 
 
-BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_registerHandler, DispatcherRegistryFixture) {
+BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_registerHandler, FIXTURE) {
     handler.registerComponent(dregistry);
     // The next line must raise a compilation error on MessageType<MockBadMsg>
 //     dregistry.registerMessageHandler<MockHandler, MockBadMsg>(handler);
 }
 
 
-BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_handleMsg, DispatcherRegistryFixture) {
+BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_handleMsg, FIXTURE) {
     handler.registerComponent(dregistry);
     MessageBuffer buffer(FLEXVDI_CREDENTIALS, 0);
     dregistry.handleMessage(Connection::Ptr(), buffer);
@@ -54,7 +55,7 @@ BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_handleMsg, DispatcherRegistryFixture)
 }
 
 
-BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_handleMsgFail, DispatcherRegistryFixture) {
+BOOST_FIXTURE_TEST_CASE(DispatcherRegistry_handleMsgFail, FIXTURE) {
     handler.registerComponent(dregistry);
     MessageBuffer buffer(FLEXVDI_CREDENTIALS, 0);
     dregistry.handleMessage(Connection::Ptr(), MessageBuffer(23465, 0));
