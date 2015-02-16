@@ -23,8 +23,7 @@ public:
     MsgClass * operator->() const noexcept { return get(); }
 
 private:
-    MessagePtr(const std::shared_ptr<uint8_t> b) :
-        p(b, (MsgClass *)(b.get() + sizeof(FlexVDIMessageHeader))) {}
+    MessagePtr(const std::shared_ptr<uint8_t> b, void * ptr) : p(b, (MsgClass *)ptr) {}
     std::shared_ptr<MsgClass> p;
 };
 
@@ -61,7 +60,9 @@ public:
     }
 
     template <typename MsgClass>
-    MessagePtr<MsgClass> getMessagePtr() const { return MessagePtr<MsgClass>(data); }
+    MessagePtr<MsgClass> getMessagePtr() const {
+        return MessagePtr<MsgClass>(data, getMsgData());
+    }
 
     uint8_t * getMsgData() const { return data.get() + HEADER_SIZE; }
     std::shared_ptr<uint8_t> shareData() const { return data; }
