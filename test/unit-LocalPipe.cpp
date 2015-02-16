@@ -8,15 +8,45 @@ using namespace std;
 using namespace std::placeholders;
 namespace asio = boost::asio;
 
+#ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
+#include <windows.h>
+#endif
+
 namespace flexvm {
 
 #define FIXTURE LocalPipe_fixture
 struct FIXTURE {
-    static constexpr const char * pipeName = "/var/tmp/flexvdi_test_pipe";
     asio::io_service io;
     LocalPipe pipe;
-    asio::local::stream_protocol::endpoint ep;
     Connection::Ptr conn;
+
+#if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS)
+    static constexpr const char * pipeName = "/var/tmp/flexvdi_test_pipe";
+    asio::local::stream_protocol::endpoint ep;
+    asio::local::stream_protocol::socket sock;
+
+    FIXTURE() : pipe(io, bind(&FIXTURE::handle, this, _1, _2)), ep(pipeName), sock(io) {
+        ::unlink(pipeName);
+        pipe.setEndpoint(pipeName);
+        pipe.open();
+        sock.connect(ep);
+    }
+#else
+    static constexpr const char * pipeName = "\\\\.\\pipe\\flexvdi_test_pipe";
+    HANDLE h;
+    asio::windows::stream_handle sock;
+
+    FIXTURE() : pipe(io, bind(&FIXTURE::handle, this, _1, _2)), sock(io) {
+        h = ::CreateFileA(pipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                          OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+        sock.assign(h);
+        pipe.setEndpoint(pipeName);
+        pipe.open();
+    }
+#endif
+    ~FIXTURE() {
+        ::unlink(pipeName);
+    }
 
     void handle(const Connection::Ptr & src, const MessageBuffer & msg) {
         BOOST_CHECK_EQUAL(msg.header().type, 1);
@@ -24,22 +54,11 @@ struct FIXTURE {
         conn = src;
         io.stop();
     }
-
-    FIXTURE() : pipe(io, bind(&FIXTURE::handle, this, _1, _2)), ep(pipeName) {
-        ::unlink(pipeName);
-        pipe.setEndpoint(pipeName);
-        pipe.open();
-    }
-    ~FIXTURE() {
-        ::unlink(pipeName);
-    }
 };
 
 
 BOOST_FIXTURE_TEST_CASE(LocalPipe_testRead, FIXTURE) {
     // Write something to the socket
-    asio::local::stream_protocol::socket sock(io);
-    sock.connect(ep);
     asio::async_write<>(sock, MessageBuffer(1, 10),
                         [] (const boost::system::error_code &, std::size_t) {});
     io.run();
@@ -49,8 +68,6 @@ BOOST_FIXTURE_TEST_CASE(LocalPipe_testRead, FIXTURE) {
 
 BOOST_FIXTURE_TEST_CASE(LocalPipe_testWrite, FIXTURE) {
     // Write something to the socket
-    asio::local::stream_protocol::socket sock(io);
-    sock.connect(ep);
     asio::async_write<>(sock, MessageBuffer(1, 10),
                         [] (const boost::system::error_code &, std::size_t) {});
     io.run();
