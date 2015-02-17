@@ -67,6 +67,12 @@ public:
     uint8_t * getMsgData() const { return data.get() + HEADER_SIZE; }
     std::shared_ptr<uint8_t> shareData() const { return data; }
     std::size_t size() const { return header().size + HEADER_SIZE; }
+    void updateSize(std::size_t newSize) {
+        if (header().size >= newSize) {
+            header().size = newSize;
+            buffer = boost::asio::const_buffers_1(data.get(), header().size + HEADER_SIZE);
+        }
+    }
 
     // Implement the ConstBufferSequence requirements.
     typedef boost::asio::const_buffer value_type;
