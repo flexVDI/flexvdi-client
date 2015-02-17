@@ -24,6 +24,7 @@ static MessageBuffer getPrintJobMsg(const string & options) {
     auto msg = result.getMessagePtr<FlexVDIPrintJobMsg>();
     msg->optionsLength = options.length();
     copy_n(options.c_str(), msg->optionsLength, msg->options);
+    Log(L_DEBUG) << "Sending job with options: " << options;
     return result;
 }
 
@@ -35,7 +36,8 @@ static MessageBuffer getPrintJobData(istream & pdfFile) {
     auto msg = result.getMessagePtr<FlexVDIPrintJobDataMsg>();
     pdfFile.read(msg->data, BLOCK_SIZE);
     msg->dataLength = pdfFile.gcount();
-    result.header().size = sizeof(FlexVDIPrintJobDataMsg) + msg->dataLength;
+    Log(L_DEBUG) << "Sending block of " << msg->dataLength << " bytes";
+    result.updateSize(sizeof(FlexVDIPrintJobDataMsg) + msg->dataLength);
     return result;
 }
 
