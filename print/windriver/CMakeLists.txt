@@ -6,8 +6,8 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/setup.nsi.in"
                "${CMAKE_CURRENT_BINARY_DIR}/setup.nsi" @ONLY)
 add_library(redmon SHARED redmon.c portmon.c redmon.rc)
 target_link_libraries(redmon psapi userenv)
-set_target_properties(redmon PROPERTIES LINK_FLAGS
-    "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static"
+set_target_properties(redmon PROPERTIES
+    LINK_FLAGS "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static"
     PREFIX "")
 
 # The following targets must be 32-bit
