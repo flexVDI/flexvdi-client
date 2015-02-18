@@ -35,9 +35,18 @@ void Connection::readCompleteHeader(Ptr This, const sys::error_code & error,
         marshallHeader(&header);
         Log(L_DEBUG) << "Reading message type " << header.type <<
                         " and size " << header.size << " from connection " << this;
-        readBuffer = MessageBuffer(header);
-        asyncRead(asio::buffer(readBuffer.getMsgData(), header.size),
-                  std::bind(&Connection::readCompleteBody, this, shared_from_this(), _1, _2));
+        if (header.size > FLEXVDI_MAX_MESSAGE_LENGTH) {
+            Log(L_ERROR) << "Oversized message";
+            notifyError(asio::error::message_size);
+        } else if (header.type >= FLEXVDI_MAX_MESSAGE_TYPE) {
+            Log(L_ERROR) << "Unknown message type";
+            notifyError(asio::error::invalid_argument);
+        } else {
+            readBuffer = MessageBuffer(header);
+            asyncRead(asio::buffer(readBuffer.getMsgData(), header.size),
+                      std::bind(&Connection::readCompleteBody, this,
+                                shared_from_this(), _1, _2));
+        }
     }
 }
 

@@ -22,6 +22,8 @@ typedef struct FlexVDIMessageHeader {
     uint32_t size;
 } FlexVDIMessageHeader;
 
+#define FLEXVDI_MAX_MESSAGE_LENGTH 65536
+
 static inline void marshallHeader(FlexVDIMessageHeader * header) {
     BYTESWAP32(header->type);
     BYTESWAP32(header->size);
