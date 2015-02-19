@@ -18,13 +18,25 @@ using namespace std;
 
 
 static int GSDLLCALL gsOutputCB(void *instance, const char *str, int len) {
-    Log(L_DEBUG) << string(str, len);
+    static string line;
+    line += string(str, len);
+    size_t newline;
+    while ((newline = line.find_first_of('\n')) != string::npos) {
+        Log(L_DEBUG) << line.substr(0, newline);
+        line = line.substr(newline + 1);
+    }
     return len;
 }
 
 
 static int GSDLLCALL gsErrorCB(void *instance, const char *str, int len) {
-    Log(L_ERROR) << string(str, len);
+    static string line;
+    line += string(str, len);
+    size_t newline;
+    while ((newline = line.find_first_of('\n')) != string::npos) {
+        Log(L_ERROR) << line.substr(0, newline);
+        line = line.substr(newline + 1);
+    }
     return len;
 }
 
@@ -38,7 +50,27 @@ static string getTempFileName() {
 }
 
 
-string getMedia(DEVMODEW * devMode) {
+shared_ptr<JOB_INFO_2A> getJobInfo() {
+    wchar_t printerName[512];
+    GetEnvironmentVariableW(L"REDMON_PRINTER", printerName, 512);
+    wchar_t jobIdString[10];
+    GetEnvironmentVariableW(L"REDMON_JOB", jobIdString, 10);
+
+    int jobId = stoi(jobIdString);
+    HANDLE printer;
+    return_if(!OpenPrinterW(printerName, &printer, NULL), "Failed opening printer",
+              shared_ptr<JOB_INFO_2A>());
+
+    DWORD needed;
+    GetJobA(printer, jobId, 2, NULL, 0, &needed);
+    std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
+    return_if(!GetJobA(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed),
+              "Failed getting document properties", shared_ptr<JOB_INFO_2A>());
+    return shared_ptr<JOB_INFO_2A>(buffer, (JOB_INFO_2A *)buffer.get());
+}
+
+
+string getMedia(DEVMODEA * devMode) {
     ostringstream media;
     switch (devMode->dmPaperSize) {
         case DMPAPER_TABLOID: media << "Tabloid"; break;
@@ -79,26 +111,10 @@ string getMedia(DEVMODEW * devMode) {
 }
 
 
-string getJobOptions() {
-    wchar_t printerName[512];
-    GetEnvironmentVariableW(L"REDMON_PRINTER", printerName, 512);
-    wchar_t jobIdString[10];
-    GetEnvironmentVariableW(L"REDMON_JOB", jobIdString, 10);
+string getJobOptions(DEVMODEA * devMode) {
     char jobName[512];
     GetEnvironmentVariableA("REDMON_DOCNAME", jobName, 512);
 
-    int jobId = stoi(jobIdString);
-    HANDLE printer;
-    return_if(!OpenPrinterW(printerName, &printer, NULL), "Failed opening printer", "");
-
-    DWORD needed;
-    GetJob(printer, jobId, 2, NULL, 0, &needed);
-    std::unique_ptr<char[]> buffer(new char[needed]);
-    JOB_INFO_2W * jobInfo = (JOB_INFO_2W *)buffer.get();
-    return_if(!GetJob(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed),
-              "Failed getting document properties", "");
-
-    DEVMODEW * devMode = jobInfo->pDevMode;
     ostringstream oss;
     oss << "title=\"" << jobName << "\"";
     oss << " media=" << getMedia(devMode);
@@ -115,6 +131,34 @@ string getJobOptions() {
     oss << (devMode->dmColor == DMCOLOR_COLOR ? " color" : " bn");
 
     return oss.str();
+}
+
+
+void dumpStdin(const string & fileName) {
+    ofstream(fileName.c_str(), ios::binary) << cin.rdbuf();
+}
+
+
+int runGhostscript(int argc, char * argv[]) {
+    Log(L_DEBUG) << "Running GhostScript";
+    void * gsInstance;
+    if (gsapi_new_instance(&gsInstance, NULL) < 0) {
+        Log(L_ERROR) << "Could not create a GhostScript instance.";
+        return 1;
+    }
+
+    if (gsapi_set_stdio(gsInstance, NULL, gsOutputCB, gsErrorCB) < 0) {
+        Log(L_ERROR) << "Could not set GhostScript callbacks.";
+        gsapi_delete_instance(gsInstance);
+        return 2;
+    }
+
+    // Run the GhostScript engine
+    int result = gsapi_init_with_args(gsInstance, argc, argv);
+    gsapi_exit(gsInstance);
+    gsapi_delete_instance(gsInstance);
+    Log(L_DEBUG) << "GhostScript returned " << result;
+    return result;
 }
 
 
@@ -136,7 +180,8 @@ int main(int argc, char * argv[]) {
         "-I.\\",
         "-c",
         ".setpdfwrite",
-        "-"
+        "-",
+        ""
     };
 
     // Add the include directories to the command line flags we'll use with GhostScript:
@@ -152,39 +197,38 @@ int main(int argc, char * argv[]) {
 //         gsArgv[6] = cInclude;
 //     }
 
-    string options = getJobOptions();
+    string psFileName = getTempFileName();
+    dumpStdin(psFileName);
+    auto jobInfo = getJobInfo();
+    int numPages = jobInfo->PagesPrinted;
 
-    string fileName = getTempFileName();
-    Log(L_DEBUG) << "Saving output to " << fileName;
-    string fileOption = "-sOutputFile=" + fileName;
-    gsArgv[5] = fileOption.c_str();
+    string inFileOption = "-f" + psFileName;
+    gsArgv[9] = inFileOption.c_str();
+    string pdfFileName = getTempFileName();
+    Log(L_DEBUG) << "Saving output to " << pdfFileName;
+    string outFileOption = "-sOutputFile=" + pdfFileName;
+    gsArgv[5] = outFileOption.c_str();
+    int result = runGhostscript(10, (char **)gsArgv);
 
-    void * gsInstance;
-    if (gsapi_new_instance(&gsInstance, NULL) < 0) {
-        Log(L_ERROR) << "Could not create a GhostScript instance.";
-        return 1;
+    if (jobInfo->pDevMode->dmCollate == DMCOLLATE_TRUE && jobInfo->pDevMode->dmCopies > 1) {
+        // The spooler performed the copies, keep just one
+        numPages /= jobInfo->pDevMode->dmCopies;
+        string lastPageOption = "-dLastPage=" + to_string(numPages);
+        inFileOption = "-f" + pdfFileName;
+        pdfFileName = getTempFileName();
+        outFileOption = "-sOutputFile=" + pdfFileName;
+        gsArgv[5] = outFileOption.c_str();
+        gsArgv[9] = lastPageOption.c_str();
+        gsArgv[10] = inFileOption.c_str();
+        result = runGhostscript(11, (char **)gsArgv);
     }
-    Log(L_DEBUG) << "Instance created";
 
-    if (gsapi_set_stdio(gsInstance, NULL, gsOutputCB, gsErrorCB) < 0) {
-        Log(L_ERROR) << "Could not set GhostScript callbacks.";
-        gsapi_delete_instance(gsInstance);
-        return 2;
-    }
-    Log(L_DEBUG) << "Callbacks set";
-
-    // Run the GhostScript engine
-    int result = gsapi_init_with_args(gsInstance, sizeof(gsArgv)/sizeof(char*), (char**)gsArgv);
-    gsapi_exit(gsInstance);
-    gsapi_delete_instance(gsInstance);
-    Log(L_DEBUG) << "GS returned " << result;
-
-    ifstream pdfFile(fileName.c_str(), ios::binary);
-    if (pdfFile) {
+    ifstream pdfFile(pdfFileName.c_str(), ios::binary);
+    if (result == 0 && pdfFile) {
         Log(L_DEBUG) << "PDF file correctly created, sending to guest agent";
-        result = sendJob(pdfFile, options) ? 0 : 1;
+        result = sendJob(pdfFile, getJobOptions(jobInfo->pDevMode)) ? 0 : 1;
         pdfFile.close();
-        DeleteFileA(fileName.c_str());
+        DeleteFileA(pdfFileName.c_str());
     }
 
     return result;
