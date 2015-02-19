@@ -1,16 +1,11 @@
-/* Copyright (C) 1997-2012, Ghostgum Software Pty Ltd.  All rights reserved.
-
-  This file is part of RedMon.
-
-  This software is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-  This software is distributed under licence and may not be copied, modified
-  or distributed except as expressly authorised under the terms of the
-  LICENCE.
-
-*/
+/**
+ * Copyright Flexible Software Solutions S.L. 2014
+ *
+ * This file is adapted from RedMon,
+ * Copyright (C) 1997-2012, Ghostgum Software Pty Ltd.  All rights reserved.
+ *
+ * Support for Windows NT <5.0 has been removed.
+ */
 
 /* redmon.c */
 
@@ -55,9 +50,6 @@
 #include <commdlg.h>
 #include "portmon.h"
 #include "redmon.h"
-#ifdef BETA
-#include <time.h>
-#endif
 
 /* Constant globals */
 const TCHAR copyright[] = COPYRIGHT;
@@ -79,8 +71,8 @@ const TCHAR version[] = VERSION;
 #define LASTFILEKEY TEXT("LastFile")
 #define REDMONUSERKEY TEXT("Software\\Ghostgum\\RedMon")
 typedef struct reconfig_s {
-    DWORD dwSize;	/* sizeof this structure */
-    DWORD dwVersion;	/* version number of RedMon */
+    DWORD dwSize;   /* sizeof this structure */
+    DWORD dwVersion;    /* version number of RedMon */
     TCHAR szPortName[MAXSTR];
     TCHAR szDescription[MAXSTR];
     TCHAR szCommand[MAXSTR];
@@ -98,36 +90,36 @@ typedef struct reconfig_s {
 
 struct redata_s {
     /* Members required by all RedMon implementations */
-    HANDLE hPort;		/* handle to this structure */
-    HANDLE hMonitor;		/* provided by NT5.0 OpenPort */
-    RECONFIG config;		/* configuration stored in registry */
+    HANDLE hPort;       /* handle to this structure */
+    HANDLE hMonitor;        /* provided by NT5.0 OpenPort */
+    RECONFIG config;        /* configuration stored in registry */
     TCHAR portname[MAXSHORTSTR];    /* Name obtained during OpenPort  */
 
     /* Details obtained during StartDocPort  */
     TCHAR command[1024];
-    TCHAR pPrinterName[MAXSTR];	/* Printer name for RedMon port */
-    TCHAR pDocName[MAXSTR];	/* Document Name (from StartDocPort) */
-    TCHAR pBaseName[MAXSTR];	/* Sanitised version of Document Name */
+    TCHAR pPrinterName[MAXSTR]; /* Printer name for RedMon port */
+    TCHAR pDocName[MAXSTR]; /* Document Name (from StartDocPort) */
+    TCHAR pBaseName[MAXSTR];    /* Sanitised version of Document Name */
     DWORD JobId;
-    TCHAR pUserName[MAXSTR];	/* User Name (from StartDocPort job info) */
-    TCHAR pMachineName[MAXSTR];	/* Machine Name (from StartDocPort job info) */
+    TCHAR pUserName[MAXSTR];    /* User Name (from StartDocPort job info) */
+    TCHAR pMachineName[MAXSTR]; /* Machine Name (from StartDocPort job info) */
 
     /* For running process */
-    BOOL started;		/* true if process started */
-    BOOL error;			/* true if process terminates early */
-    HGLOBAL environment;	/* environment strings for process */
+    BOOL started;       /* true if process started */
+    BOOL error;         /* true if process terminates early */
+    HGLOBAL environment;    /* environment strings for process */
     HANDLE hChildStdinRd;
-    HANDLE hChildStdinWr;	/* We write to this one */
-    HANDLE hChildStdoutRd; 	/* We read from this one */
+    HANDLE hChildStdinWr;   /* We write to this one */
+    HANDLE hChildStdoutRd;  /* We read from this one */
     HANDLE hChildStdoutWr;
-    HANDLE hChildStderrRd; 	/* We read from this one */
+    HANDLE hChildStderrRd;  /* We read from this one */
     HANDLE hChildStderrWr;
 #ifdef SAVESTD
     HANDLE hSaveStdin;
     HANDLE hSaveStdout;
     HANDLE hSaveStderr;
 #endif
-    HANDLE hPipeRd; 	/* We read printer output from this one */
+    HANDLE hPipeRd;     /* We read printer output from this one */
     HANDLE hPipeWr;
     PROCESS_INFORMATION piProcInfo;
     /*  */
@@ -135,58 +127,58 @@ struct redata_s {
     TCHAR logname[MAXSTR];
 #endif
     HANDLE hLogFile;
-    HANDLE hmutex;	/* To control access to pipe and file handles */
-    HANDLE primary_token;  	/* primary token for caller */
-    TCHAR pSessionId[MAXSTR];	/* session-id for WTS support */
+    HANDLE hmutex;  /* To control access to pipe and file handles */
+    HANDLE primary_token;   /* primary token for caller */
+    TCHAR pSessionId[MAXSTR];   /* session-id for WTS support */
 
     /* for write thread */
-    HANDLE write_event;	/* To unblock write thread */
-    BOOL write;		/* TRUE if write thread should keep running */
+    HANDLE write_event; /* To unblock write thread */
+    BOOL write;     /* TRUE if write thread should keep running */
     HANDLE write_hthread;
     DWORD write_threadid;
-    LPBYTE write_buffer;	/* data to write */
-    DWORD write_buffer_length;	/* number of bytes of data to write */
-    BOOL write_flag;		/* TRUE if WriteFile was successful */
-    DWORD write_written;	/* number of bytes written */
+    LPBYTE write_buffer;    /* data to write */
+    DWORD write_buffer_length;  /* number of bytes of data to write */
+    BOOL write_flag;        /* TRUE if WriteFile was successful */
+    DWORD write_written;    /* number of bytes written */
 
     /* for output to second printer queue */
-    TCHAR tempname[MAXSTR];	/* temporary file name  */
-    HANDLE printer;		/* handle to a printer */
+    TCHAR tempname[MAXSTR]; /* temporary file name  */
+    HANDLE printer;     /* handle to a printer */
     DWORD printer_bytes;
     BYTE pipe_buf[PIPE_BUF_SIZE]; /* buffer for use in flush_stdout */
 };
 
-void write_error(REDATA *prd, DWORD err);
-void write_string_to_log(REDATA *prd, LPCTSTR buf);
-void redmon_cancel_job(REDATA *prd);
+void write_error(REDATA * prd, DWORD err);
+void write_string_to_log(REDATA * prd, LPCTSTR buf);
+void redmon_cancel_job(REDATA * prd);
 BOOL start_redirect(REDATA * prd);
-void reset_redata(REDATA *prd);
-BOOL check_process(REDATA *prd);
+void reset_redata(REDATA * prd);
+BOOL check_process(REDATA * prd);
 HOOKRETURN APIENTRY GetSaveHookProc(HWND hDlg, UINT message,
-	WPARAM wParam, LPARAM lParam);
+                                    WPARAM wParam, LPARAM lParam);
 DLGRETURN CALLBACK LogfileDlgProc(HWND hDlg, UINT message,
-	WPARAM wParam, LPARAM lParam);
+                                  WPARAM wParam, LPARAM lParam);
 int create_tempfile(LPTSTR filename, DWORD len);
-int redmon_printfile(REDATA * prd, TCHAR *filename);
-BOOL redmon_open_printer(REDATA *prd);
-BOOL redmon_abort_printer(REDATA *prd);
-BOOL redmon_close_printer(REDATA *prd);
-BOOL redmon_write_printer(REDATA *prd, BYTE *ptr, DWORD len);
-BOOL get_job_info(REDATA *prd);
+int redmon_printfile(REDATA * prd, TCHAR * filename);
+BOOL redmon_open_printer(REDATA * prd);
+BOOL redmon_abort_printer(REDATA * prd);
+BOOL redmon_close_printer(REDATA * prd);
+BOOL redmon_write_printer(REDATA * prd, BYTE * ptr, DWORD len);
+BOOL get_job_info(REDATA * prd);
 BOOL make_env(REDATA * prd);
 BOOL query_session_id(REDATA * prd);
 void WriteLog(HANDLE hFile, LPCTSTR str);
 void WriteError(HANDLE hFile, DWORD err);
 BOOL get_filename_as_user(REDATA * prd);
-BOOL get_filename_client(REDATA * prd, OPENFILENAME *pofn);
-BOOL redmon_print_error(REDATA *prd);
+BOOL get_filename_client(REDATA * prd, OPENFILENAME * pofn);
+BOOL redmon_print_error(REDATA * prd);
 
 /* we don't rely on the import library having XcvData,
  * since we may be compiling with VC++ 5.0 */
 BOOL WINAPI XcvData(HANDLE hXcv, LPCWSTR pszDataName,
-    PBYTE pInputData, DWORD cbInputData,
-    PBYTE pOutputData, DWORD cbOutputData, PDWORD pcbOutputNeeded,
-    PDWORD pdwStatus);
+                    PBYTE pInputData, DWORD cbInputData,
+                    PBYTE pOutputData, DWORD cbOutputData, PDWORD pcbOutputNeeded,
+                    PDWORD pdwStatus);
 
 
 
@@ -213,145 +205,84 @@ BOOL WINAPI XcvData(HANDLE hXcv, LPCWSTR pszDataName,
 
 
 /* mutex used for controlling access to log file and pipe handles */
-void
-request_mutex(REDATA *prd)
-{
+void request_mutex(REDATA * prd) {
     if ((prd->hmutex != NULL) && (prd->hmutex != INVALID_HANDLE_VALUE))
         WaitForSingleObject(prd->hmutex, 30000);
 }
 
-void
-release_mutex(REDATA *prd)
-{
+void release_mutex(REDATA * prd) {
     if ((prd->hmutex != NULL) && (prd->hmutex != INVALID_HANDLE_VALUE))
-	ReleaseMutex(prd->hmutex);
+        ReleaseMutex(prd->hmutex);
 }
 
-
-#ifdef BETA
-int
-beta_expired(void)
-{
-  time_t today = time(NULL);
-  struct tm *t;
-  t = localtime(&today);
-  if (t->tm_year+1900 < BETA_YEAR)
-    return 0;
-  if (t->tm_year+1900 > BETA_YEAR)
-    return 1;    /* beta copy has expired */
-  if (t->tm_mon+1 < BETA_MONTH)
-    return 0;
-  if (t->tm_mon+1 > BETA_MONTH)
-    return 1;    /* beta copy has expired */
-  if (t->tm_mday < BETA_DAY)
-    return 0;
-  return 1;    /* beta copy has expired */
-}
-
-int beta(void)
-{
-  if (beta_expired()) {
-    TCHAR buf[MAXSTR];
-    TCHAR title[MAXSTR];
-    LoadString(hdll, IDS_BETAEXPIRED, buf, sizeof(buf)/sizeof(TCHAR)-1);
-    LoadString(hdll, IDS_TITLE, title, sizeof(title)/sizeof(TCHAR)-1);
-    MessageBox(HWND_DESKTOP, buf, title, MB_OK | MB_ICONHAND);
-    return 1;
-  }
-  return 0;
-}
-#endif /* BETA */
 
 /* The log file is single byte characters only */
 /* Write a single character or wide character string to the log file,
  * converting it to single byte characters */
-void write_string_to_log(REDATA *prd, LPCTSTR buf)
-{
-DWORD cbWritten;
-#ifdef UNICODE
-int count;
-CHAR cbuf[256];
-BOOL UsedDefaultChar;
-#endif
+void write_string_to_log(REDATA * prd, LPCTSTR buf) {
+    DWORD cbWritten;
+    int count;
+    CHAR cbuf[256];
+    BOOL UsedDefaultChar;
     if (prd->hLogFile == INVALID_HANDLE_VALUE)
-	return;
+        return;
 
     request_mutex(prd);
-#ifdef UNICODE
     while (lstrlen(buf)) {
-	count = min(lstrlen(buf), sizeof(cbuf));
-	WideCharToMultiByte(CP_ACP, 0, buf, count,
-		cbuf, sizeof(cbuf), NULL, &UsedDefaultChar);
-	buf += count;
-	WriteFile(prd->hLogFile, cbuf, count, &cbWritten, NULL);
+        count = min(lstrlen(buf), sizeof(cbuf));
+        WideCharToMultiByte(CP_ACP, 0, buf, count,
+                            cbuf, sizeof(cbuf), NULL, &UsedDefaultChar);
+        buf += count;
+        WriteFile(prd->hLogFile, cbuf, count, &cbWritten, NULL);
     }
-#else
-    WriteFile(prd->hLogFile, buf, lstrlen(buf), &cbWritten, NULL);
-#endif
     FlushFileBuffers(prd->hLogFile);
     release_mutex(prd);
 }
 
-void
-write_error(REDATA *prd, DWORD err)
-{
-LPVOID lpMessageBuffer;
+void write_error(REDATA * prd, DWORD err) {
+    LPVOID lpMessageBuffer;
     FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-	FORMAT_MESSAGE_FROM_SYSTEM,
-	NULL, err,
-	MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), /* user default language */
-	(LPTSTR) &lpMessageBuffer, 0, NULL);
+                  FORMAT_MESSAGE_FROM_SYSTEM,
+                  NULL, err,
+                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), /* user default language */
+                  (LPTSTR) &lpMessageBuffer, 0, NULL);
     if (lpMessageBuffer) {
-	write_string_to_log(prd, (LPTSTR)lpMessageBuffer);
-	LocalFree(LocalHandle(lpMessageBuffer));
-	write_string_to_log(prd, TEXT("\r\n"));
+        write_string_to_log(prd, (LPTSTR)lpMessageBuffer);
+        LocalFree(LocalHandle(lpMessageBuffer));
+        write_string_to_log(prd, TEXT("\r\n"));
     }
 }
 
-DWORD
-redmon_sizeof_config(void)
-{
+DWORD redmon_sizeof_config(void) {
     return sizeof(RECONFIG);
 }
 
-BOOL redmon_validate_config(RECONFIG *config)
-{
+BOOL redmon_validate_config(RECONFIG * config) {
     if (config == NULL)
-	return FALSE;
+        return FALSE;
     if (config->dwSize != sizeof(RECONFIG))
-	return FALSE;
+        return FALSE;
     if (config->dwVersion != VERSION_NUMBER)
-	return FALSE;
+        return FALSE;
     return TRUE;
 }
 
-LPTSTR redmon_init_config(RECONFIG *config)
-{
+LPTSTR redmon_init_config(RECONFIG * config) {
     memset(config, 0, sizeof(RECONFIG));
     config->dwSize = sizeof(RECONFIG);
     config->dwVersion = VERSION_NUMBER;
     config->dwOutput = OUTPUT_SELF;
     config->dwShow = FALSE;
-#ifdef UNICODE
-    if (ntver > 500)
-        config->dwRunUser = TRUE;
-    else
-#endif
-    config->dwRunUser = FALSE;
+    config->dwRunUser = TRUE;
     config->dwDelay = DEFAULT_DELAY;
-#ifdef BETA
-    config->dwLogFileDebug = TRUE;  /* beta versions default to debug enabled */
-#else
     config->dwLogFileDebug = FALSE;
-#endif
     LoadString(hdll, IDS_MONITORNAME, config->szDescription,
-	sizeof(config->szDescription)/sizeof(TCHAR)-1);
+               sizeof(config->szDescription) / sizeof(TCHAR) - 1);
     return config->szPortName;
 }
 
 /* read the configuration from the registry */
-BOOL redmon_get_config(HANDLE hMonitor, LPCTSTR portname, RECONFIG *config)
-{
+BOOL redmon_get_config(HANDLE hMonitor, LPCTSTR portname, RECONFIG * config) {
     LONG rc = ERROR_SUCCESS;
     HANDLE hkey;
     TCHAR buf[MAXSTR];
@@ -366,7 +297,7 @@ BOOL redmon_get_config(HANDLE hMonitor, LPCTSTR portname, RECONFIG *config)
     syslog(TEXT("\r\n"));
 #endif
     redmon_init_config(config);
-    lstrcpyn(config->szPortName, portname, sizeof(config->szPortName)-1);
+    lstrcpyn(config->szPortName, portname, sizeof(config->szPortName) - 1);
 
     lstrcpy(buf, PORTSNAME);
     lstrcat(buf, BACKSLASH);
@@ -374,114 +305,113 @@ BOOL redmon_get_config(HANDLE hMonitor, LPCTSTR portname, RECONFIG *config)
     rc = RedMonOpenKey(hMonitor, buf, KEY_READ, &hkey);
     if (rc != ERROR_SUCCESS) {
 #ifdef DEBUG_REDMON
-	syslog(TEXT("Failed to open registry key "));
-	syslog(buf);
-	syslog(TEXT("\r\n"));
+        syslog(TEXT("Failed to open registry key "));
+        syslog(buf);
+        syslog(TEXT("\r\n"));
 #endif
-	return FALSE;
+        return FALSE;
     }
 
-    cbData = sizeof(config->szDescription)-sizeof(TCHAR);
+    cbData = sizeof(config->szDescription) - sizeof(TCHAR);
     rc = RedMonQueryValue(hMonitor, hkey, DESCKEY, &dwType,
-	(PBYTE)(config->szDescription), &cbData);
-    cbData = sizeof(config->szCommand)-sizeof(TCHAR);
+                          (PBYTE)(config->szDescription), &cbData);
+    cbData = sizeof(config->szCommand) - sizeof(TCHAR);
     rc = RedMonQueryValue(hMonitor, hkey, COMMANDKEY, &dwType,
-	(PBYTE)(config->szCommand), &cbData);
-    cbData = sizeof(config->szArguments)-sizeof(TCHAR);
+                          (PBYTE)(config->szCommand), &cbData);
+    cbData = sizeof(config->szArguments) - sizeof(TCHAR);
     rc = RedMonQueryValue(hMonitor, hkey, ARGKEY, &dwType,
-	(PBYTE)(config->szArguments), &cbData);
-    cbData = sizeof(config->szPrinter)-sizeof(TCHAR);
+                          (PBYTE)(config->szArguments), &cbData);
+    cbData = sizeof(config->szPrinter) - sizeof(TCHAR);
     rc = RedMonQueryValue(hMonitor, hkey, PRINTERKEY, &dwType,
-	(PBYTE)(config->szPrinter), &cbData);
+                          (PBYTE)(config->szPrinter), &cbData);
     cbData = sizeof(config->dwOutput);
     rc = RedMonQueryValue(hMonitor, hkey, OUTPUTKEY, &dwType,
-	(PBYTE)(&config->dwOutput), &cbData);
+                          (PBYTE)(&config->dwOutput), &cbData);
     if (config->dwOutput > OUTPUT_LAST)
-	config->dwOutput = OUTPUT_SELF;
+        config->dwOutput = OUTPUT_SELF;
     cbData = sizeof(config->dwShow);
     rc = RedMonQueryValue(hMonitor, hkey, SHOWKEY, &dwType,
-	(PBYTE)(&config->dwShow), &cbData);
+                          (PBYTE)(&config->dwShow), &cbData);
     cbData = sizeof(config->dwRunUser);
     rc = RedMonQueryValue(hMonitor, hkey, RUNUSERKEY, &dwType,
-	(PBYTE)(&config->dwRunUser), &cbData);
+                          (PBYTE)(&config->dwRunUser), &cbData);
     cbData = sizeof(config->dwDelay);
     rc = RedMonQueryValue(hMonitor, hkey, DELAYKEY, &dwType,
-	(PBYTE)(&config->dwDelay), &cbData);
+                          (PBYTE)(&config->dwDelay), &cbData);
     cbData = sizeof(config->dwLogFileUse);
     rc = RedMonQueryValue(hMonitor, hkey, LOGUSEKEY, &dwType,
-	(PBYTE)(&config->dwLogFileUse), &cbData);
-    cbData = sizeof(config->szLogFileName)-sizeof(TCHAR);
+                          (PBYTE)(&config->dwLogFileUse), &cbData);
+    cbData = sizeof(config->szLogFileName) - sizeof(TCHAR);
     rc = RedMonQueryValue(hMonitor, hkey, LOGNAMEKEY, &dwType,
-	(PBYTE)(config->szLogFileName), &cbData);
+                          (PBYTE)(config->szLogFileName), &cbData);
     cbData = sizeof(config->dwLogFileDebug);
     rc = RedMonQueryValue(hMonitor, hkey, LOGDEBUGKEY, &dwType,
-	(PBYTE)(&config->dwLogFileDebug), &cbData);
+                          (PBYTE)(&config->dwLogFileDebug), &cbData);
     cbData = sizeof(config->dwPrintError);
     rc = RedMonQueryValue(hMonitor, hkey, PRINTERRORKEY, &dwType,
-	(PBYTE)(&config->dwPrintError), &cbData);
+                          (PBYTE)(&config->dwPrintError), &cbData);
     RedMonCloseKey(hMonitor, hkey);
     return TRUE;
 }
 
 
 /* write the configuration to the registry */
-BOOL redmon_set_config(HANDLE hMonitor, RECONFIG *config)
-{
+BOOL redmon_set_config(HANDLE hMonitor, RECONFIG * config) {
     LONG rc = ERROR_SUCCESS;
     HANDLE hkey;
     TCHAR buf[MAXSTR];
 
     if (!redmon_validate_config(config))
-	return FALSE;
+        return FALSE;
 
     lstrcpy(buf, PORTSNAME);
     lstrcat(buf, BACKSLASH);
     lstrcat(buf, config->szPortName);
     rc = RedMonOpenKey(hMonitor, buf, KEY_WRITE, &hkey);
     if (rc != ERROR_SUCCESS)
-	return FALSE;
+        return FALSE;
 
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, DESCKEY, REG_SZ,
-	    (PBYTE)(config->szDescription),
-	    sizeof(TCHAR)*(lstrlen(config->szDescription)+1));
+        rc = RedMonSetValue(hMonitor, hkey, DESCKEY, REG_SZ,
+                            (PBYTE)(config->szDescription),
+                            sizeof(TCHAR) * (lstrlen(config->szDescription) + 1));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, COMMANDKEY, REG_SZ,
-	    (PBYTE)(config->szCommand),
-	    sizeof(TCHAR)*(lstrlen(config->szCommand)+1));
+        rc = RedMonSetValue(hMonitor, hkey, COMMANDKEY, REG_SZ,
+                            (PBYTE)(config->szCommand),
+                            sizeof(TCHAR) * (lstrlen(config->szCommand) + 1));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, ARGKEY, REG_SZ,
-	    (PBYTE)(config->szArguments),
-	    sizeof(TCHAR)*(lstrlen(config->szArguments)+1));
+        rc = RedMonSetValue(hMonitor, hkey, ARGKEY, REG_SZ,
+                            (PBYTE)(config->szArguments),
+                            sizeof(TCHAR) * (lstrlen(config->szArguments) + 1));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, PRINTERKEY, REG_SZ,
-	    (PBYTE)(config->szPrinter),
-	    sizeof(TCHAR)*(lstrlen(config->szPrinter)+1));
+        rc = RedMonSetValue(hMonitor, hkey, PRINTERKEY, REG_SZ,
+                            (PBYTE)(config->szPrinter),
+                            sizeof(TCHAR) * (lstrlen(config->szPrinter) + 1));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, OUTPUTKEY, REG_DWORD,
-	    (PBYTE)(&config->dwOutput), sizeof(config->dwOutput));
+        rc = RedMonSetValue(hMonitor, hkey, OUTPUTKEY, REG_DWORD,
+                            (PBYTE)(&config->dwOutput), sizeof(config->dwOutput));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, SHOWKEY, REG_DWORD,
-	    (PBYTE)(&config->dwShow), sizeof(config->dwShow));
+        rc = RedMonSetValue(hMonitor, hkey, SHOWKEY, REG_DWORD,
+                            (PBYTE)(&config->dwShow), sizeof(config->dwShow));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, RUNUSERKEY, REG_DWORD,
-	    (PBYTE)(&config->dwRunUser), sizeof(config->dwRunUser));
+        rc = RedMonSetValue(hMonitor, hkey, RUNUSERKEY, REG_DWORD,
+                            (PBYTE)(&config->dwRunUser), sizeof(config->dwRunUser));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, DELAYKEY, REG_DWORD,
-	    (PBYTE)(&config->dwDelay), sizeof(config->dwDelay));
+        rc = RedMonSetValue(hMonitor, hkey, DELAYKEY, REG_DWORD,
+                            (PBYTE)(&config->dwDelay), sizeof(config->dwDelay));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, LOGUSEKEY, REG_DWORD,
-	    (PBYTE)(&config->dwLogFileUse), sizeof(config->dwLogFileUse));
+        rc = RedMonSetValue(hMonitor, hkey, LOGUSEKEY, REG_DWORD,
+                            (PBYTE)(&config->dwLogFileUse), sizeof(config->dwLogFileUse));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, LOGNAMEKEY, REG_SZ,
-	    (PBYTE)(config->szLogFileName),
-	    sizeof(TCHAR)*(lstrlen(config->szLogFileName)+1));
+        rc = RedMonSetValue(hMonitor, hkey, LOGNAMEKEY, REG_SZ,
+                            (PBYTE)(config->szLogFileName),
+                            sizeof(TCHAR) * (lstrlen(config->szLogFileName) + 1));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, LOGDEBUGKEY, REG_DWORD,
-	    (PBYTE)(&config->dwLogFileDebug), sizeof(config->dwLogFileDebug));
+        rc = RedMonSetValue(hMonitor, hkey, LOGDEBUGKEY, REG_DWORD,
+                            (PBYTE)(&config->dwLogFileDebug), sizeof(config->dwLogFileDebug));
     if (rc == ERROR_SUCCESS)
-	rc = RedMonSetValue(hMonitor, hkey, PRINTERRORKEY, REG_DWORD,
-	    (PBYTE)(&config->dwPrintError), sizeof(config->dwPrintError));
+        rc = RedMonSetValue(hMonitor, hkey, PRINTERRORKEY, REG_DWORD,
+                            (PBYTE)(&config->dwPrintError), sizeof(config->dwPrintError));
     RedMonCloseKey(hMonitor, hkey);
     return (rc == ERROR_SUCCESS);
 }
@@ -496,96 +426,79 @@ BOOL redmon_set_config(HANDLE hMonitor, RECONFIG *config)
  * If we can't generate a unique name then return FALSE.
  * If we only support one possible name then return FALSE when nAttempt > 1.
  */
-BOOL redmon_suggest_portname(TCHAR *portname, int len, int nAttempt)
-{
+BOOL redmon_suggest_portname(TCHAR * portname, int len, int nAttempt) {
     TCHAR rname[] = TEXT("RPT%d:");
 #ifdef DEBUG_REDMON
-syslog(TEXT("redmon_suggest_portname\r\n"));
+    syslog(TEXT("redmon_suggest_portname\r\n"));
 #endif
-    if (len < sizeof(rname)/sizeof(TCHAR) + 12)
-	return FALSE;
+    if (len < sizeof(rname) / sizeof(TCHAR) + 12)
+        return FALSE;
     wsprintf(portname, rname, nAttempt);
 #ifdef DEBUG_REDMON
-syslog(TEXT("attempt="));
-sysnum(nAttempt);
-syslog(TEXT("\r\nPort="));
-syslog(portname);
-syslog(TEXT("\r\n"));
+    syslog(TEXT("attempt="));
+    sysnum(nAttempt);
+    syslog(TEXT("\r\nPort="));
+    syslog(portname);
+    syslog(TEXT("\r\n"));
 #endif
     return TRUE;
 }
 
-int redmon_toi(LPCTSTR str)
-{
+int redmon_toi(LPCTSTR str) {
     int value = 0;
     LPCTSTR p = str;
     while (*p && (*p >= '0') && (*p <= '9')) {
-	value = value * 10 + ((*p)-48);
-	p++;
+        value = value * 10 + ((*p) - 48);
+        p++;
     }
     return value;
 }
 
-HANDLE redmon_to_handle(LPCTSTR str)
-{
+HANDLE redmon_to_handle(LPCTSTR str) {
     uintptr_t value = 0;
     LPCTSTR p = str;
     while (*p && (*p >= '0') && (*p <= '9')) {
-	value = value * 10 + ((*p)-48);
-	p++;
+        value = value * 10 + ((*p) - 48);
+        p++;
     }
     return (HANDLE)value;
 }
 
-BOOL redmon_setvalue(RECONFIG *pconfig, LPCTSTR key, LPCTSTR value)
-{
+BOOL redmon_setvalue(RECONFIG * pconfig, LPCTSTR key, LPCTSTR value) {
     BOOL flag = TRUE;
-    if (lstrcmp(key, TEXT("Port"))==0) {
-	/* Do nothing here, we called GetConfig */
-    }
-    else if (lstrcmp(key, DESCKEY)==0) {
-	lstrcpyn(pconfig->szDescription, value,
-	    sizeof(pconfig->szDescription)/sizeof(TCHAR)-1);
-    }
-    else if (lstrcmp(key, COMMANDKEY)==0) {
-	lstrcpyn(pconfig->szCommand, value,
-	    sizeof(pconfig->szCommand)/sizeof(TCHAR)-1);
-    }
-    else if (lstrcmp(key, ARGKEY)==0) {
-	lstrcpyn(pconfig->szArguments, value,
-	    sizeof(pconfig->szArguments)/sizeof(TCHAR)-1);
-    }
-    else if (lstrcmp(key, PRINTERKEY)==0) {
-	lstrcpyn(pconfig->szPrinter, value,
-	    sizeof(pconfig->szPrinter)/sizeof(TCHAR)-1);
-    }
-    else if (lstrcmp(key, OUTPUTKEY)==0) {
-	pconfig->dwOutput = redmon_toi(value);
-    }
-    else if (lstrcmp(key, SHOWKEY)==0) {
-	pconfig->dwShow = redmon_toi(value);
-    }
-    else if (lstrcmp(key, RUNUSERKEY)==0) {
-	pconfig->dwRunUser = redmon_toi(value);
-    }
-    else if (lstrcmp(key, DELAYKEY)==0) {
-	pconfig->dwDelay = redmon_toi(value);
-    }
-    else if (lstrcmp(key, LOGUSEKEY)==0) {
-	pconfig->dwLogFileUse = redmon_toi(value);
-    }
-    else if (lstrcmp(key, LOGNAMEKEY)==0) {
-	lstrcpyn(pconfig->szLogFileName, value,
-	    sizeof(pconfig->szLogFileName)/sizeof(TCHAR)-1);
-    }
-    else if (lstrcmp(key, LOGDEBUGKEY)==0) {
-	pconfig->dwLogFileDebug = redmon_toi(value);
-    }
-    else if (lstrcmp(key, PRINTERRORKEY)==0) {
-	pconfig->dwPrintError = redmon_toi(value);
-    }
-    else
-	flag = FALSE;
+    if (lstrcmp(key, TEXT("Port")) == 0) {
+        /* Do nothing here, we called GetConfig */
+    } else if (lstrcmp(key, DESCKEY) == 0) {
+        lstrcpyn(pconfig->szDescription, value,
+                 sizeof(pconfig->szDescription) / sizeof(TCHAR) - 1);
+    } else if (lstrcmp(key, COMMANDKEY) == 0) {
+        lstrcpyn(pconfig->szCommand, value,
+                 sizeof(pconfig->szCommand) / sizeof(TCHAR) - 1);
+    } else if (lstrcmp(key, ARGKEY) == 0) {
+        lstrcpyn(pconfig->szArguments, value,
+                 sizeof(pconfig->szArguments) / sizeof(TCHAR) - 1);
+    } else if (lstrcmp(key, PRINTERKEY) == 0) {
+        lstrcpyn(pconfig->szPrinter, value,
+                 sizeof(pconfig->szPrinter) / sizeof(TCHAR) - 1);
+    } else if (lstrcmp(key, OUTPUTKEY) == 0) {
+        pconfig->dwOutput = redmon_toi(value);
+    } else if (lstrcmp(key, SHOWKEY) == 0) {
+        pconfig->dwShow = redmon_toi(value);
+    } else if (lstrcmp(key, RUNUSERKEY) == 0) {
+        pconfig->dwRunUser = redmon_toi(value);
+    } else if (lstrcmp(key, DELAYKEY) == 0) {
+        pconfig->dwDelay = redmon_toi(value);
+    } else if (lstrcmp(key, LOGUSEKEY) == 0) {
+        pconfig->dwLogFileUse = redmon_toi(value);
+    } else if (lstrcmp(key, LOGNAMEKEY) == 0) {
+        lstrcpyn(pconfig->szLogFileName, value,
+                 sizeof(pconfig->szLogFileName) / sizeof(TCHAR) - 1);
+    } else if (lstrcmp(key, LOGDEBUGKEY) == 0) {
+        pconfig->dwLogFileDebug = redmon_toi(value);
+    } else if (lstrcmp(key, PRINTERRORKEY) == 0) {
+        pconfig->dwPrintError = redmon_toi(value);
+    } else
+        flag = FALSE;
     return flag;
 }
 
@@ -598,17 +511,8 @@ static TCHAR XcvPort[] = TEXT("XcvPort");
  *   Command="c:\gs\gs8.11\bin\gswin32c"
  *   Arguments="""@c:\gs\gs8.11\pdfwrite.txt"" -sOutputFile=""%1"" -"
  */
-#ifdef UNICODE
-__declspec(dllexport) void CALLBACK RedMonConfigurePortW(
-#else
-__declspec(dllexport) void CALLBACK RedMonConfigurePort(
-#endif
-  HWND hwnd,
-  HINSTANCE hinst,
-  LPTSTR lpCmdLine,
-  int nCmdShow
-)
-{
+__declspec(dllexport) void CALLBACK
+RedMonConfigurePortW(HWND hwnd, HINSTANCE hinst, LPTSTR lpCmdLine, int nCmdShow) {
     TCHAR buf[MAXSTR];
     LPCTSTR p;
     TCHAR key[MAXSTR];
@@ -619,7 +523,7 @@ __declspec(dllexport) void CALLBACK RedMonConfigurePort(
 
     DWORD config_len = redmon_sizeof_config();
     HGLOBAL hglobal = GlobalAlloc(GPTR, config_len);
-    RECONFIG *pconfig = GlobalLock(hglobal);
+    RECONFIG * pconfig = GlobalLock(hglobal);
     DWORD dwOutput = 0;
     DWORD dwNeeded = 0;
     DWORD dwError = ERROR_SUCCESS;
@@ -633,15 +537,11 @@ __declspec(dllexport) void CALLBACK RedMonConfigurePort(
     HANDLE hFile;
 
     hFile = CreateFile(TEXT("c:\\temp\\log.txt"),
-	GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+                       GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
 #endif
 
 #ifdef DEBUG_REDMON
-#ifdef UNICODE
     WriteLog(hFile, TEXT("RedMonConfigurePortW\r\n"));
-#else
-    WriteLog(hFile, TEXT("RedMonConfigurePort\r\n"));
-#endif
     WriteLog(hFile, TEXT("lpCmdLine="));
     WriteLog(hFile, lpCmdLine);
     WriteLog(hFile, TEXT("\r\n"));
@@ -655,198 +555,178 @@ __declspec(dllexport) void CALLBACK RedMonConfigurePort(
     /* Parse the command line */
     p = lpCmdLine;
     while (*p) {
-	while (*p && (*p==' '))
-	    p++;	/* skip spaces */
+        while (*p && (*p == ' '))
+            p++;    /* skip spaces */
 
-	/* copy key name */
-	ck = 0;
-	while (*p && (*p!='=')) {
-	    if (ck < sizeof(key)/sizeof(TCHAR)-1)
-		key[ck++] = *p;
-	    p++;
-	}
-	key[ck] = '\0';
-	if (*p)
-	    p++;	/* skip '=' */
+        /* copy key name */
+        ck = 0;
+        while (*p && (*p != '=')) {
+            if (ck < sizeof(key) / sizeof(TCHAR) - 1)
+                key[ck++] = *p;
+            p++;
+        }
+        key[ck] = '\0';
+        if (*p)
+            p++;    /* skip '=' */
 
-	/* copy value */
-	cv = 0;
-	if (*p == '\042') {
-	    /* quoted, copy till next quote */
-	    p++;
-	    while (*p && !((*p=='\042') && (*(p+1)!='\042')) ) {
-		if (*p && (*p=='\042') && *(p+1) && (*(p+1)=='\042')) {
-		    /* embedded quote */
-		    p++;
-		}
-		if (cv < sizeof(value)/sizeof(TCHAR)-1)
-		    value[cv++] = *p;
-		p++;
-	    }
-	    p++;
-	}
-	else {
-	    /* unquoted, skip till space */
-	    while (*p && (*p!=' ')) {
-		if (cv < sizeof(value)/sizeof(TCHAR)-1)
-		    value[cv++] = *p;
-		p++;	/* skip spaces */
-	    }
-	}
-	value[cv] = '\0';
+        /* copy value */
+        cv = 0;
+        if (*p == '\042') {
+            /* quoted, copy till next quote */
+            p++;
+            while (*p && !((*p == '\042') && (*(p + 1) != '\042'))) {
+                if (*p && (*p == '\042') && *(p + 1) && (*(p + 1) == '\042')) {
+                    /* embedded quote */
+                    p++;
+                }
+                if (cv < sizeof(value) / sizeof(TCHAR) - 1)
+                    value[cv++] = *p;
+                p++;
+            }
+            p++;
+        } else {
+            /* unquoted, skip till space */
+            while (*p && (*p != ' ')) {
+                if (cv < sizeof(value) / sizeof(TCHAR) - 1)
+                    value[cv++] = *p;
+                p++;    /* skip spaces */
+            }
+        }
+        value[cv] = '\0';
 
 #ifdef DEBUG_REDMON
-	if (key[0] && value[0]) {
-	    WriteLog(hFile, TEXT("key=\042"));
-	    WriteLog(hFile, key);
-	    WriteLog(hFile, TEXT("\042 value=\042"));
-	    WriteLog(hFile, value);
-	    WriteLog(hFile, TEXT("\042\r\n"));
-	    /* parse the config */
-	}
+        if (key[0] && value[0]) {
+            WriteLog(hFile, TEXT("key=\042"));
+            WriteLog(hFile, key);
+            WriteLog(hFile, TEXT("\042 value=\042"));
+            WriteLog(hFile, value);
+            WriteLog(hFile, TEXT("\042\r\n"));
+            /* parse the config */
+        }
 #endif
 
-	if (lstrcmp(key, TEXT("Port"))==0) {
-	    /* get current configuration */
-	    LPCTSTR pszPortName = value;
+        if (lstrcmp(key, TEXT("Port")) == 0) {
+            /* get current configuration */
+            LPCTSTR pszPortName = value;
 
-#ifdef UNICODE
-	    /* Create port if it doesn't already exist */
-	    lstrcpy(pszServerName, TEXT(",XcvMonitor Redirected Port"));
-	    if (!OpenPrinter(pszServerName, &hXcv, &pd)) {
-		dwError = GetLastError();
+            /* Create port if it doesn't already exist */
+            lstrcpy(pszServerName, TEXT(",XcvMonitor Redirected Port"));
+            if (!OpenPrinter(pszServerName, &hXcv, &pd)) {
+                dwError = GetLastError();
 #ifdef DEBUG_REDMON
-		WriteLog(hFile, TEXT("Failed to open printer \042"));
-		WriteLog(hFile, pszServerName);
-		WriteLog(hFile, TEXT("\042\r\n"));
-		WriteError(hFile, dwError);
+                WriteLog(hFile, TEXT("Failed to open printer \042"));
+                WriteLog(hFile, pszServerName);
+                WriteLog(hFile, TEXT("\042\r\n"));
+                WriteError(hFile, dwError);
 #endif
-		hXcv = NULL;
-	    }
-	    else {
-		/* Check if port exists */
-		dwStatus = ERROR_SUCCESS;
-		if (!XcvData(hXcv, TEXT("PortExists"), (PBYTE)pszPortName,
-			sizeof(TCHAR)*(lstrlen(pszPortName)+1),
-			(PBYTE)(&dwOutput), 0, &dwNeeded, &dwStatus))
-		    dwStatus = GetLastError();
-		/* If not ERROR_PRINTER_ALREADY_EXISTS */
-		/* then add the port */
-		if (dwStatus == ERROR_SUCCESS) {
-		    if (!XcvData(hXcv, L"AddPort", (PBYTE)pszPortName,
-			    sizeof(WCHAR)*(lstrlenW(pszPortName)+1),
-			    (PBYTE)(&dwOutput), 0, &dwNeeded, &dwStatus)) {
-			dwError = GetLastError();
+                hXcv = NULL;
+            } else {
+                /* Check if port exists */
+                dwStatus = ERROR_SUCCESS;
+                if (!XcvData(hXcv, TEXT("PortExists"), (PBYTE)pszPortName,
+                             sizeof(TCHAR) * (lstrlen(pszPortName) + 1),
+                             (PBYTE)(&dwOutput), 0, &dwNeeded, &dwStatus))
+                    dwStatus = GetLastError();
+                /* If not ERROR_PRINTER_ALREADY_EXISTS */
+                /* then add the port */
+                if (dwStatus == ERROR_SUCCESS) {
+                    if (!XcvData(hXcv, L"AddPort", (PBYTE)pszPortName,
+                                 sizeof(WCHAR) * (lstrlenW(pszPortName) + 1),
+                                 (PBYTE)(&dwOutput), 0, &dwNeeded, &dwStatus)) {
+                        dwError = GetLastError();
 #ifdef DEBUG_REDMON
-			WriteError(hFile, dwError);
+                        WriteError(hFile, dwError);
 #endif
-		    }
-		}
-		ClosePrinter(hXcv);
-	    }
-#endif
+                    }
+                }
+                ClosePrinter(hXcv);
+            }
 
 
 #ifdef DEBUG_REDMON
-	    WriteLog(hFile, TEXT("GetConfig "));
-	    WriteLog(hFile, pszPortName);
-	    WriteLog(hFile, TEXT("\r\n"));
+            WriteLog(hFile, TEXT("GetConfig "));
+            WriteLog(hFile, pszPortName);
+            WriteLog(hFile, TEXT("\r\n"));
 #endif
-#ifdef UNICODE
-	    /* Now use OpenPrinter and XcvData to get/set it */
-	    if (!MakeXcvName(pszServerName, NULL, XcvPort, pszPortName)) {
+            /* Now use OpenPrinter and XcvData to get/set it */
+            if (!MakeXcvName(pszServerName, NULL, XcvPort, pszPortName)) {
 #ifdef DEBUG_REDMON
-		WriteLog(hFile, TEXT("Failed to make Xcv Name\r\n"));
+                WriteLog(hFile, TEXT("Failed to make Xcv Name\r\n"));
 #endif
-		break;
-	    }
+                break;
+            }
 
 #ifdef DEBUG_REDMON
-	    WriteLog(hFile, TEXT("OpenPrinter "));
-	    WriteLog(hFile, pszServerName);
-	    WriteLog(hFile, TEXT("\r\n"));
+            WriteLog(hFile, TEXT("OpenPrinter "));
+            WriteLog(hFile, pszServerName);
+            WriteLog(hFile, TEXT("\r\n"));
 #endif
-	    if (!OpenPrinter(pszServerName, &hXcv, &pd)) {
-		dwError = GetLastError();
+            if (!OpenPrinter(pszServerName, &hXcv, &pd)) {
+                dwError = GetLastError();
 #ifdef DEBUG_REDMON
-		WriteError(hFile, dwError);
+                WriteError(hFile, dwError);
 #endif
-		hXcv = NULL;
-	    }
+                hXcv = NULL;
+            }
 
-	    if (hXcv) {
-		if (!XcvData(hXcv, TEXT("GetConfig"), (PBYTE)pszPortName,
-		    sizeof(TCHAR)*(lstrlen(pszPortName)+1),
-		    (PBYTE)pconfig, config_len, &dwNeeded, &dwError)) {
-		    dwError = GetLastError();
+            if (hXcv) {
+                if (!XcvData(hXcv, TEXT("GetConfig"), (PBYTE)pszPortName,
+                             sizeof(TCHAR) * (lstrlen(pszPortName) + 1),
+                             (PBYTE)pconfig, config_len, &dwNeeded, &dwError)) {
+                    dwError = GetLastError();
 #ifdef DEBUG_REDMON
-		    WriteError(hFile, dwError);
+                    WriteError(hFile, dwError);
 #endif
-		}
-	    }
-	    else {
-		lstrcpyn(pconfig->szPortName, value,
-		    sizeof(pconfig->szPortName)/sizeof(TCHAR)-1);
-	    }
-#else
+                }
+            } else {
+                lstrcpyn(pconfig->szPortName, value,
+                         sizeof(pconfig->szPortName) / sizeof(TCHAR) - 1);
+            }
+        } else {
+            setconfig = TRUE;
+            if (!redmon_setvalue(pconfig, key, value)) {
 #ifdef DEBUG_REDMON
-	    WriteLog(hFile, "Not implemented for Windows 95/98/Me\r\n");
+                WriteLog(hFile, TEXT("Unknown key=\042"));
+                WriteLog(hFile, key);
+                WriteLog(hFile, TEXT("\042 value=\042"));
+                WriteLog(hFile, value);
+                WriteLog(hFile, TEXT("\042\r\n"));
 #endif
-#endif
-	}
-	else {
-	    setconfig = TRUE;
-	    if (!redmon_setvalue(pconfig, key, value)) {
-#ifdef DEBUG_REDMON
-	        WriteLog(hFile, TEXT("Unknown key=\042"));
-		WriteLog(hFile, key);
-		WriteLog(hFile, TEXT("\042 value=\042"));
-		WriteLog(hFile, value);
-		WriteLog(hFile, TEXT("\042\r\n"));
-#endif
-	    }
-	}
+            }
+        }
 
     }
 
     if (setconfig && pconfig->szPortName[0]) {
-#ifdef UNICODE
 #ifdef DEBUG_REDMON
-	WriteLog(hFile, TEXT("SetConfig "));
-	WriteLog(hFile, pconfig->szPortName);
-	WriteLog(hFile, TEXT("\r\n"));
+        WriteLog(hFile, TEXT("SetConfig "));
+        WriteLog(hFile, pconfig->szPortName);
+        WriteLog(hFile, TEXT("\r\n"));
 #endif
-	if (hXcv) {
-	    if (!XcvData(hXcv, TEXT("SetConfig"),
-		(PBYTE)pconfig, config_len,
-		(PBYTE)(&dwOutput), 0, &dwNeeded, &dwError)) {
-		dwError = GetLastError();
+        if (hXcv) {
+            if (!XcvData(hXcv, TEXT("SetConfig"),
+                         (PBYTE)pconfig, config_len,
+                         (PBYTE)(&dwOutput), 0, &dwNeeded, &dwError)) {
+                dwError = GetLastError();
 #ifdef DEBUG_REDMON
-		WriteError(hFile, dwError);
+                WriteError(hFile, dwError);
 #endif
-	    }
-	}
-#else
-#ifdef DEBUG_REDMON
-	WriteLog(hFile, "Not implemented for Windows 95/98/Me\r\n");
-#endif
-#endif
+            }
+        }
     }
 #ifdef DEBUG_REDMON
-	CloseHandle(hFile);
+    CloseHandle(hFile);
 #endif
 
     if (hXcv)
-	ClosePrinter(hXcv);
+        ClosePrinter(hXcv);
 
     GlobalUnlock(hglobal);
     GlobalFree(hglobal);
 }
 
 
-void
-reset_redata(REDATA *prd)
-{
+void reset_redata(REDATA * prd) {
     /* do not touch prd->portname, prd->hPort or prd->hMonitor */
 
     prd->started = FALSE;
@@ -887,9 +767,7 @@ reset_redata(REDATA *prd)
 }
 
 /* copy stdout and stderr to log file, if open */
-BOOL
-flush_stdout(REDATA *prd)
-{
+BOOL flush_stdout(REDATA * prd) {
     DWORD bytes_available, dwRead, dwWritten;
     BOOL result;
     BOOL got_something = FALSE;
@@ -899,61 +777,62 @@ flush_stdout(REDATA *prd)
     /* copy anything on stdout to printer or log file */
     bytes_available = 0;
     result = PeekNamedPipe(prd->hChildStdoutRd, NULL, 0, NULL,
-	    &bytes_available, NULL);
+                           &bytes_available, NULL);
     while (result && bytes_available) {
-	if (!ReadFile(prd->hChildStdoutRd, prd->pipe_buf, sizeof(prd->pipe_buf),
-	    &dwRead, NULL) || dwRead == 0)
-	    break;
-	got_something = TRUE;
-	if (prd->config.dwOutput == OUTPUT_STDOUT) {
-	    if (prd->printer != INVALID_HANDLE_VALUE) {
-		if (!redmon_write_printer(prd, prd->pipe_buf, dwRead)) {
-		    redmon_abort_printer(prd);
-		}
-	    }
-	}
-	else if (prd->hLogFile != INVALID_HANDLE_VALUE) {
-	    WriteFile(prd->hLogFile, prd->pipe_buf, dwRead, &dwWritten, NULL);
-	    FlushFileBuffers(prd->hLogFile);
-	}
-	result = PeekNamedPipe(prd->hChildStdoutRd, NULL, 0, NULL,
-	    &bytes_available, NULL);
+        if (!ReadFile(prd->hChildStdoutRd, prd->pipe_buf, sizeof(prd->pipe_buf),
+                      &dwRead, NULL) || dwRead == 0)
+            break;
+        got_something = TRUE;
+        if (prd->config.dwOutput == OUTPUT_STDOUT) {
+            if (prd->printer != INVALID_HANDLE_VALUE) {
+                if (!redmon_write_printer(prd, prd->pipe_buf, dwRead)) {
+                    redmon_abort_printer(prd);
+                }
+            }
+        } else
+            if (prd->hLogFile != INVALID_HANDLE_VALUE) {
+                WriteFile(prd->hLogFile, prd->pipe_buf, dwRead, &dwWritten, NULL);
+                FlushFileBuffers(prd->hLogFile);
+            }
+        result = PeekNamedPipe(prd->hChildStdoutRd, NULL, 0, NULL,
+                               &bytes_available, NULL);
     }
 
     /* copy anything on stderr to log file */
     bytes_available = 0;
     result = PeekNamedPipe(prd->hChildStderrRd, NULL, 0, NULL,
-	    &bytes_available, NULL);
+                           &bytes_available, NULL);
     while (result && bytes_available) {
-	if (!ReadFile(prd->hChildStderrRd, prd->pipe_buf, sizeof(prd->pipe_buf), &dwRead, NULL) ||
-	    dwRead == 0) break;
-	got_something = TRUE;
-	if (prd->hLogFile != INVALID_HANDLE_VALUE) {
-	    WriteFile(prd->hLogFile, prd->pipe_buf, dwRead, &dwWritten, NULL);
-	    FlushFileBuffers(prd->hLogFile);
-	}
-	result = PeekNamedPipe(prd->hChildStderrRd, NULL, 0, NULL,
-	    &bytes_available, NULL);
+        if (!ReadFile(prd->hChildStderrRd, prd->pipe_buf, sizeof(prd->pipe_buf), &dwRead, NULL) ||
+                dwRead == 0)
+            break;
+        got_something = TRUE;
+        if (prd->hLogFile != INVALID_HANDLE_VALUE) {
+            WriteFile(prd->hLogFile, prd->pipe_buf, dwRead, &dwWritten, NULL);
+            FlushFileBuffers(prd->hLogFile);
+        }
+        result = PeekNamedPipe(prd->hChildStderrRd, NULL, 0, NULL,
+                               &bytes_available, NULL);
     }
 
     /* copy anything on printer pipe to the printer */
     if (prd->config.dwOutput == OUTPUT_HANDLE) {
-	bytes_available = 0;
-	result = PeekNamedPipe(prd->hPipeRd, NULL, 0, NULL,
-		&bytes_available, NULL);
-	while (result && bytes_available) {
-	    if (!ReadFile(prd->hPipeRd, prd->pipe_buf, sizeof(prd->pipe_buf),
-		&dwRead, NULL) || dwRead == 0)
-		break;
-	    got_something = TRUE;
-	    if (prd->printer != INVALID_HANDLE_VALUE) {
-		if (!redmon_write_printer(prd, prd->pipe_buf, dwRead)) {
-		    redmon_abort_printer(prd);
-		}
-	    }
-	    result = PeekNamedPipe(prd->hPipeRd, NULL, 0, NULL,
-		&bytes_available, NULL);
-	}
+        bytes_available = 0;
+        result = PeekNamedPipe(prd->hPipeRd, NULL, 0, NULL,
+                               &bytes_available, NULL);
+        while (result && bytes_available) {
+            if (!ReadFile(prd->hPipeRd, prd->pipe_buf, sizeof(prd->pipe_buf),
+                          &dwRead, NULL) || dwRead == 0)
+                break;
+            got_something = TRUE;
+            if (prd->printer != INVALID_HANDLE_VALUE) {
+                if (!redmon_write_printer(prd, prd->pipe_buf, dwRead)) {
+                    redmon_abort_printer(prd);
+                }
+            }
+            result = PeekNamedPipe(prd->hPipeRd, NULL, 0, NULL,
+                                   &bytes_available, NULL);
+        }
     }
 
     release_mutex(prd);
@@ -964,150 +843,145 @@ flush_stdout(REDATA *prd)
 /* Check if process is running.  */
 /* Return TRUE if process is running, FALSE otherwise */
 /* Shut down stdin pipe if we find process has terminated */
-BOOL check_process(REDATA *prd)
-{
+BOOL check_process(REDATA * prd) {
     DWORD exit_status;
     if (prd->error)
-	return FALSE;	/* process is not running */
+        return FALSE;   /* process is not running */
 
     if (prd->piProcInfo.hProcess == INVALID_HANDLE_VALUE)
-	prd->error = TRUE;
+        prd->error = TRUE;
     if (!prd->error
-	&& GetExitCodeProcess(prd->piProcInfo.hProcess, &exit_status)
-	&& (exit_status != STILL_ACTIVE))
-	prd->error = TRUE;
+            && GetExitCodeProcess(prd->piProcInfo.hProcess, &exit_status)
+            && (exit_status != STILL_ACTIVE))
+        prd->error = TRUE;
 
     if (prd->error) {
-	DWORD bytes_available, dwRead;
-	BOOL result;
-	BYTE buf[256];
-	if (prd->config.dwLogFileDebug) {
-	  write_string_to_log(prd,
-	    TEXT("REDMON check_process: process isn't running.\r\n"));
-	  write_string_to_log(prd,
-	    TEXT("REDMON check_process: flushing child stdin to unblock WriteThread.\r\n"));
-	}
-	/* flush stdin pipe to unblock WriteThread */
-	bytes_available = 0;
-	result = PeekNamedPipe(prd->hChildStdinRd, NULL, 0, NULL,
-		    &bytes_available, NULL);
-	while (result && bytes_available) {
-	    ReadFile(prd->hChildStdinRd, buf, sizeof(buf), &dwRead, NULL);
-	    result = PeekNamedPipe(prd->hChildStdinRd, NULL, 0, NULL,
-		&bytes_available, NULL);
-	}
+        DWORD bytes_available, dwRead;
+        BOOL result;
+        BYTE buf[256];
+        if (prd->config.dwLogFileDebug) {
+            write_string_to_log(prd,
+                                TEXT("REDMON check_process: process isn't running.\r\n"));
+            write_string_to_log(prd,
+                                TEXT("REDMON check_process: flushing child stdin to unblock WriteThread.\r\n"));
+        }
+        /* flush stdin pipe to unblock WriteThread */
+        bytes_available = 0;
+        result = PeekNamedPipe(prd->hChildStdinRd, NULL, 0, NULL,
+                               &bytes_available, NULL);
+        while (result && bytes_available) {
+            ReadFile(prd->hChildStdinRd, buf, sizeof(buf), &dwRead, NULL);
+            result = PeekNamedPipe(prd->hChildStdinRd, NULL, 0, NULL,
+                                   &bytes_available, NULL);
+        }
 
     }
     return !prd->error;
 }
 
 /* Thread to write to stdout pipe */
-DWORD WINAPI WriteThread(LPVOID lpThreadParameter)
-{
+DWORD WINAPI WriteThread(LPVOID lpThreadParameter) {
     HANDLE hPort = (HANDLE)lpThreadParameter;
-    REDATA *prd = GlobalLock((HGLOBAL)hPort);
+    REDATA * prd = GlobalLock((HGLOBAL)hPort);
 
 
     if (prd == (REDATA *)NULL)
-	return 1;
+        return 1;
 
     if (prd->config.dwLogFileDebug)
-	write_string_to_log(prd, TEXT("\r\nREDMON WriteThread: started\r\n"));
+        write_string_to_log(prd, TEXT("\r\nREDMON WriteThread: started\r\n"));
 
     while (prd->write && !prd->error) {
-	WaitForSingleObject(prd->write_event, INFINITE);
-	ResetEvent(prd->write_event);
-	if (prd->write_buffer_length && prd->write_buffer) {
-	    if (! (prd->write_flag = WriteFile(prd->hChildStdinWr,
-		prd->write_buffer, prd->write_buffer_length,
-		&prd->write_written, NULL)) )
-		prd->write = FALSE;	/* get out of here */
-	}
-	prd->write_buffer = NULL;
-	prd->write_buffer_length = 0;
+        WaitForSingleObject(prd->write_event, INFINITE);
+        ResetEvent(prd->write_event);
+        if (prd->write_buffer_length && prd->write_buffer) {
+            if (!(prd->write_flag = WriteFile(prd->hChildStdinWr,
+                                              prd->write_buffer, prd->write_buffer_length,
+                                              &prd->write_written, NULL)))
+                prd->write = FALSE; /* get out of here */
+        }
+        prd->write_buffer = NULL;
+        prd->write_buffer_length = 0;
     }
 
     CloseHandle(prd->write_event);
     prd->write_event = INVALID_HANDLE_VALUE;
 
     if (prd->config.dwLogFileDebug)
-	write_string_to_log(prd, TEXT("\r\nREDMON WriteThread: ending\r\n"));
+        write_string_to_log(prd, TEXT("\r\nREDMON WriteThread: ending\r\n"));
 
     GlobalUnlock(hPort);
     return 0;
 }
 
-#ifdef UNICODE
-/* Windows NT */
 /* Convert a SID into a text format */
-BOOL ConvertSid(PSID pSid, LPTSTR pszSidText, LPDWORD dwBufferLen)
-{
+BOOL ConvertSid(PSID pSid, LPTSTR pszSidText, LPDWORD dwBufferLen) {
     PSID_IDENTIFIER_AUTHORITY psia;
     DWORD dwSubAuthorities;
-    DWORD dwSidRev=SID_REVISION;
+    DWORD dwSidRev = SID_REVISION;
     DWORD dwCounter;
     DWORD dwSidSize;
 
     //
     // test if Sid passed in is valid
     //
-    if(!IsValidSid(pSid)) return FALSE;
+    if (!IsValidSid(pSid))
+        return FALSE;
 
     // obtain SidIdentifierAuthority
-    psia=GetSidIdentifierAuthority(pSid);
+    psia = GetSidIdentifierAuthority(pSid);
 
     // obtain sidsubauthority count
-    dwSubAuthorities=*GetSidSubAuthorityCount(pSid);
+    dwSubAuthorities = *GetSidSubAuthorityCount(pSid);
 
     //
     // compute buffer length
     // S-SID_REVISION- + identifierauthority- + subauthorities- + NULL
     //
-    dwSidSize=(15 + 12 + (12 * dwSubAuthorities) + 1) * sizeof(TCHAR);
+    dwSidSize = (15 + 12 + (12 * dwSubAuthorities) + 1) * sizeof(TCHAR);
 
     //
     // check provided buffer length.
     // If not large enough, indicate proper size and setlasterror
     //
-    if (*dwBufferLen < dwSidSize){
-	*dwBufferLen = dwSidSize;
-	SetLastError(ERROR_INSUFFICIENT_BUFFER);
-	return FALSE;
+    if (*dwBufferLen < dwSidSize) {
+        *dwBufferLen = dwSidSize;
+        SetLastError(ERROR_INSUFFICIENT_BUFFER);
+        return FALSE;
     }
 
     //
     // prepare S-SID_REVISION-
     //
-    dwSidSize=wsprintf(pszSidText, TEXT("S-%lu-"), dwSidRev );
+    dwSidSize = wsprintf(pszSidText, TEXT("S-%lu-"), dwSidRev);
 
     //
     // prepare SidIdentifierAuthority
     //
-    if ( (psia->Value[0] != 0) || (psia->Value[1] != 0) ){
-	dwSidSize+=wsprintf(pszSidText + lstrlen(pszSidText),
-			   TEXT("0x%02hx%02hx%02hx%02hx%02hx%02hx"),
-			   (USHORT)psia->Value[0],
-			   (USHORT)psia->Value[1],
-			   (USHORT)psia->Value[2],
-			   (USHORT)psia->Value[3],
-			   (USHORT)psia->Value[4],
-			   (USHORT)psia->Value[5]);
-    }
-    else{
-       dwSidSize+=wsprintf(pszSidText + lstrlen(pszSidText),
-			   TEXT("%lu"),
-			   (ULONG)(psia->Value[5]      )   +
-			   (ULONG)(psia->Value[4] <<  8)   +
-			   (ULONG)(psia->Value[3] << 16)   +
-			   (ULONG)(psia->Value[2] << 24)   );
+    if ((psia->Value[0] != 0) || (psia->Value[1] != 0)) {
+        dwSidSize += wsprintf(pszSidText + lstrlen(pszSidText),
+                              TEXT("0x%02hx%02hx%02hx%02hx%02hx%02hx"),
+                              (USHORT)psia->Value[0],
+                              (USHORT)psia->Value[1],
+                              (USHORT)psia->Value[2],
+                              (USHORT)psia->Value[3],
+                              (USHORT)psia->Value[4],
+                              (USHORT)psia->Value[5]);
+    } else {
+        dwSidSize += wsprintf(pszSidText + lstrlen(pszSidText),
+                              TEXT("%lu"),
+                              (ULONG)(psia->Value[5])   +
+                              (ULONG)(psia->Value[4] <<  8)   +
+                              (ULONG)(psia->Value[3] << 16)   +
+                              (ULONG)(psia->Value[2] << 24));
     }
 
     //
     // loop through SidSubAuthorities
     //
-    for (dwCounter=0 ; dwCounter < dwSubAuthorities ; dwCounter++){
-       dwSidSize+=wsprintf(pszSidText + dwSidSize, TEXT("-%lu"),
-       *GetSidSubAuthority(pSid, dwCounter) );
+    for (dwCounter = 0 ; dwCounter < dwSubAuthorities ; dwCounter++) {
+        dwSidSize += wsprintf(pszSidText + dwSidSize, TEXT("-%lu"),
+                              *GetSidSubAuthority(pSid, dwCounter));
     }
 
     return TRUE;
@@ -1117,12 +991,11 @@ BOOL ConvertSid(PSID pSid, LPTSTR pszSidText, LPDWORD dwBufferLen)
 /* Get a text format SID, so we can access the local user
  * profile under HKEY_USERS.
  */
-BOOL GetSid(LPTSTR pszSidText, LPDWORD dwSidTextLen)
-{
+BOOL GetSid(LPTSTR pszSidText, LPDWORD dwSidTextLen) {
     BOOL flag = TRUE;
     HANDLE htoken = INVALID_HANDLE_VALUE;
     TOKEN_INFORMATION_CLASS tic = TokenUser;
-    TOKEN_USER *ptu = NULL;
+    TOKEN_USER * ptu = NULL;
     DWORD dwReturnLength = 0;
     DWORD dwTokenUserLength = 0;
 
@@ -1131,84 +1004,82 @@ BOOL GetSid(LPTSTR pszSidText, LPDWORD dwSidTextLen)
 #endif
 
     /* get impersonation token of current thread */
-    if ( !(flag = OpenThreadToken(GetCurrentThread() ,
-        TOKEN_IMPERSONATE | TOKEN_DUPLICATE,
-	TRUE,
-	&htoken)) ) {
-	DWORD err = GetLastError();
+    if (!(flag = OpenThreadToken(GetCurrentThread() ,
+                                 TOKEN_IMPERSONATE | TOKEN_DUPLICATE,
+                                 TRUE,
+                                 &htoken))) {
+        DWORD err = GetLastError();
 #ifdef DEBUG_REDMON
-	syslog(TEXT("OpenThreadToken failed\r\n"));
-	syserror(err);
+        syslog(TEXT("OpenThreadToken failed\r\n"));
+        syserror(err);
 #endif
     }
 
     /* duplicate the token so we can query it */
     if (flag) {
-	HANDLE hduptoken = INVALID_HANDLE_VALUE;
-	if ( !(flag = DuplicateTokenEx(htoken, TOKEN_QUERY, NULL,
-	       SecurityImpersonation, TokenPrimary, &hduptoken)) ) {
+        HANDLE hduptoken = INVALID_HANDLE_VALUE;
+        if (!(flag = DuplicateTokenEx(htoken, TOKEN_QUERY, NULL,
+                                      SecurityImpersonation, TokenPrimary, &hduptoken))) {
 #ifdef DEBUG_REDMON
-	    DWORD err = GetLastError();
-	    syslog(TEXT("DuplicateTokenEx\r\n"));
-	    syserror(err);
+            DWORD err = GetLastError();
+            syslog(TEXT("DuplicateTokenEx\r\n"));
+            syserror(err);
 #endif
-	}
+        }
         CloseHandle(htoken);
-	htoken = hduptoken;
+        htoken = hduptoken;
     }
 
     if (flag)
-	GetTokenInformation(htoken, tic, (LPVOID)ptu,
-	    dwTokenUserLength, &dwReturnLength);
+        GetTokenInformation(htoken, tic, (LPVOID)ptu,
+                            dwTokenUserLength, &dwReturnLength);
 
     if (flag  && (dwReturnLength != 0) &&
-	(GetLastError() == ERROR_INSUFFICIENT_BUFFER)) {
-	HGLOBAL hglobal = GlobalAlloc(GPTR, (DWORD)dwReturnLength);
-	ptu = GlobalLock(hglobal);
-	if (ptu == NULL) {
-	    flag = FALSE;
+            (GetLastError() == ERROR_INSUFFICIENT_BUFFER)) {
+        HGLOBAL hglobal = GlobalAlloc(GPTR, (DWORD)dwReturnLength);
+        ptu = GlobalLock(hglobal);
+        if (ptu == NULL) {
+            flag = FALSE;
 #ifdef DEBUG_REDMON
-	    syslog(TEXT("Failed to allocate memory for SID\r\n"));
+            syslog(TEXT("Failed to allocate memory for SID\r\n"));
 #endif
-	}
-	dwTokenUserLength = dwReturnLength;
-	dwReturnLength = 0;
-	if (flag) {
-	    flag = GetTokenInformation(htoken, tic, (LPVOID)ptu,
-		dwTokenUserLength, &dwReturnLength);
+        }
+        dwTokenUserLength = dwReturnLength;
+        dwReturnLength = 0;
+        if (flag) {
+            flag = GetTokenInformation(htoken, tic, (LPVOID)ptu,
+                                       dwTokenUserLength, &dwReturnLength);
 #ifdef DEBUG_REDMON
-	    if (!flag) {
-		DWORD err = GetLastError();
-		syslog(TEXT("GetTokenInformation\r\n"));
-		syserror(err);
-	    }
+            if (!flag) {
+                DWORD err = GetLastError();
+                syslog(TEXT("GetTokenInformation\r\n"));
+                syserror(err);
+            }
 #endif
-	}
-	if (flag)
-	    flag = ConvertSid((ptu->User.Sid), pszSidText, dwSidTextLen);
-	GlobalUnlock(hglobal);
-	GlobalFree(hglobal);
-    }
-    else
-	flag = FALSE;
+        }
+        if (flag)
+            flag = ConvertSid((ptu->User.Sid), pszSidText, dwSidTextLen);
+        GlobalUnlock(hglobal);
+        GlobalFree(hglobal);
+    } else
+        flag = FALSE;
 
 
     if (htoken != INVALID_HANDLE_VALUE)
-	CloseHandle(htoken);
+        CloseHandle(htoken);
 
 #ifdef DEBUG_REDMON
     if (flag) {
-	syslog(TEXT(" "));
-	syslog(pszSidText);
-	syslog(TEXT("\r\n"));
-    }
-    else
-	syslog(TEXT(" failed\r\n"));
+        syslog(TEXT(" "));
+        syslog(pszSidText);
+        syslog(TEXT("\r\n"));
+    } else
+        syslog(TEXT(" failed\r\n"));
 #endif
     if (flag)
-	*dwSidTextLen = lstrlen(pszSidText);
+        *dwSidTextLen = lstrlen(pszSidText);
     else
-	*dwSidTextLen = 0;
+        *dwSidTextLen = 0;
     return flag;
 }
 
@@ -1221,14 +1092,13 @@ BOOL GetSid(LPTSTR pszSidText, LPDWORD dwSidTextLen)
  * once.  This isn't a problem because we don't allow "Prompt for filename"
  * unless the job is submitted locally.
  */
-void get_user_filename(LPTSTR pszSid, LPTSTR pszFileName, DWORD dwFileNameLen)
-{
+void get_user_filename(LPTSTR pszSid, LPTSTR pszFileName, DWORD dwFileNameLen) {
     LONG rc;
     HKEY hkey;
     DWORD cbData;
     DWORD dwType;
     TCHAR pszKey[256];
-    DWORD dwKeyLen = sizeof(pszKey)/sizeof(TCHAR);
+    DWORD dwKeyLen = sizeof(pszKey) / sizeof(TCHAR);
 
 #ifdef DEBUG_REDMON
     syslog(TEXT("get_user_filename  "));
@@ -1237,11 +1107,11 @@ void get_user_filename(LPTSTR pszSid, LPTSTR pszFileName, DWORD dwFileNameLen)
 #endif
 
     if (lstrlen(pszSid) + lstrlen(REDMONUSERKEY) + 2 >=
-	sizeof(pszKey)/sizeof(TCHAR)) {
+            sizeof(pszKey) / sizeof(TCHAR)) {
 #ifdef DEBUG_REDMON
-	syslog(TEXT("pszKey buffer too small\r\n"));
+        syslog(TEXT("pszKey buffer too small\r\n"));
 #endif
-	return;	/* buffer too small */
+        return; /* buffer too small */
     }
     lstrcpy(pszKey, pszSid);
     lstrcat(pszKey, TEXT("\\"));
@@ -1254,34 +1124,32 @@ void get_user_filename(LPTSTR pszSid, LPTSTR pszFileName, DWORD dwFileNameLen)
     rc = RegOpenKeyEx(HKEY_USERS, pszKey, 0, KEY_READ, (PHKEY)&hkey);
 
     if (rc == ERROR_SUCCESS) {
-	cbData = dwFileNameLen;
-	rc = RegQueryValueEx(hkey, LASTFILEKEY, 0, &dwType,
-		(PBYTE)(pszFileName), &cbData);
+        cbData = dwFileNameLen;
+        rc = RegQueryValueEx(hkey, LASTFILEKEY, 0, &dwType,
+                             (PBYTE)(pszFileName), &cbData);
 #ifdef DEBUG_REDMON
-	if (rc == ERROR_SUCCESS) {
-	    syslog(TEXT("LastFile="));
-	    syslog(pszFileName);
-	    syslog(TEXT("\r\n"));
-	}
-	else {
-	    syslog(TEXT("No LastFile\r\n"));
-	}
+        if (rc == ERROR_SUCCESS) {
+            syslog(TEXT("LastFile="));
+            syslog(pszFileName);
+            syslog(TEXT("\r\n"));
+        } else {
+            syslog(TEXT("No LastFile\r\n"));
+        }
 #endif
-	RegCloseKey(hkey);
+        RegCloseKey(hkey);
     }
 #ifdef DEBUG_REDMON
     else {
-	syslog(TEXT("RegOpenKeyEx "));
-	syslog(pszKey);
-	syslog(TEXT("\r\n"));
-	syserror(rc);
+        syslog(TEXT("RegOpenKeyEx "));
+        syslog(pszKey);
+        syslog(TEXT("\r\n"));
+        syserror(rc);
     }
 #endif
 }
 
 /* Save name obtained from "Prompt for filename" */
-void save_user_filename(LPTSTR pszSid, LPTSTR pszFileName)
-{
+void save_user_filename(LPTSTR pszSid, LPTSTR pszFileName) {
     LONG rc;
     HKEY hkey;
     TCHAR pszKey[256];
@@ -1290,25 +1158,25 @@ void save_user_filename(LPTSTR pszSid, LPTSTR pszFileName)
     rc = RegOpenKeyEx(HKEY_USERS, pszSid, 0, KEY_WRITE, (PHKEY)&hkey);
     if (rc != ERROR_SUCCESS) {
 #ifdef DEBUG_REDMON
-	if (rc != ERROR_SUCCESS) {
-	    syslog(TEXT("RegOpenKeyEx "));
-	    syslog(pszSid);
-	    syslog(TEXT("\r\n"));
-	    syserror(rc);
-	}
+        if (rc != ERROR_SUCCESS) {
+            syslog(TEXT("RegOpenKeyEx "));
+            syslog(pszSid);
+            syslog(TEXT("\r\n"));
+            syserror(rc);
+        }
 #endif
-	/* Can't access user registry */
-	/* They probably haven't logged on. */
-	return;
+        /* Can't access user registry */
+        /* They probably haven't logged on. */
+        return;
     }
     RegCloseKey(hkey);
 
     if (lstrlen(pszSid) + lstrlen(REDMONUSERKEY) + 2 >=
-	sizeof(pszKey)/sizeof(TCHAR)) {
+            sizeof(pszKey) / sizeof(TCHAR)) {
 #ifdef DEBUG_REDMON
-	syslog(TEXT("pszKey buffer too small\r\n"));
+        syslog(TEXT("pszKey buffer too small\r\n"));
 #endif
-	return;	/* buffer too small */
+        return; /* buffer too small */
     }
     lstrcpy(pszKey, pszSid);
     lstrcat(pszKey, TEXT("\\"));
@@ -1318,107 +1186,52 @@ void save_user_filename(LPTSTR pszSid, LPTSTR pszFileName)
     rc = RegOpenKeyEx(HKEY_USERS, pszKey, 0, KEY_WRITE, (PHKEY)&hkey);
     if (rc != ERROR_SUCCESS) {
 #ifdef DEBUG_REDMON
-	syslog(TEXT("RegOpenKeyEx "));
-	syslog(pszKey);
-	syslog(TEXT("\r\n"));
-	syserror(rc);
+        syslog(TEXT("RegOpenKeyEx "));
+        syslog(pszKey);
+        syslog(TEXT("\r\n"));
+        syserror(rc);
 #endif
-	rc = RegCreateKeyEx(HKEY_USERS, pszKey, 0, 0, 0, KEY_WRITE,
-		NULL, (PHKEY)&hkey, NULL);
+        rc = RegCreateKeyEx(HKEY_USERS, pszKey, 0, 0, 0, KEY_WRITE,
+                            NULL, (PHKEY)&hkey, NULL);
 #ifdef DEBUG_REDMON
-	if (rc != ERROR_SUCCESS) {
-	    syslog(TEXT("RegCreateKeyEx "));
-	    syslog(pszKey);
-	    syslog(TEXT("\r\n"));
-	    syserror(rc);
-	}
+        if (rc != ERROR_SUCCESS) {
+            syslog(TEXT("RegCreateKeyEx "));
+            syslog(pszKey);
+            syslog(TEXT("\r\n"));
+            syserror(rc);
+        }
 #endif
     }
 
     if (rc == ERROR_SUCCESS) {
-	rc = RegSetValueEx(hkey, LASTFILEKEY, 0, REG_SZ,
-	        (PBYTE)(pszFileName), sizeof(TCHAR)*(lstrlen(pszFileName)+1));
+        rc = RegSetValueEx(hkey, LASTFILEKEY, 0, REG_SZ,
+                           (PBYTE)(pszFileName), sizeof(TCHAR) * (lstrlen(pszFileName) + 1));
 #ifdef DEBUG_REDMON
-	if (rc != ERROR_SUCCESS) {
-	    syslog(TEXT("RegSetValueEx\r\n "));
-	    syslog(LASTFILEKEY);
-	    syslog(TEXT("="));
-	    syslog(pszFileName);
-	    syslog(TEXT("\r\n"));
-	    syserror(rc);
-	}
+        if (rc != ERROR_SUCCESS) {
+            syslog(TEXT("RegSetValueEx\r\n "));
+            syslog(LASTFILEKEY);
+            syslog(TEXT("="));
+            syslog(pszFileName);
+            syslog(TEXT("\r\n"));
+            syserror(rc);
+        }
 #endif
-	RegCloseKey(hkey);
+        RegCloseKey(hkey);
     }
 }
 
-#else /* !UNICODE */
-/* Windows 95 */
-/* When using "Prompt for filename", suggest previous if same user.
- * The previous username and filename are stored in HKEY_USERS
- * under Software\Ghostgum\RedMon
- */
-void get_last_filename(REDATA *prd)
-{
-    TCHAR last_user[MAXSTR];
-    HKEY hkey;
-    LONG rc;
-    DWORD cbData;
-    DWORD dwType;
 
-    rc = RegOpenKeyEx(HKEY_CURRENT_USER, REDMONUSERKEY, 0,
-	    KEY_READ, (PHKEY)&hkey);
-    if (rc == ERROR_SUCCESS) {
-	cbData = sizeof(last_user)-sizeof(TCHAR);
-	rc = RegQueryValueEx(hkey, LASTUSERKEY, 0, &dwType,
-	    (PBYTE)(last_user), &cbData);
-    }
-    if ((rc == ERROR_SUCCESS) && (lstrcmp(prd->pUserName, last_user)==0)){
-	cbData = sizeof(prd->tempname)-sizeof(TCHAR);
-	rc = RegQueryValueEx(hkey, LASTFILEKEY, 0, &dwType,
-		(PBYTE)(prd->tempname), &cbData);
-    }
-
-}
-
-void save_last_filename(REDATA *prd)
-{
-    HKEY hkey;
-    LONG rc;
-
-    rc = RegOpenKeyEx(HKEY_CURRENT_USER, REDMONUSERKEY, 0,
-	    KEY_WRITE, (PHKEY)&hkey);
-    if (rc != ERROR_SUCCESS) {
-	rc = RegCreateKeyEx(HKEY_CURRENT_USER, REDMONUSERKEY,
-		0, 0, 0, KEY_WRITE,
-		NULL, (PHKEY)&hkey, NULL);
-    }
-    if (rc == ERROR_SUCCESS) {
-	rc = RegSetValueEx(hkey, LASTUSERKEY, 0, REG_SZ,
-	        (PBYTE)(prd->pUserName),
-		sizeof(TCHAR)*(lstrlen(prd->pUserName)+1));
-    }
-    if (rc == ERROR_SUCCESS) {
-	rc = RegSetValueEx(hkey, LASTFILEKEY, 0, REG_SZ,
-	        (PBYTE)(prd->tempname),
-		sizeof(TCHAR)*(lstrlen(prd->tempname)+1));
-    }
-}
-#endif /* !UNICODE */
-
-BOOL
-redmon_open_port(HANDLE hMonitor, LPTSTR pName, PHANDLE pHandle)
-{
+BOOL redmon_open_port(HANDLE hMonitor, LPTSTR pName, PHANDLE pHandle) {
     HGLOBAL hglobal = GlobalAlloc(GPTR, (DWORD)sizeof(REDATA));
-    REDATA *prd = (REDATA *)GlobalLock(hglobal);
+    REDATA * prd = (REDATA *)GlobalLock(hglobal);
 #ifdef DEBUG_REDMON
     syslog(TEXT("redmon_open_port "));
     syslog(pName);
     syslog(TEXT("\r\n"));
 #endif
     if (prd == (REDATA *)NULL) {
-	SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-	return FALSE;
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        return FALSE;
     }
     FillMemory((PVOID)prd, sizeof(REDATA), 0);
     reset_redata(prd);
@@ -1434,86 +1247,80 @@ redmon_open_port(HANDLE hMonitor, LPTSTR pName, PHANDLE pHandle)
     return TRUE;
 }
 
-BOOL
-redmon_close_port(HANDLE hPort)
-{
+BOOL redmon_close_port(HANDLE hPort) {
     /* assume files were all closed in rEndDocPort() */
 #ifdef DEBUG_REDMON
     syslog(TEXT("redmon_close_port: calling ClosePort\r\n"));
 #endif
 
     if (hPort)
-	GlobalFree((HGLOBAL)hPort);
+        GlobalFree((HGLOBAL)hPort);
 
     return TRUE;
 }
 
-BOOL
-redmon_start_doc_port(REDATA *prd, LPTSTR pPrinterName,
-        DWORD JobId, DWORD Level, LPBYTE pDocInfo)
-{
+BOOL redmon_start_doc_port(REDATA * prd, LPTSTR pPrinterName,
+                      DWORD JobId, DWORD Level, LPBYTE pDocInfo) {
     TCHAR buf[MAXSTR];
     int i;
     int j, pathsep;
     LPTSTR s;
     BOOL flag;
-#ifndef UNICODE
     HANDLE hPrinter;
-#endif
 
     if (prd == (REDATA *)NULL) {
-	SetLastError(ERROR_INVALID_HANDLE);
-	return FALSE;
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
     }
 #ifdef DEBUG_REDMON
     syslog(TEXT("redmon_start_doc_port:\r\n"));
-    {TCHAR buf[1024];
-	if ((Level == 1) && pDocInfo) {
-	    DOC_INFO_1 *dci1 = (DOC_INFO_1 *)pDocInfo;
-	    wsprintf(buf, TEXT("\
+    {
+        TCHAR buf[1024];
+        if ((Level == 1) && pDocInfo) {
+            DOC_INFO_1 * dci1 = (DOC_INFO_1 *)pDocInfo;
+            wsprintf(buf, TEXT("\
   Level=1\r\n\
     DocumentName=\042%s\042\r\n\
     OutputFile=\042%s\042\r\n\
     Datatype=\042%s\042\r\n"),
-		dci1->pDocName ? dci1->pDocName : TEXT("(null)"),
-		dci1->pOutputFile ? dci1->pOutputFile : TEXT("(null)"),
-		dci1->pDatatype ? dci1->pDatatype : TEXT("(null)"));
-	    syslog(buf);
-	}
-	else if ((Level == 2) && pDocInfo) {
-	    DOC_INFO_2 *dci2 = (DOC_INFO_2 *)pDocInfo;
-	    wsprintf(buf, TEXT("\
+                     dci1->pDocName ? dci1->pDocName : TEXT("(null)"),
+                     dci1->pOutputFile ? dci1->pOutputFile : TEXT("(null)"),
+                     dci1->pDatatype ? dci1->pDatatype : TEXT("(null)"));
+            syslog(buf);
+        } else
+            if ((Level == 2) && pDocInfo) {
+                DOC_INFO_2 * dci2 = (DOC_INFO_2 *)pDocInfo;
+                wsprintf(buf, TEXT("\
   Level=2\r\n\
     DocumentName=\042%s\042\r\n\
     OutputFile=\042%s\042\r\n\
     Datatype=\042%s\042\r\n\
     Mode=%d\r\n\
     JobId=%d\r\n"),
-		dci2->pDocName ? dci2->pDocName : TEXT("(null)"),
-		dci2->pOutputFile ? dci2->pOutputFile : TEXT("(null)"),
-		dci2->pDatatype ? dci2->pDatatype : TEXT("(null)"),
-		dci2->dwMode, dci2->JobId);
-	    syslog(buf);
-	}
-	else if ((Level == 3) && pDocInfo) {
-	    DOC_INFO_3 *dci3 = (DOC_INFO_3 *)pDocInfo;
-	    wsprintf(buf, TEXT("\
+                         dci2->pDocName ? dci2->pDocName : TEXT("(null)"),
+                         dci2->pOutputFile ? dci2->pOutputFile : TEXT("(null)"),
+                         dci2->pDatatype ? dci2->pDatatype : TEXT("(null)"),
+                         dci2->dwMode, dci2->JobId);
+                syslog(buf);
+            } else
+                if ((Level == 3) && pDocInfo) {
+                    DOC_INFO_3 * dci3 = (DOC_INFO_3 *)pDocInfo;
+                    wsprintf(buf, TEXT("\
   Level=3\r\n\
     DocumentName=\042%s\042\r\n\
     OutputFile=\042%s\042\r\n\
     Datatype=\042%s\042\r\n\
     Flags=%d\r\n"),
-		dci3->pDocName ? dci3->pDocName : TEXT("(null)"),
-		dci3->pOutputFile ? dci3->pOutputFile : TEXT("(null)"),
-		dci3->pDatatype ? dci3->pDatatype : TEXT("(null)"),
-		dci3->dwFlags);
-	    syslog(buf);
-	}
-	else {
-	    wsprintf(buf, TEXT("  Level=%d pDocInfo=%d\r\n"),
-		Level, pDocInfo);
-	    syslog(buf);
-	}
+                             dci3->pDocName ? dci3->pDocName : TEXT("(null)"),
+                             dci3->pOutputFile ? dci3->pOutputFile : TEXT("(null)"),
+                             dci3->pDatatype ? dci3->pDatatype : TEXT("(null)"),
+                             dci3->dwFlags);
+                    syslog(buf);
+                } else {
+                    wsprintf(buf, TEXT("  Level=%d pDocInfo=%d\r\n"),
+                             Level, pDocInfo);
+                    syslog(buf);
+                }
     }
 #endif
 
@@ -1522,40 +1329,39 @@ redmon_start_doc_port(REDATA *prd, LPTSTR pPrinterName,
     prd->JobId = JobId;
     /* remember document name, to be used for output job */
     if ((Level == 1) && pDocInfo) {
-	DOC_INFO_1 *dci1 = (DOC_INFO_1 *)pDocInfo;
-	lstrcpyn(prd->pDocName, dci1->pDocName,
-	    sizeof(prd->pDocName)/sizeof(TCHAR)-1);
-    }
-    else if ((Level == 2) && pDocInfo) {
-	DOC_INFO_2 *dci2 = (DOC_INFO_2 *)pDocInfo;
-	lstrcpyn(prd->pDocName, dci2->pDocName,
-	    sizeof(prd->pDocName)/sizeof(TCHAR)-1);
-    }
-    else if ((Level == 3) && pDocInfo) {
-	DOC_INFO_3 *dci3 = (DOC_INFO_3 *)pDocInfo;
-	lstrcpyn(prd->pDocName, dci3->pDocName,
-	    sizeof(prd->pDocName)/sizeof(TCHAR)-1);
-    }
-    else
-	lstrcpy(prd->pDocName, TEXT("RedMon"));
+        DOC_INFO_1 * dci1 = (DOC_INFO_1 *)pDocInfo;
+        lstrcpyn(prd->pDocName, dci1->pDocName,
+                 sizeof(prd->pDocName) / sizeof(TCHAR) - 1);
+    } else
+        if ((Level == 2) && pDocInfo) {
+            DOC_INFO_2 * dci2 = (DOC_INFO_2 *)pDocInfo;
+            lstrcpyn(prd->pDocName, dci2->pDocName,
+                     sizeof(prd->pDocName) / sizeof(TCHAR) - 1);
+        } else
+            if ((Level == 3) && pDocInfo) {
+                DOC_INFO_3 * dci3 = (DOC_INFO_3 *)pDocInfo;
+                lstrcpyn(prd->pDocName, dci3->pDocName,
+                         sizeof(prd->pDocName) / sizeof(TCHAR) - 1);
+            } else
+                lstrcpy(prd->pDocName, TEXT("RedMon"));
 
     /* Sanitise pDocName */
     pathsep = 0;
-    for (i=0; prd->pDocName[i] != '\0'; i++) {
-	if ( (prd->pDocName[i] == '\\') || (prd->pDocName[i] == '/') )
-	    pathsep = i+1;
+    for (i = 0; prd->pDocName[i] != '\0'; i++) {
+        if ((prd->pDocName[i] == '\\') || (prd->pDocName[i] == '/'))
+            pathsep = i + 1;
     }
     j = 0;
     for (s = prd->pDocName + pathsep; *s; s++) {
-	if ((*s != '<') && (*s != '>') && (*s != '\"') &&
-	    (*s != '|') && (*s != '/') && (*s != '\\') &&
-	    (*s != '?') && (*s != '*') && (*s != ':')) {
-		if (*s == '.')
-		    break;
-		prd->pBaseName[j] = *s;
-		if (j < sizeof(prd->pBaseName) - 1)
-		    j++;
-	}
+        if ((*s != '<') && (*s != '>') && (*s != '\"') &&
+                (*s != '|') && (*s != '/') && (*s != '\\') &&
+                (*s != '?') && (*s != '*') && (*s != ':')) {
+            if (*s == '.')
+                break;
+            prd->pBaseName[j] = *s;
+            if (j < sizeof(prd->pBaseName) - 1)
+                j++;
+        }
     }
     prd->pBaseName[j] = '\0';
 
@@ -1566,243 +1372,190 @@ redmon_start_doc_port(REDATA *prd, LPTSTR pPrinterName,
     prd->config.dwSize = sizeof(prd->config);
     prd->config.dwVersion = VERSION_NUMBER;
     if (!redmon_get_config(prd->hMonitor, prd->portname, &prd->config)) {
-	SetLastError(REGDB_E_KEYMISSING);
-	return FALSE;	/* There are no ports */
+        SetLastError(REGDB_E_KEYMISSING);
+        return FALSE;   /* There are no ports */
     }
 
     if (prd->config.dwLogFileUse) {
-	/* Open optional log file */
-	prd->hLogFile = INVALID_HANDLE_VALUE;
-	if (lstrlen(prd->config.szLogFileName)) {
-	    prd->hLogFile = CreateFile(prd->config.szLogFileName,
-		GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS,
-		FILE_ATTRIBUTE_NORMAL, NULL);
-	}
+        /* Open optional log file */
+        prd->hLogFile = INVALID_HANDLE_VALUE;
+        if (lstrlen(prd->config.szLogFileName)) {
+            prd->hLogFile = CreateFile(prd->config.szLogFileName,
+                                       GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS,
+                                       FILE_ATTRIBUTE_NORMAL, NULL);
+        }
 
-	if (prd->config.dwLogFileDebug) {
-	    LoadString(hdll, IDS_TITLE, buf, sizeof(buf)/sizeof(TCHAR)-1);
-	    write_string_to_log(prd, buf);
-	    write_string_to_log(prd, TEXT("\r\n"));
-	    write_string_to_log(prd, copyright);
-	    write_string_to_log(prd, version);
-	}
+        if (prd->config.dwLogFileDebug) {
+            LoadString(hdll, IDS_TITLE, buf, sizeof(buf) / sizeof(TCHAR) - 1);
+            write_string_to_log(prd, buf);
+            write_string_to_log(prd, TEXT("\r\n"));
+            write_string_to_log(prd, copyright);
+            write_string_to_log(prd, version);
+        }
     }
 
-#ifndef UNICODE
-    /* Make sure printer isn't in bidirectional mode since */
-    /* failures in bidirectional access crash the spooler. */
-    if (OpenPrinter(prd->pPrinterName, &hPrinter, NULL)) {
-	HGLOBAL hglobal;
-	PRINTER_INFO_2 *pi2;
-	DWORD dwNeeded;
-	int bidirectional = 0;
-        hglobal = GlobalAlloc(GPTR, (DWORD)4096);
-	pi2 = (PRINTER_INFO_2 *)GlobalLock(hglobal);
-	if (pi2 == NULL) {
-	    ClosePrinter(hPrinter);
-	    return FALSE;
-	}
-	if (GetPrinter(hPrinter, 2, (BYTE *)pi2, 4096, &dwNeeded))
-	    bidirectional = pi2->Attributes & (PRINTER_ATTRIBUTE_ENABLE_BIDI);
-	GlobalUnlock(hglobal);
-	GlobalFree(hglobal);
-	ClosePrinter(hPrinter);
-	if (bidirectional) {
-	    write_string_to_log(prd,
-		TEXT("REDMON StartDocPort: returning FALSE.\r\n\
-  You must disable bi-directional printer support for this printer\r\n"));
-	    if (prd->hLogFile != INVALID_HANDLE_VALUE);
-		CloseHandle(prd->hLogFile);
-	    prd->hLogFile = INVALID_HANDLE_VALUE;
-	    SetLastError(ERROR_INVALID_PRINTER_COMMAND);
-	    return FALSE;
-	}
-    }
-#endif
-
-
-    flag = TRUE;	/* all is well */
+    flag = TRUE;    /* all is well */
 
     /* Find out which output method is used */
     if (prd->config.dwOutput == OUTPUT_FILE) {
-	if (!create_tempfile(prd->tempname,
-		sizeof(prd->tempname)/sizeof(TCHAR))) {
-	    write_string_to_log(prd,
-		TEXT("\r\nREDMON StartDocPort: temp file creation failed\r\n"));
-	    flag = FALSE;
-	}
+        if (!create_tempfile(prd->tempname,
+                             sizeof(prd->tempname) / sizeof(TCHAR))) {
+            write_string_to_log(prd,
+                                TEXT("\r\nREDMON StartDocPort: temp file creation failed\r\n"));
+            flag = FALSE;
+        }
     }
 
     /* Create anonymous inheritable pipe for printer output */
     if (prd->config.dwOutput == OUTPUT_HANDLE) {
-	HANDLE hPipeTemp;
-	SECURITY_ATTRIBUTES saAttr;
-	/* Set the bInheritHandle flag so pipe handles are inherited. */
-	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-	saAttr.bInheritHandle = TRUE;
-	saAttr.lpSecurityDescriptor = NULL;
+        HANDLE hPipeTemp;
+        SECURITY_ATTRIBUTES saAttr;
+        /* Set the bInheritHandle flag so pipe handles are inherited. */
+        saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+        saAttr.bInheritHandle = TRUE;
+        saAttr.lpSecurityDescriptor = NULL;
         if (!CreatePipe(&hPipeTemp, &prd->hPipeWr, &saAttr, 0)) {
-	    write_string_to_log(prd,
-		TEXT("\r\nREDMON StartDocPort: open printer pipe failed\r\n"));
-	    flag = FALSE;
-	}
-	/* make the read handle non-inherited */
-	if (!DuplicateHandle(GetCurrentProcess(), hPipeTemp,
-		GetCurrentProcess(), &prd->hPipeRd, 0,
-		FALSE,       /* not inherited */
-		DUPLICATE_SAME_ACCESS)) {
-	    write_string_to_log(prd,
-		TEXT("\r\nREDMON StartDocPort: duplicate printer pipe handle failed\r\n"));
-	    flag = FALSE;
-	}
-	CloseHandle(hPipeTemp);
+            write_string_to_log(prd,
+                                TEXT("\r\nREDMON StartDocPort: open printer pipe failed\r\n"));
+            flag = FALSE;
+        }
+        /* make the read handle non-inherited */
+        if (!DuplicateHandle(GetCurrentProcess(), hPipeTemp,
+                             GetCurrentProcess(), &prd->hPipeRd, 0,
+                             FALSE,       /* not inherited */
+                             DUPLICATE_SAME_ACCESS)) {
+            write_string_to_log(prd,
+                                TEXT("\r\nREDMON StartDocPort: duplicate printer pipe handle failed\r\n"));
+            flag = FALSE;
+        }
+        CloseHandle(hPipeTemp);
     }
 
     query_session_id(prd);
 
     /* Prompt for output filename, to be passed as %1 */
     if (prd->config.dwOutput == OUTPUT_PROMPT) {
-	OPENFILENAME ofn;
-	TCHAR cReplace;
-	TCHAR szFilter[MAXSTR];
-	TCHAR szDir[MAXSTR];
-#ifdef UNICODE
-	TCHAR szSid[256];
-	DWORD dwSidLen = sizeof(szSid)/sizeof(TCHAR)-1;
-#endif
-	TCHAR szComputerName[256];
-	DWORD dwNameLen = sizeof(szComputerName)/sizeof(TCHAR)-1;
-	TCHAR *p;
+        OPENFILENAME ofn;
+        TCHAR cReplace;
+        TCHAR szFilter[MAXSTR];
+        TCHAR szDir[MAXSTR];
+        TCHAR szSid[256];
+        DWORD dwSidLen = sizeof(szSid) / sizeof(TCHAR) - 1;
+        TCHAR szComputerName[256];
+        DWORD dwNameLen = sizeof(szComputerName) / sizeof(TCHAR) - 1;
+        TCHAR * p;
 
-	/* Restrict to local user.  If we allowed remote access, the
-	 * Save As dialog would appear on the server, not the client.
-	 */
-	p = prd->pMachineName;
-	while (*p && (*p=='\\'))	/* skip leading backslashes */
-	    p++;
-	szComputerName[0] = '\0';
-	GetComputerName(szComputerName, &dwNameLen);
-	if (lstrcmpi(p, szComputerName) != 0) {
-	    /* The job was submitted from another computer. */
-	    /* Do not allow this. */
-	    write_string_to_log(prd,
-	        TEXT("\r\nREDMON StartDocPort: remote access to \042prompt for filename\042 is not permitted\r\n"));
-	    SetLastError(ERROR_ACCESS_DENIED);
-	    flag = FALSE;
-	}
+        /* Restrict to local user.  If we allowed remote access, the
+         * Save As dialog would appear on the server, not the client.
+         */
+        p = prd->pMachineName;
+        while (*p && (*p == '\\'))  /* skip leading backslashes */
+            p++;
+        szComputerName[0] = '\0';
+        GetComputerName(szComputerName, &dwNameLen);
+        if (lstrcmpi(p, szComputerName) != 0) {
+            /* The job was submitted from another computer. */
+            /* Do not allow this. */
+            write_string_to_log(prd,
+                                TEXT("\r\nREDMON StartDocPort: remote access to \042prompt for filename\042 is not permitted\r\n"));
+            SetLastError(ERROR_ACCESS_DENIED);
+            flag = FALSE;
+        }
 
-	if (flag) {
-	    FillMemory((PVOID)&ofn, sizeof(ofn), 0);
-	    ofn.lStructSize = sizeof(OPENFILENAME);
-	    ofn.hwndOwner = HWND_DESKTOP;
-	    ofn.lpstrFile = prd->tempname;
-	    ofn.nMaxFile = sizeof(prd->tempname);
-	    ofn.lpfnHook = GetSaveHookProc;	/* to bring to foreground */
-	    ofn.Flags = OFN_ENABLEHOOK | OFN_EXPLORER | OFN_OVERWRITEPROMPT;
-	    if (LoadString(hdll, IDS_FILTER_PROMPT, szFilter,
-		sizeof(szFilter)/sizeof(TCHAR) -1 )) {
-		cReplace = szFilter[lstrlen(szFilter)-1];
-		for (i=0; szFilter[i] != '\0'; i++)
-		    if (szFilter[i] == cReplace)
-			szFilter[i] = '\0';
-		ofn.lpstrFilter = szFilter;
-		ofn.nFilterIndex = 0;
-	    }
-#ifdef UNICODE
-	    /* Get SID for impersonation thread token
-	     * If this user is local (as they should be), the text
-	     * formatted SID is a key under HKEY_USERS.
-	     */
-	    *szSid = '\0';
-	    if (GetSid(szSid, &dwSidLen)) {
-		get_user_filename(szSid, prd->tempname,
-		    sizeof(prd->tempname)/sizeof(TCHAR) - 1);
-	    }
-#else
-	    get_last_filename(prd);
-#endif
+        if (flag) {
+            FillMemory((PVOID)&ofn, sizeof(ofn), 0);
+            ofn.lStructSize = sizeof(OPENFILENAME);
+            ofn.hwndOwner = HWND_DESKTOP;
+            ofn.lpstrFile = prd->tempname;
+            ofn.nMaxFile = sizeof(prd->tempname);
+            ofn.lpfnHook = GetSaveHookProc; /* to bring to foreground */
+            ofn.Flags = OFN_ENABLEHOOK | OFN_EXPLORER | OFN_OVERWRITEPROMPT;
+            if (LoadString(hdll, IDS_FILTER_PROMPT, szFilter,
+                           sizeof(szFilter) / sizeof(TCHAR) - 1)) {
+                cReplace = szFilter[lstrlen(szFilter) - 1];
+                for (i = 0; szFilter[i] != '\0'; i++)
+                    if (szFilter[i] == cReplace)
+                        szFilter[i] = '\0';
+                ofn.lpstrFilter = szFilter;
+                ofn.nFilterIndex = 0;
+            }
+            /* Get SID for impersonation thread token
+             * If this user is local (as they should be), the text
+             * formatted SID is a key under HKEY_USERS.
+             */
+            *szSid = '\0';
+            if (GetSid(szSid, &dwSidLen)) {
+                get_user_filename(szSid, prd->tempname,
+                                  sizeof(prd->tempname) / sizeof(TCHAR) - 1);
+            }
 
-#if defined(UNICODE) && (defined(NT40) || defined(NT50))
-	    if (!prd->config.dwRunUser)
-#endif
-	    {
-		/* Split the directory name and filename */
-		if (lstrlen(ofn.lpstrFile)) {
-		    lstrcpy(szDir, ofn.lpstrFile);
-		    for (i=lstrlen(szDir)-1; i; i--) {
-			if (szDir[i] == '\\') {
-			    lstrcpy(ofn.lpstrFile, szDir+i+1);
-			    szDir[i+1] = '\0';
-			    ofn.lpstrInitialDir = szDir;
-			    break;
-			}
-		    }
-		}
-	    }
+            if (!prd->config.dwRunUser) {
+                /* Split the directory name and filename */
+                if (lstrlen(ofn.lpstrFile)) {
+                    lstrcpy(szDir, ofn.lpstrFile);
+                    for (i = lstrlen(szDir) - 1; i; i--) {
+                        if (szDir[i] == '\\') {
+                            lstrcpy(ofn.lpstrFile, szDir + i + 1);
+                            szDir[i + 1] = '\0';
+                            ofn.lpstrInitialDir = szDir;
+                            break;
+                        }
+                    }
+                }
+            }
 
-#if defined(UNICODE) && (defined(NT40) || defined(NT50))
-#ifdef NOTUSED
-	    if (prd->pSessionId &&
-		!((prd->pSessionId[0] == '0') && (prd->pSessionId[1] == '\0')))
-#endif
-	    if (prd->config.dwRunUser) {
-		write_string_to_log(prd,
-		   TEXT("\r\nget_filename_as_user sent: "));
-		write_string_to_log(prd, prd->tempname);
-		write_string_to_log(prd,
-		   TEXT("\r\n"));
-		flag = get_filename_as_user(prd); /* WTS uses separate process*/
-	    }
-	    else
-		flag = get_filename_client(prd, &ofn);
-#else
-	    flag = GetSaveFileName(&ofn);
-#endif
+            if (prd->config.dwRunUser) {
+                write_string_to_log(prd,
+                                    TEXT("\r\nget_filename_as_user sent: "));
+                write_string_to_log(prd, prd->tempname);
+                write_string_to_log(prd,
+                                    TEXT("\r\n"));
+                flag = get_filename_as_user(prd); /* WTS uses separate process*/
+            } else
+                flag = get_filename_client(prd, &ofn);
 
-	    if (flag) {
-#if REDMON_DEBUG
-		syslog(TEXT("GetSaveFileName returns \042"));
-		syslog(prd->tempname);
-		syslog(TEXT("\042\r\n"));
+            if (flag) {
+#if DEBUG_REDMON
+                syslog(TEXT("GetSaveFileName returns \042"));
+                syslog(prd->tempname);
+                syslog(TEXT("\042\r\n"));
 #endif
-#ifdef UNICODE
-		if (lstrlen(szSid))
-		    save_user_filename(szSid, prd->tempname);
-#else
-		save_last_filename(prd);
-#endif
-	    }
-	    else  {
-		/* User cancelled at the filename prompt.
-		 * Keep going, because returning an error causes
-		 * the print spooler to retry and call the
-		 * the port monitor again and again.
-		 */
-		prd->error = TRUE;	/* Don't process job */
-					/* Job will be cancelled in WritePort */
-		write_string_to_log(prd,
-    TEXT("\r\nREDMON StartDocPort: prompt for filename failed.\r\n"));
-		write_string_to_log(prd,
-    TEXT("  The print job will be silently consumed and thrown away.\r\n"));
-		return TRUE;
-	    }
-	}
+                if (lstrlen(szSid))
+                    save_user_filename(szSid, prd->tempname);
+            } else  {
+                /* User cancelled at the filename prompt.
+                 * Keep going, because returning an error causes
+                 * the print spooler to retry and call the
+                 * the port monitor again and again.
+                 */
+                prd->error = TRUE;  /* Don't process job */
+                /* Job will be cancelled in WritePort */
+                write_string_to_log(prd,
+                                    TEXT("\r\nREDMON StartDocPort: prompt for filename failed.\r\n"));
+                write_string_to_log(prd,
+                                    TEXT("  The print job will be silently consumed and thrown away.\r\n"));
+                return TRUE;
+            }
+        }
     }
 
     if (!flag) {
-	if (prd->hLogFile != INVALID_HANDLE_VALUE);
-	    CloseHandle(prd->hLogFile);
-	prd->hLogFile = INVALID_HANDLE_VALUE;
-	if (prd->hPipeRd != INVALID_HANDLE_VALUE);
-	    CloseHandle(prd->hPipeRd);
-	prd->hPipeRd = INVALID_HANDLE_VALUE;
-	if (prd->hPipeWr != INVALID_HANDLE_VALUE);
-	    CloseHandle(prd->hPipeWr);
-	prd->hPipeWr = INVALID_HANDLE_VALUE;
-	if (prd->environment)
-	    GlobalFree(prd->environment);
-	prd->environment = NULL;
-	return FALSE;
+        if (prd->hLogFile != INVALID_HANDLE_VALUE)
+            ;
+        CloseHandle(prd->hLogFile);
+        prd->hLogFile = INVALID_HANDLE_VALUE;
+        if (prd->hPipeRd != INVALID_HANDLE_VALUE)
+            ;
+        CloseHandle(prd->hPipeRd);
+        prd->hPipeRd = INVALID_HANDLE_VALUE;
+        if (prd->hPipeWr != INVALID_HANDLE_VALUE)
+            ;
+        CloseHandle(prd->hPipeWr);
+        prd->hPipeWr = INVALID_HANDLE_VALUE;
+        if (prd->environment)
+            GlobalFree(prd->environment);
+        prd->environment = NULL;
+        return FALSE;
     }
 
     make_env(prd);
@@ -1820,88 +1573,82 @@ redmon_start_doc_port(REDATA *prd, LPTSTR pPrinterName,
     /* %REDMON_DOCNAME% etc. */
     i = lstrlen(prd->command);
     for (s = prd->config.szArguments;
-	*s && (i < sizeof(prd->command)/sizeof(TCHAR)-1); s++) {
-	if ( (*s == '%') && (*(s+1)=='1') &&
-	  (i+lstrlen(prd->tempname) < sizeof(prd->command)/sizeof(TCHAR)-1) )
-	{
-	    /* copy temp or prompted filename */
-	    prd->command[i] = '\0';
-	    lstrcat(prd->command, prd->tempname);
-	    i = lstrlen(prd->command);
-	    s++;
-        }
-	else if ( (*s == '%') && (*(s+1)=='h') &&
-	  (i+16 < sizeof(prd->command)/sizeof(TCHAR)-1) )
-	{
-	    /* copy printer pipe handle as hexadecimal */
-	    prd->command[i] = '\0';
-	    wsprintf(&(prd->command[i]), TEXT("%08x"), (int)(prd->hPipeWr));
-	    i = lstrlen(prd->command);
-	    s++;
-        }
-	else if ( (*s == '%') && (*(s+1)=='b') &&
-	  (i+lstrlen(prd->pBaseName) < sizeof(prd->command)/sizeof(TCHAR)-1) )
-	{
-	    /* copy base name */
-	    prd->command[i] = '\0';
-	    lstrcat(prd->command, prd->pBaseName);
-	    i = lstrlen(prd->command);
-	    s++;
-        }
-	else if ( (*s == '%') && (*(s+1)=='d') &&
-	  (i+lstrlen(prd->pDocName) < sizeof(prd->command)/sizeof(TCHAR)-1) )
-	{
-	    /* copy document name, skipping invalid characters */
-	    LPTSTR t;
-	    for (t = prd->pDocName; *t; t++) {
-		if ((*t != '<') && (*t != '>') && (*t != '\"') &&
-		    (*t != '|') && (*t != '/') && (*t != '\\') &&
-		    (*t != '?') && (*t != '*') && (*t != ':'))
-		    prd->command[i++] = *t;
-	    }
-	    prd->command[i] = '\0';
-	    i = lstrlen(prd->command);
-	    s++;
-        }
-	else if ( (*s == '%') && (*(s+1)=='u') &&
-	  (i+lstrlen(prd->pUserName) < sizeof(prd->command)/sizeof(TCHAR)-1) )
-	{
-	    /* copy user name, skipping invalid characters */
-	    LPTSTR t;
-	    for (t = prd->pUserName; *t; t++) {
-		if ((*t != '<') && (*t != '>') && (*t != '\"') &&
-		    (*t != '|') && (*t != '/') && (*t != '\\') &&
-		    (*t != ':'))
-		    prd->command[i++] = *t;
-	    }
-	    prd->command[i] = '\0';
-	    i = lstrlen(prd->command);
-	    s++;
-	}
-	else if ( (*s == '%') && (*(s+1)=='%') ) {
-	    s++;
-	    prd->command[i++] = *s;
-	}
-	else
-	    prd->command[i++] = *s;
+            *s && (i < sizeof(prd->command) / sizeof(TCHAR) - 1); s++) {
+        if ((*s == '%') && (*(s + 1) == '1') &&
+                (i + lstrlen(prd->tempname) < sizeof(prd->command) / sizeof(TCHAR) - 1)) {
+            /* copy temp or prompted filename */
+            prd->command[i] = '\0';
+            lstrcat(prd->command, prd->tempname);
+            i = lstrlen(prd->command);
+            s++;
+        } else
+            if ((*s == '%') && (*(s + 1) == 'h') &&
+                    (i + 16 < sizeof(prd->command) / sizeof(TCHAR) - 1)) {
+                /* copy printer pipe handle as hexadecimal */
+                prd->command[i] = '\0';
+                wsprintf(&(prd->command[i]), TEXT("%08x"), (int)(prd->hPipeWr));
+                i = lstrlen(prd->command);
+                s++;
+            } else
+                if ((*s == '%') && (*(s + 1) == 'b') &&
+                        (i + lstrlen(prd->pBaseName) < sizeof(prd->command) / sizeof(TCHAR) - 1)) {
+                    /* copy base name */
+                    prd->command[i] = '\0';
+                    lstrcat(prd->command, prd->pBaseName);
+                    i = lstrlen(prd->command);
+                    s++;
+                } else
+                    if ((*s == '%') && (*(s + 1) == 'd') &&
+                            (i + lstrlen(prd->pDocName) < sizeof(prd->command) / sizeof(TCHAR) - 1)) {
+                        /* copy document name, skipping invalid characters */
+                        LPTSTR t;
+                        for (t = prd->pDocName; *t; t++) {
+                            if ((*t != '<') && (*t != '>') && (*t != '\"') &&
+                                    (*t != '|') && (*t != '/') && (*t != '\\') &&
+                                    (*t != '?') && (*t != '*') && (*t != ':'))
+                                prd->command[i++] = *t;
+                        }
+                        prd->command[i] = '\0';
+                        i = lstrlen(prd->command);
+                        s++;
+                    } else
+                        if ((*s == '%') && (*(s + 1) == 'u') &&
+                                (i + lstrlen(prd->pUserName) < sizeof(prd->command) / sizeof(TCHAR) - 1)) {
+                            /* copy user name, skipping invalid characters */
+                            LPTSTR t;
+                            for (t = prd->pUserName; *t; t++) {
+                                if ((*t != '<') && (*t != '>') && (*t != '\"') &&
+                                        (*t != '|') && (*t != '/') && (*t != '\\') &&
+                                        (*t != ':'))
+                                    prd->command[i++] = *t;
+                            }
+                            prd->command[i] = '\0';
+                            i = lstrlen(prd->command);
+                            s++;
+                        } else
+                            if ((*s == '%') && (*(s + 1) == '%')) {
+                                s++;
+                                prd->command[i++] = *s;
+                            } else
+                                prd->command[i++] = *s;
     }
     prd->command[i] = '\0';
 
     /* fix shutdown delay */
     if (prd->config.dwDelay < MINIMUM_DELAY)
-	prd->config.dwDelay = MINIMUM_DELAY;
+        prd->config.dwDelay = MINIMUM_DELAY;
 
-    if ( (prd->config.dwOutput == OUTPUT_STDOUT) ||
-	 (prd->config.dwOutput == OUTPUT_HANDLE) ) {
-	/* open a printer */
-	if (!redmon_open_printer(prd)) {
-	    write_string_to_log(prd,
-		TEXT("\r\nREDMON StartDocPort: open printer failed\r\n"));
-	    if (prd->hLogFile != INVALID_HANDLE_VALUE)
-	        CloseHandle(prd->hLogFile);
-	    prd->hLogFile = INVALID_HANDLE_VALUE;
-	    return FALSE;
-	}
+    if ((prd->config.dwOutput == OUTPUT_STDOUT) ||
+            (prd->config.dwOutput == OUTPUT_HANDLE)) {
+        /* open a printer */
+        if (!redmon_open_printer(prd)) {
+            write_string_to_log(prd,
+                                TEXT("\r\nREDMON StartDocPort: open printer failed\r\n"));
+            if (prd->hLogFile != INVALID_HANDLE_VALUE)
+                CloseHandle(prd->hLogFile);
+            prd->hLogFile = INVALID_HANDLE_VALUE;
+            return FALSE;
+        }
     }
 
     prd->hmutex = CreateMutex(NULL, FALSE, NULL);
@@ -1910,150 +1657,150 @@ redmon_start_doc_port(REDATA *prd, LPTSTR pPrinterName,
     if (flag) {
         WaitForInputIdle(prd->piProcInfo.hProcess, 5000);
 
-	/* Create thread to write to stdin pipe
-	 * We need this to avoid a deadlock when stdin and stdout
-	 * pipes are both blocked.
-	 */
-	prd->write_event = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (prd->write_event == NULL)
-	    write_string_to_log(prd,
-		TEXT("couldn't create synchronization event\r\n"));
-	prd->write = TRUE;
-	prd->write_hthread = CreateThread(NULL, 0, &WriteThread,
-		prd->hPort, 0, &prd->write_threadid);
-    }
-    else {
-	DWORD err = GetLastError();
-	/* ENGLISH */
-	if (prd->environment) {
-	    GlobalUnlock(prd->environment);
-	    GlobalFree(prd->environment);
-	    prd->environment = NULL;
-	}
-	wsprintf(buf,
-	   TEXT("StartDocPort: failed to start process\r\n  Port = %s\r\n  Command = %s\r\n  Error = %ld\r\n"),
-	   prd->portname, prd->command, err);
-	switch(err) {
-	    case ERROR_FILE_NOT_FOUND:
-		lstrcat(buf, TEXT("  File not found\r\n"));
-		break;
-	    case ERROR_PATH_NOT_FOUND:
-		lstrcat(buf, TEXT("  Path not found\r\n"));
-		break;
-	    case ERROR_BAD_PATHNAME:
-		lstrcat(buf, TEXT("  Bad path name\r\n"));
-		break;
-	}
-	write_string_to_log(prd, buf);
-	write_error(prd, err);
+        /* Create thread to write to stdin pipe
+         * We need this to avoid a deadlock when stdin and stdout
+         * pipes are both blocked.
+         */
+        prd->write_event = CreateEvent(NULL, TRUE, FALSE, NULL);
+        if (prd->write_event == NULL)
+            write_string_to_log(prd,
+                                TEXT("couldn't create synchronization event\r\n"));
+        prd->write = TRUE;
+        prd->write_hthread = CreateThread(NULL, 0, &WriteThread,
+                                          prd->hPort, 0, &prd->write_threadid);
+    } else {
+        DWORD err = GetLastError();
+        /* ENGLISH */
+        if (prd->environment) {
+            GlobalUnlock(prd->environment);
+            GlobalFree(prd->environment);
+            prd->environment = NULL;
+        }
+        wsprintf(buf,
+                 TEXT("StartDocPort: failed to start process\r\n  Port = %s\r\n  Command = %s\r\n  Error = %ld\r\n"),
+                 prd->portname, prd->command, err);
+        switch (err) {
+        case ERROR_FILE_NOT_FOUND:
+            lstrcat(buf, TEXT("  File not found\r\n"));
+            break;
+        case ERROR_PATH_NOT_FOUND:
+            lstrcat(buf, TEXT("  Path not found\r\n"));
+            break;
+        case ERROR_BAD_PATHNAME:
+            lstrcat(buf, TEXT("  Bad path name\r\n"));
+            break;
+        }
+        write_string_to_log(prd, buf);
+        write_error(prd, err);
     }
 
     if (prd->config.dwLogFileDebug) {
-	wsprintf(buf,
-	  TEXT("REDMON StartDocPort: returning %d\r\n\
+        wsprintf(buf,
+                 TEXT("REDMON StartDocPort: returning %d\r\n\
   %s\r\n\
   Printer=%s\r\n\
   JobId=%d\r\n"),
-	  flag, prd->command, prd->pPrinterName, prd->JobId);
-	write_string_to_log(prd, buf);
-	if ((Level == 1) && pDocInfo) {
-	    DOC_INFO_1 *dci1 = (DOC_INFO_1 *)pDocInfo;
-	    wsprintf(buf, TEXT("\
+                 flag, prd->command, prd->pPrinterName, prd->JobId);
+        write_string_to_log(prd, buf);
+        if ((Level == 1) && pDocInfo) {
+            DOC_INFO_1 * dci1 = (DOC_INFO_1 *)pDocInfo;
+            wsprintf(buf, TEXT("\
   Level=1\r\n\
     DocumentName=\042%s\042\r\n\
     OutputFile=\042%s\042\r\n\
     Datatype=\042%s\042\r\n"),
-		dci1->pDocName ? dci1->pDocName : TEXT("(null)"),
-		dci1->pOutputFile ? dci1->pOutputFile : TEXT("(null)"),
-		dci1->pDatatype ? dci1->pDatatype : TEXT("(null)"));
-	    write_string_to_log(prd, buf);
-	}
-	else if ((Level == 2) && pDocInfo) {
-	    DOC_INFO_2 *dci2 = (DOC_INFO_2 *)pDocInfo;
-	    wsprintf(buf, TEXT("\
+                     dci1->pDocName ? dci1->pDocName : TEXT("(null)"),
+                     dci1->pOutputFile ? dci1->pOutputFile : TEXT("(null)"),
+                     dci1->pDatatype ? dci1->pDatatype : TEXT("(null)"));
+            write_string_to_log(prd, buf);
+        } else
+            if ((Level == 2) && pDocInfo) {
+                DOC_INFO_2 * dci2 = (DOC_INFO_2 *)pDocInfo;
+                wsprintf(buf, TEXT("\
   Level=2\r\n\
     DocumentName=\042%s\042\r\n\
     OutputFile=\042%s\042\r\n\
     Datatype=\042%s\042\r\n\
     Mode=%d\r\n\
     JobId=%d\r\n"),
-		dci2->pDocName ? dci2->pDocName : TEXT("(null)"),
-		dci2->pOutputFile ? dci2->pOutputFile : TEXT("(null)"),
-		dci2->pDatatype ? dci2->pDatatype : TEXT("(null)"),
-		dci2->dwMode, dci2->JobId);
-	    write_string_to_log(prd, buf);
-	}
-	else if ((Level == 3) && pDocInfo) {
-	    DOC_INFO_3 *dci3 = (DOC_INFO_3 *)pDocInfo;
-	    wsprintf(buf, TEXT("\
+                         dci2->pDocName ? dci2->pDocName : TEXT("(null)"),
+                         dci2->pOutputFile ? dci2->pOutputFile : TEXT("(null)"),
+                         dci2->pDatatype ? dci2->pDatatype : TEXT("(null)"),
+                         dci2->dwMode, dci2->JobId);
+                write_string_to_log(prd, buf);
+            } else
+                if ((Level == 3) && pDocInfo) {
+                    DOC_INFO_3 * dci3 = (DOC_INFO_3 *)pDocInfo;
+                    wsprintf(buf, TEXT("\
   Level=3\r\n\
     DocumentName=\042%s\042\r\n\
     OutputFile=\042%s\042\r\n\
     Datatype=\042%s\042\r\n\
     Flags=%d\r\n"),
-		dci3->pDocName ? dci3->pDocName : TEXT("(null)"),
-		dci3->pOutputFile ? dci3->pOutputFile : TEXT("(null)"),
-		dci3->pDatatype ? dci3->pDatatype : TEXT("(null)"),
-		dci3->dwFlags);
-	    write_string_to_log(prd, buf);
-	}
-	else {
-	    wsprintf(buf, TEXT("  Level=%d pDocInfo=%d\r\n"),
-		Level, pDocInfo);
-	    write_string_to_log(prd, buf);
-	}
-	wsprintf(buf, TEXT("  output=%d show=%d delay=%d runuser=%d\r\n"),
-	    prd->config.dwOutput, prd->config.dwShow,
-	    prd->config.dwDelay, prd->config.dwRunUser);
-	write_string_to_log(prd, buf);
+                             dci3->pDocName ? dci3->pDocName : TEXT("(null)"),
+                             dci3->pOutputFile ? dci3->pOutputFile : TEXT("(null)"),
+                             dci3->pDatatype ? dci3->pDatatype : TEXT("(null)"),
+                             dci3->dwFlags);
+                    write_string_to_log(prd, buf);
+                } else {
+                    wsprintf(buf, TEXT("  Level=%d pDocInfo=%d\r\n"),
+                             Level, pDocInfo);
+                    write_string_to_log(prd, buf);
+                }
+        wsprintf(buf, TEXT("  output=%d show=%d delay=%d runuser=%d\r\n"),
+                 prd->config.dwOutput, prd->config.dwShow,
+                 prd->config.dwDelay, prd->config.dwRunUser);
+        write_string_to_log(prd, buf);
     }
 
     /* We don't need our copy of the write end of the pipe handle,
      * since process has a copy.
      */
-    if (prd->hPipeWr != INVALID_HANDLE_VALUE);
-	CloseHandle(prd->hPipeWr);
+    if (prd->hPipeWr != INVALID_HANDLE_VALUE)
+        ;
+    CloseHandle(prd->hPipeWr);
     prd->hPipeWr = INVALID_HANDLE_VALUE;
 
     if (!flag) {
-	/* close all file and object handles */
-	if (prd->hLogFile != INVALID_HANDLE_VALUE);
-	    CloseHandle(prd->hLogFile);
-	prd->hLogFile = INVALID_HANDLE_VALUE;
+        /* close all file and object handles */
+        if (prd->hLogFile != INVALID_HANDLE_VALUE)
+            ;
+        CloseHandle(prd->hLogFile);
+        prd->hLogFile = INVALID_HANDLE_VALUE;
 
-	if (prd->hChildStderrRd)
-	    CloseHandle(prd->hChildStderrRd);
-	if (prd->hChildStderrWr)
-	    CloseHandle(prd->hChildStderrWr);
-	if (prd->hChildStdoutRd)
-	    CloseHandle(prd->hChildStdoutRd);
-	if (prd->hChildStdoutWr)
-	    CloseHandle(prd->hChildStdoutWr);
-	if (prd->hChildStdinRd)
-	    CloseHandle(prd->hChildStdinRd);
-	if (prd->hChildStdinWr)
-	    CloseHandle(prd->hChildStdinWr);
-	if (prd->hPipeRd)
-	    CloseHandle(prd->hPipeRd);
-	if (prd->hPipeWr)
-	    CloseHandle(prd->hPipeWr);
-	prd->hChildStderrRd   = INVALID_HANDLE_VALUE;
-	prd->hChildStderrWr   = INVALID_HANDLE_VALUE;
-	prd->hChildStdoutRd   = INVALID_HANDLE_VALUE;
-	prd->hChildStdoutWr   = INVALID_HANDLE_VALUE;
-	prd->hChildStdinRd    = INVALID_HANDLE_VALUE;
-	prd->hChildStdinWr    = INVALID_HANDLE_VALUE;
-	prd->hPipeRd   = INVALID_HANDLE_VALUE;
-	prd->hPipeWr   = INVALID_HANDLE_VALUE;
+        if (prd->hChildStderrRd)
+            CloseHandle(prd->hChildStderrRd);
+        if (prd->hChildStderrWr)
+            CloseHandle(prd->hChildStderrWr);
+        if (prd->hChildStdoutRd)
+            CloseHandle(prd->hChildStdoutRd);
+        if (prd->hChildStdoutWr)
+            CloseHandle(prd->hChildStdoutWr);
+        if (prd->hChildStdinRd)
+            CloseHandle(prd->hChildStdinRd);
+        if (prd->hChildStdinWr)
+            CloseHandle(prd->hChildStdinWr);
+        if (prd->hPipeRd)
+            CloseHandle(prd->hPipeRd);
+        if (prd->hPipeWr)
+            CloseHandle(prd->hPipeWr);
+        prd->hChildStderrRd   = INVALID_HANDLE_VALUE;
+        prd->hChildStderrWr   = INVALID_HANDLE_VALUE;
+        prd->hChildStdoutRd   = INVALID_HANDLE_VALUE;
+        prd->hChildStdoutWr   = INVALID_HANDLE_VALUE;
+        prd->hChildStdinRd    = INVALID_HANDLE_VALUE;
+        prd->hChildStdinWr    = INVALID_HANDLE_VALUE;
+        prd->hPipeRd   = INVALID_HANDLE_VALUE;
+        prd->hPipeWr   = INVALID_HANDLE_VALUE;
 #ifdef SAVESTD
-	SetStdHandle(STD_INPUT_HANDLE, prd->hSaveStdin);
-	SetStdHandle(STD_OUTPUT_HANDLE, prd->hSaveStdout);
-	SetStdHandle(STD_ERROR_HANDLE, prd->hSaveStdout);
+        SetStdHandle(STD_INPUT_HANDLE, prd->hSaveStdin);
+        SetStdHandle(STD_OUTPUT_HANDLE, prd->hSaveStdout);
+        SetStdHandle(STD_ERROR_HANDLE, prd->hSaveStdout);
 #endif
 
-	if (prd->hmutex != INVALID_HANDLE_VALUE)
-	    CloseHandle(prd->hmutex);
-	prd->hmutex    = INVALID_HANDLE_VALUE;
+        if (prd->hmutex != INVALID_HANDLE_VALUE)
+            CloseHandle(prd->hmutex);
+        prd->hmutex    = INVALID_HANDLE_VALUE;
     }
 
     prd->started = flag;
@@ -2061,65 +1808,61 @@ redmon_start_doc_port(REDATA *prd, LPTSTR pPrinterName,
     return flag;
 }
 
-void
-redmon_cancel_job(REDATA *prd)
-{
+void redmon_cancel_job(REDATA * prd) {
     TCHAR buf[MAXSTR];
     HANDLE hPrinter;
     if (OpenPrinter(prd->pPrinterName, &hPrinter, NULL)) {
-	DWORD dwNeeded = 0;
-	HGLOBAL hglobal = GlobalAlloc(GPTR, (DWORD)4096);
-	JOB_INFO_1 *pjob = (JOB_INFO_1 *)GlobalLock(hglobal);
-	if ((pjob != (JOB_INFO_1 *)NULL) &&
-	     GetJob(hPrinter, prd->JobId, 1, (LPBYTE)pjob,
-		4096, &dwNeeded)) {
-	    pjob->Status = JOB_STATUS_ERROR;
-	    SetJob(hPrinter, prd->JobId, 1, (LPBYTE)pjob,
-		JOB_CONTROL_CANCEL);
-	    if (prd->config.dwLogFileDebug && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
-		wsprintf(buf,
-	  TEXT("\r\nREDMON Cancelling print job\r\n"));
-		write_string_to_log(prd, buf);
-	    }
-	}
-	else {
-	    SetJob(hPrinter, prd->JobId, 0, NULL, JOB_CONTROL_CANCEL);
-	    if (prd->config.dwLogFileDebug && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
-		wsprintf(buf,
-	  TEXT("\r\nREDMON Cancelling print job (second method)\r\n"));
-		write_string_to_log(prd, buf);
-	    }
-	}
-	if (pjob != (JOB_INFO_1 *)NULL) {
-	    GlobalUnlock(hglobal);
-	    GlobalFree(hglobal);
-	}
-	ClosePrinter(hPrinter);
+        DWORD dwNeeded = 0;
+        HGLOBAL hglobal = GlobalAlloc(GPTR, (DWORD)4096);
+        JOB_INFO_1 * pjob = (JOB_INFO_1 *)GlobalLock(hglobal);
+        if ((pjob != (JOB_INFO_1 *)NULL) &&
+                GetJob(hPrinter, prd->JobId, 1, (LPBYTE)pjob,
+                       4096, &dwNeeded)) {
+            pjob->Status = JOB_STATUS_ERROR;
+            SetJob(hPrinter, prd->JobId, 1, (LPBYTE)pjob,
+                   JOB_CONTROL_CANCEL);
+            if (prd->config.dwLogFileDebug && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
+                wsprintf(buf,
+                         TEXT("\r\nREDMON Cancelling print job\r\n"));
+                write_string_to_log(prd, buf);
+            }
+        } else {
+            SetJob(hPrinter, prd->JobId, 0, NULL, JOB_CONTROL_CANCEL);
+            if (prd->config.dwLogFileDebug && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
+                wsprintf(buf,
+                         TEXT("\r\nREDMON Cancelling print job (second method)\r\n"));
+                write_string_to_log(prd, buf);
+            }
+        }
+        if (pjob != (JOB_INFO_1 *)NULL) {
+            GlobalUnlock(hglobal);
+            GlobalFree(hglobal);
+        }
+        ClosePrinter(hPrinter);
     }
 }
 
 /* WritePort is normally called between StartDocPort and EndDocPort,
  * but can be called outside this pair for bidirectional printers.
  */
-BOOL redmon_write_port(REDATA *prd, LPBYTE  pBuffer,
-        DWORD   cbBuf, LPDWORD pcbWritten)
-{
+BOOL redmon_write_port(REDATA * prd, LPBYTE  pBuffer,
+                       DWORD   cbBuf, LPDWORD pcbWritten) {
     TCHAR buf[MAXSTR];
     unsigned int sleep_count;
 
     if (prd == (REDATA *)NULL) {
-	SetLastError(ERROR_INVALID_HANDLE);
-	return FALSE;
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
     }
 
     *pcbWritten = 0;
 
     if (!prd->started) {
-	if (prd->config.dwLogFileDebug) {
-	    wsprintf(buf,
-	      TEXT("REDMON WritePort: called outside Start/EndDocPort, or StartDocPort get filename was cancelled.\r\n"));
-	    write_string_to_log(prd, buf);
-	}
+        if (prd->config.dwLogFileDebug) {
+            wsprintf(buf,
+                     TEXT("REDMON WritePort: called outside Start/EndDocPort, or StartDocPort get filename was cancelled.\r\n"));
+            write_string_to_log(prd, buf);
+        }
     }
 
     /* copy from output pipes to printer or log file */
@@ -2129,32 +1872,32 @@ BOOL redmon_write_port(REDATA *prd, LPBYTE  pBuffer,
     check_process(prd);
 
     if (prd->error) {
-	/* The process is no longer running, probably due to an error. */
-	/* If we return an error from WritePort, the spooler crashes.
-	 * To avoid this mess, don't return an error from WritePort.
-	 * Instead carry on as if the error didn't occur.
-	 * The only evidence of an error will be the log file.
-	 */
-	*pcbWritten = cbBuf;	/* say we wrote it all */
-	if (prd->config.dwLogFileDebug
-	    && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
-	    wsprintf(buf,
-	      TEXT("\r\nREDMON WritePort: Process not running. \
+        /* The process is no longer running, probably due to an error. */
+        /* If we return an error from WritePort, the spooler crashes.
+         * To avoid this mess, don't return an error from WritePort.
+         * Instead carry on as if the error didn't occur.
+         * The only evidence of an error will be the log file.
+         */
+        *pcbWritten = cbBuf;    /* say we wrote it all */
+        if (prd->config.dwLogFileDebug
+                && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
+            wsprintf(buf,
+                     TEXT("\r\nREDMON WritePort: Process not running. \
 Returning TRUE.\r\n    Ignoring %d bytes\r\n"), cbBuf);
-	    write_string_to_log(prd, buf);
-	}
+            write_string_to_log(prd, buf);
+        }
 
-	/* Cancel the print job */
-	redmon_cancel_job(prd);
+        /* Cancel the print job */
+        redmon_cancel_job(prd);
 
-	return TRUE;	/* say we wrote it all */
+        return TRUE;    /* say we wrote it all */
     }
 
     if (prd->config.dwLogFileDebug && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
-	wsprintf(buf,
-	 TEXT("\r\nREDMON WritePort: about to write %d bytes to port.\r\n"),
-	 cbBuf);
-	write_string_to_log(prd, buf);
+        wsprintf(buf,
+                 TEXT("\r\nREDMON WritePort: about to write %d bytes to port.\r\n"),
+                 cbBuf);
+        write_string_to_log(prd, buf);
     }
 
 
@@ -2165,40 +1908,40 @@ Returning TRUE.\r\n    Ignoring %d bytes\r\n"), cbBuf);
     prd->write_written = 0;
     SetEvent(prd->write_event);
     if (prd->write && prd->write_buffer_length) {
-	flush_stdout(prd);
-	check_process(prd);
-	Sleep(0);
+        flush_stdout(prd);
+        check_process(prd);
+        Sleep(0);
     }
     sleep_count = 0;
     while (!prd->error && prd->write && prd->write_buffer_length) {
-	/* wait for it to be written, while flushing stdout */
-	if (flush_stdout(prd)) {
-	    /* We succeeded in reading something from one of the
-	     * pipes and the pipes are now empty.  Give up the
-	     * remainder of our time slice to allow the
-	     * other process to write something to the pipes
-	     * or to read from stdin.
-	     */
-	    sleep_count = 0;
-	    Sleep(0);
-	}
-	else if (prd->write_buffer_length) {
-	    /* The pipes were empty, and the other process
-	     * hasn't finished reading stdin.
-	     * Pause a little until something is available or
-	     * until stdin has been read.
-	     * If the process is very slow and doesn't read stdin
-	     * within a reasonable time, sleep for 100ms to avoid
-	     * wasting CPU.
-	     */
-	    if (sleep_count < 10)
-		Sleep(sleep_count * 5);
-	    else
-	        Sleep(100);
-	    sleep_count++;
-	}
-	/* Make sure process is still running */
-	check_process(prd);
+        /* wait for it to be written, while flushing stdout */
+        if (flush_stdout(prd)) {
+            /* We succeeded in reading something from one of the
+             * pipes and the pipes are now empty.  Give up the
+             * remainder of our time slice to allow the
+             * other process to write something to the pipes
+             * or to read from stdin.
+             */
+            sleep_count = 0;
+            Sleep(0);
+        } else
+            if (prd->write_buffer_length) {
+                /* The pipes were empty, and the other process
+                 * hasn't finished reading stdin.
+                 * Pause a little until something is available or
+                 * until stdin has been read.
+                 * If the process is very slow and doesn't read stdin
+                 * within a reasonable time, sleep for 100ms to avoid
+                 * wasting CPU.
+                 */
+                if (sleep_count < 10)
+                    Sleep(sleep_count * 5);
+                else
+                    Sleep(100);
+                sleep_count++;
+            }
+        /* Make sure process is still running */
+        check_process(prd);
     }
     *pcbWritten = prd->write_written;
 
@@ -2206,104 +1949,101 @@ Returning TRUE.\r\n    Ignoring %d bytes\r\n"), cbBuf);
         *pcbWritten = cbBuf;
 
     if (prd->config.dwLogFileDebug && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
-	DWORD cbWritten;
-	request_mutex(prd);
+        DWORD cbWritten;
+        request_mutex(prd);
         WriteFile(prd->hLogFile, pBuffer, cbBuf, &cbWritten, NULL);
-	FlushFileBuffers(prd->hLogFile);
-	release_mutex(prd);
-	wsprintf(buf,
-	  TEXT("\r\nREDMON WritePort: %s  count=%d written=%d\r\n"),
-	      (prd->write_flag ? TEXT("OK") : TEXT("Failed")),
-	      cbBuf, *pcbWritten);
-	write_string_to_log(prd, buf);
+        FlushFileBuffers(prd->hLogFile);
+        release_mutex(prd);
+        wsprintf(buf,
+                 TEXT("\r\nREDMON WritePort: %s  count=%d written=%d\r\n"),
+                 (prd->write_flag ? TEXT("OK") : TEXT("Failed")),
+                 cbBuf, *pcbWritten);
+        write_string_to_log(prd, buf);
     }
 
     flush_stdout(prd);
 
     if (prd->error) {
-	if (prd->config.dwLogFileDebug
-	    && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
-	    wsprintf(buf,
-	      TEXT("\r\nREDMON WritePort: Process not running. \
+        if (prd->config.dwLogFileDebug
+                && (prd->hLogFile != INVALID_HANDLE_VALUE)) {
+            wsprintf(buf,
+                     TEXT("\r\nREDMON WritePort: Process not running. \
 Returning TRUE.\r\n    Ignoring %d bytes\r\n"), cbBuf);
-	    write_string_to_log(prd, buf);
-	}
-	/* Cancel the print job */
-	redmon_cancel_job(prd);
+            write_string_to_log(prd, buf);
+        }
+        /* Cancel the print job */
+        redmon_cancel_job(prd);
     }
 
-    return TRUE;	/* returning FALSE crashes Win95 spooler */
+    return TRUE;    /* returning FALSE crashes Win95 spooler */
 }
 
 /* ReadPort can be called within a Start/EndDocPort pair,
  * and also outside this pair.
  */
-BOOL redmon_read_port(REDATA *prd, LPBYTE pBuffer,
-        DWORD  cbBuffer, LPDWORD pcbRead)
-{
+BOOL redmon_read_port(REDATA * prd, LPBYTE pBuffer,
+                      DWORD  cbBuffer, LPDWORD pcbRead) {
     /* we don't support reading */
     *pcbRead = 0;
 
     if (prd == (REDATA *)NULL) {
-	SetLastError(ERROR_INVALID_HANDLE);
-	return FALSE;
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
     }
 
-    Sleep(1000);	/* Pause a little */
+    Sleep(1000);    /* Pause a little */
 
     if (prd->config.dwLogFileDebug) {
-	TCHAR buf[MAXSTR];
-	wsprintf(buf, TEXT("REDMON ReadPort: returning FALSE. Process %s\r\n"),
-	   prd->error ? TEXT("has an ERROR.") : TEXT("is OK."));
-	write_string_to_log(prd, buf);
-	wsprintf(buf, TEXT("REDMON ReadPort: You must disable bi-directional printer support for this printer\r\n"));
-	write_string_to_log(prd, buf);
+        TCHAR buf[MAXSTR];
+        wsprintf(buf, TEXT("REDMON ReadPort: returning FALSE. Process %s\r\n"),
+                 prd->error ? TEXT("has an ERROR.") : TEXT("is OK."));
+        write_string_to_log(prd, buf);
+        wsprintf(buf, TEXT("REDMON ReadPort: You must disable bi-directional printer support for this printer\r\n"));
+        write_string_to_log(prd, buf);
     }
 
     /* We don't support read port */
     return FALSE;
 }
 
-BOOL redmon_end_doc_port(REDATA *prd)
-{
+BOOL redmon_end_doc_port(REDATA * prd) {
     TCHAR buf[MAXSTR];
     DWORD exit_status;
     HANDLE hPrinter;
     unsigned int i;
 
     if (prd == (REDATA *)NULL) {
-	SetLastError(ERROR_INVALID_HANDLE);
-	return FALSE;
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
     }
 #ifdef DEBUG_REDMON
     syslog(TEXT("redmon_end_doc_port\r\n"));
 #endif
 
     if (prd->config.dwLogFileDebug)
-	write_string_to_log(prd,
-		TEXT("REDMON EndDocPort: starting\r\n"));
+        write_string_to_log(prd,
+                            TEXT("REDMON EndDocPort: starting\r\n"));
 
     /* tell write thread to shut down */
     prd->write_buffer_length = 0;
     prd->write_buffer = NULL;
     prd->write = FALSE;
     SetEvent(prd->write_event);
-    Sleep(0);	/* let write thread terminate */
+    Sleep(0);   /* let write thread terminate */
 
-    for (i=0; i<20; i++) {
-	if (GetExitCodeThread(prd->write_hthread, &exit_status)) {
-	    if (exit_status != STILL_ACTIVE)
-		break;
-	}
-	else
-	    break;
-	Sleep(50);
+    for (i = 0; i < 20; i++) {
+        if (GetExitCodeThread(prd->write_hthread, &exit_status)) {
+            if (exit_status != STILL_ACTIVE)
+                break;
+        } else
+            break;
+        Sleep(50);
     }
     CloseHandle(prd->write_hthread);
 
     /* Close stdin to signal EOF */
     if (prd->hChildStdinWr != INVALID_HANDLE_VALUE)
-	CloseHandle(prd->hChildStdinWr);
+        CloseHandle(prd->hChildStdinWr);
     prd->hChildStdinWr  = INVALID_HANDLE_VALUE;
 
     flush_stdout(prd);
@@ -2311,17 +2051,16 @@ BOOL redmon_end_doc_port(REDATA *prd)
     /* wait here for up to 'delay' seconds until process ends */
     /* so that process has time to write stdout/err */
     exit_status = 0;
-    for (i=0; i<prd->config.dwDelay; i++) {
-	if (prd->piProcInfo.hProcess == INVALID_HANDLE_VALUE)
-	    break;
-	if (GetExitCodeProcess(prd->piProcInfo.hProcess, &exit_status)) {
-	    if (exit_status != STILL_ACTIVE)
-	        break;
-	}
-	else {
-	    /* process doesn't exist */
-	    break;
-	}
+    for (i = 0; i < prd->config.dwDelay; i++) {
+        if (prd->piProcInfo.hProcess == INVALID_HANDLE_VALUE)
+            break;
+        if (GetExitCodeProcess(prd->piProcInfo.hProcess, &exit_status)) {
+            if (exit_status != STILL_ACTIVE)
+                break;
+        } else {
+            /* process doesn't exist */
+            break;
+        }
 
         flush_stdout(prd);
 
@@ -2331,12 +2070,12 @@ BOOL redmon_end_doc_port(REDATA *prd)
     flush_stdout(prd);
 
     if (prd->config.dwLogFileDebug) {
-	wsprintf(buf,
-	    TEXT("REDMON EndDocPort: process %s after %d second%s\r\n"),
-	    (exit_status == STILL_ACTIVE) ?
-		TEXT("still running") : TEXT("finished"),
-	    i, (i != 1) ? TEXT("s") : TEXT(""));
-	write_string_to_log(prd, buf);
+        wsprintf(buf,
+                 TEXT("REDMON EndDocPort: process %s after %d second%s\r\n"),
+                 (exit_status == STILL_ACTIVE) ?
+                 TEXT("still running") : TEXT("finished"),
+                 i, (i != 1) ? TEXT("s") : TEXT(""));
+        write_string_to_log(prd, buf);
     }
 
     /* if process still running, we might want to kill it
@@ -2351,102 +2090,93 @@ BOOL redmon_end_doc_port(REDATA *prd)
     /* NT documentation says *we* should cancel the print job. */
     /* 95 documentation says nothing about this. */
     if (OpenPrinter(prd->pPrinterName, &hPrinter, NULL)) {
-	SetJob(hPrinter, prd->JobId, 0, NULL, JOB_CONTROL_CANCEL);
-	ClosePrinter(hPrinter);
+        SetJob(hPrinter, prd->JobId, 0, NULL, JOB_CONTROL_CANCEL);
+        ClosePrinter(hPrinter);
     }
-
-#ifdef NOTUSED
-    /* elsewhere, the NT documentation says we should use */
-    /* JOB_CONTROL_SENT_TO_PRINTER */
-    if (OpenPrinter(prd->pPrinterName, &hPrinter, NULL)) {
-	SetJob(hPrinter, prd->JobId, 0, NULL, JOB_CONTROL_SENT_TO_PRINTER);
-	ClosePrinter(hPrinter);
-    }
-#endif
 
     /* If we output to a temporary file, print it now */
     if (prd->config.dwOutput == OUTPUT_FILE) {
-	if (prd->config.dwLogFileDebug) {
-	    wsprintf(buf,
-		TEXT("\r\nREDMON EndDocPort: Copying %s to %s"),
-		   prd->tempname, prd->config.szPrinter);
-	    write_string_to_log(prd, buf);
-	}
-	redmon_printfile(prd, prd->tempname);
-	if (prd->config.dwLogFileDebug)
-	    write_string_to_log(prd,
-		TEXT("\r\nREDMON EndDocPort: Deleting temporary file"));
-	DeleteFile(prd->tempname);
-    }
-    else if ( (prd->config.dwOutput == OUTPUT_STDOUT) ||
-	(prd->config.dwOutput == OUTPUT_HANDLE)  ){
-	redmon_close_printer(prd);
-	if (prd->config.dwLogFileDebug)
-	  write_string_to_log(prd,
-	    TEXT("\r\nREDMON EndDocPort: Closing printer for stdout or pipe"));
-    }
+        if (prd->config.dwLogFileDebug) {
+            wsprintf(buf,
+                     TEXT("\r\nREDMON EndDocPort: Copying %s to %s"),
+                     prd->tempname, prd->config.szPrinter);
+            write_string_to_log(prd, buf);
+        }
+        redmon_printfile(prd, prd->tempname);
+        if (prd->config.dwLogFileDebug)
+            write_string_to_log(prd,
+                                TEXT("\r\nREDMON EndDocPort: Deleting temporary file"));
+        DeleteFile(prd->tempname);
+    } else
+        if ((prd->config.dwOutput == OUTPUT_STDOUT) ||
+                (prd->config.dwOutput == OUTPUT_HANDLE)) {
+            redmon_close_printer(prd);
+            if (prd->config.dwLogFileDebug)
+                write_string_to_log(prd,
+                                    TEXT("\r\nREDMON EndDocPort: Closing printer for stdout or pipe"));
+        }
 
     if (prd->config.dwLogFileDebug) {
-	TCHAR buf[256];
-	wsprintf(buf,
-	    TEXT("\r\nREDMON EndDocPort: %d bytes written to printer\r\n"),
-	    prd->printer_bytes);
-	write_string_to_log(prd, buf);
+        TCHAR buf[256];
+        wsprintf(buf,
+                 TEXT("\r\nREDMON EndDocPort: %d bytes written to printer\r\n"),
+                 prd->printer_bytes);
+        write_string_to_log(prd, buf);
     }
 
     /* Close all handles */
 
     if (prd->environment) {
-	GlobalUnlock(prd->environment);
-	GlobalFree(prd->environment);
-	prd->environment = NULL;
+        GlobalUnlock(prd->environment);
+        GlobalFree(prd->environment);
+        prd->environment = NULL;
     }
 
     if (prd->primary_token != NULL) {
-	CloseHandle(prd->primary_token);
-	prd->primary_token = NULL;
+        CloseHandle(prd->primary_token);
+        prd->primary_token = NULL;
     }
 
     if (prd->config.dwLogFileDebug)
-	write_string_to_log(prd,
-		TEXT("REDMON EndDocPort: ending\r\n"));
+        write_string_to_log(prd,
+                            TEXT("REDMON EndDocPort: ending\r\n"));
 
     if (prd->hLogFile != INVALID_HANDLE_VALUE)
-	CloseHandle(prd->hLogFile);
+        CloseHandle(prd->hLogFile);
 
     if (prd->error && prd->config.dwPrintError &&
-	((prd->config.dwOutput == OUTPUT_STDOUT) || (prd->config.dwOutput == OUTPUT_FILE)
-	 || (prd->config.dwOutput == OUTPUT_HANDLE)) )
-	redmon_print_error(prd);
+            ((prd->config.dwOutput == OUTPUT_STDOUT) || (prd->config.dwOutput == OUTPUT_FILE)
+             || (prd->config.dwOutput == OUTPUT_HANDLE)))
+        redmon_print_error(prd);
 
     if ((prd->hmutex != NULL) && (prd->hmutex != INVALID_HANDLE_VALUE))
-	CloseHandle(prd->hmutex);
+        CloseHandle(prd->hmutex);
 
     if (prd->piProcInfo.hProcess != INVALID_HANDLE_VALUE)
-	CloseHandle(prd->piProcInfo.hProcess);
+        CloseHandle(prd->piProcInfo.hProcess);
 
     if (prd->piProcInfo.hThread != INVALID_HANDLE_VALUE)
-	CloseHandle(prd->piProcInfo.hThread);
+        CloseHandle(prd->piProcInfo.hThread);
 
     /* Close the last of the pipes */
     if (prd->hChildStderrRd)
-	CloseHandle(prd->hChildStderrRd);
+        CloseHandle(prd->hChildStderrRd);
     if (prd->hChildStdoutRd)
-	CloseHandle(prd->hChildStdoutRd);
+        CloseHandle(prd->hChildStdoutRd);
 
     /* These should alerady be closed */
     if (prd->hChildStderrWr)
-	CloseHandle(prd->hChildStderrWr);
+        CloseHandle(prd->hChildStderrWr);
     if (prd->hChildStdoutWr)
-	CloseHandle(prd->hChildStdoutWr);
+        CloseHandle(prd->hChildStdoutWr);
     if (prd->hChildStdinRd)
-	CloseHandle(prd->hChildStdinRd);
+        CloseHandle(prd->hChildStdinRd);
     if (prd->hChildStdinWr)
-	CloseHandle(prd->hChildStdinWr);
+        CloseHandle(prd->hChildStdinWr);
     if (prd->hPipeRd)
-	CloseHandle(prd->hPipeRd);
+        CloseHandle(prd->hPipeRd);
     if (prd->hPipeWr)
-	CloseHandle(prd->hPipeWr);
+        CloseHandle(prd->hPipeWr);
 
 
     reset_redata(prd);
@@ -2454,29 +2184,27 @@ BOOL redmon_end_doc_port(REDATA *prd)
     return TRUE;
 }
 
-BOOL
-redmon_set_port_timeouts(REDATA *prd, LPCOMMTIMEOUTS lpCTO, DWORD reserved)
-{
+BOOL redmon_set_port_timeouts(REDATA * prd, LPCOMMTIMEOUTS lpCTO, DWORD reserved) {
     /* Do nothing */
 
     if (prd == (REDATA *)NULL) {
-	SetLastError(ERROR_INVALID_HANDLE);
-	return FALSE;
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
     }
 
-#ifdef DEBUG
+#ifdef DEBUG_REDMON
     {
         TCHAR buf[MAXSTR];
-	if (prd->config.dwLogFileDebug) {
-	    wsprintf(buf, TEXT("REDMON SetPortTimeOuts: returning TRUE\r\n\
+        if (prd->config.dwLogFileDebug) {
+            wsprintf(buf, TEXT("REDMON SetPortTimeOuts: returning TRUE\r\n\
 	    values = %d %d %d %d %d\r\n"),
-		lpCTO->ReadIntervalTimeout,
-		lpCTO->ReadTotalTimeoutMultiplier,
-		lpCTO->ReadTotalTimeoutConstant,
-		lpCTO->WriteTotalTimeoutMultiplier,
-		lpCTO->WriteTotalTimeoutConstant);
-	    write_string_to_log(prd, buf);
-	}
+                     lpCTO->ReadIntervalTimeout,
+                     lpCTO->ReadTotalTimeoutMultiplier,
+                     lpCTO->ReadTotalTimeoutConstant,
+                     lpCTO->WriteTotalTimeoutMultiplier,
+                     lpCTO->WriteTotalTimeoutConstant);
+            write_string_to_log(prd, buf);
+        }
     }
 #endif
 
@@ -2484,103 +2212,96 @@ redmon_set_port_timeouts(REDATA *prd, LPCOMMTIMEOUTS lpCTO, DWORD reserved)
 }
 
 
-
-HOOKRETURN APIENTRY
-GetSaveHookProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
+HOOKRETURN APIENTRY GetSaveHookProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
     if (message == WM_INITDIALOG) {
-	SetForegroundWindow(hDlg);
-	BringWindowToTop(hDlg);
+        SetForegroundWindow(hDlg);
+        BringWindowToTop(hDlg);
     }
-    return 0;	// default handler
+    return 0;   // default handler
 }
 
 
-BOOL
-browse(HWND hwnd, UINT control, UINT filter, BOOL save)
-{
-OPENFILENAME ofn;
-TCHAR szFilename[MAXSTR];	/* filename for OFN */
-TCHAR szFilter[MAXSTR];
-TCHAR szDir[MAXSTR];
-TCHAR cReplace;
-int i;
-HANDLE hToken = NULL;
+BOOL browse(HWND hwnd, UINT control, UINT filter, BOOL save) {
+    OPENFILENAME ofn;
+    TCHAR szFilename[MAXSTR];   /* filename for OFN */
+    TCHAR szFilter[MAXSTR];
+    TCHAR szDir[MAXSTR];
+    TCHAR cReplace;
+    int i;
+    HANDLE hToken = NULL;
 
-BOOL flag;
-	/* setup OPENFILENAME struct */
-	FillMemory((PVOID)&ofn, sizeof(ofn), 0);
-	ofn.lStructSize = sizeof(OPENFILENAME);
-	ofn.hwndOwner = hwnd;
-	ofn.lpstrFile = szFilename;
-	ofn.nMaxFile = sizeof(szFilename);
-	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+    BOOL flag;
+    /* setup OPENFILENAME struct */
+    FillMemory((PVOID)&ofn, sizeof(ofn), 0);
+    ofn.lStructSize = sizeof(OPENFILENAME);
+    ofn.hwndOwner = hwnd;
+    ofn.lpstrFile = szFilename;
+    ofn.nMaxFile = sizeof(szFilename);
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 
-	GetDlgItemText(hwnd, control, szFilename,
-		sizeof(szFilename)/sizeof(TCHAR) - 1);
+    GetDlgItemText(hwnd, control, szFilename,
+                   sizeof(szFilename) / sizeof(TCHAR) - 1);
 
-	if ((lstrlen(szFilename) == 2) && (szFilename[1] == ':'))
-	    lstrcat(szFilename, BACKSLASH);
+    if ((lstrlen(szFilename) == 2) && (szFilename[1] == ':'))
+        lstrcat(szFilename, BACKSLASH);
 
-	if (lstrlen(szFilename)) {
-	    lstrcpy(szDir, szFilename);
-	    for (i=lstrlen(szDir)-1; i; i--) {
-		if (szDir[i] == '\\') {
-		    lstrcpy(szFilename, szDir+i+1);
-		    szDir[i+1] = '\0';
-		    ofn.lpstrInitialDir = szDir;
-		    break;
-		}
-	    }
-	}
+    if (lstrlen(szFilename)) {
+        lstrcpy(szDir, szFilename);
+        for (i = lstrlen(szDir) - 1; i; i--) {
+            if (szDir[i] == '\\') {
+                lstrcpy(szFilename, szDir + i + 1);
+                szDir[i + 1] = '\0';
+                ofn.lpstrInitialDir = szDir;
+                break;
+            }
+        }
+    }
 
-	if (LoadString(hdll, filter, szFilter,
-	    sizeof(szFilter)/sizeof(TCHAR) -1 )) {
-	    cReplace = szFilter[lstrlen(szFilter)-1];
-	    for (i=0; szFilter[i] != '\0'; i++)
-	        if (szFilter[i] == cReplace)
-		    szFilter[i] = '\0';
-	    ofn.lpstrFilter = szFilter;
-	    ofn.nFilterIndex = 0;
-	}
+    if (LoadString(hdll, filter, szFilter,
+                   sizeof(szFilter) / sizeof(TCHAR) - 1)) {
+        cReplace = szFilter[lstrlen(szFilter) - 1];
+        for (i = 0; szFilter[i] != '\0'; i++)
+            if (szFilter[i] == cReplace)
+                szFilter[i] = '\0';
+        ofn.lpstrFilter = szFilter;
+        ofn.nFilterIndex = 0;
+    }
 
-	/* call the common dialog box */
-/* The following call may be needed to make the dialog
-appear on the correct session.
-Need to call this in spoolss.dll, so we need to load this
-DLL dynamically.
-This was used in NT4 local port monitor, but not in NT5 local port monitor.
-The NT5 local port monitor has no code for prompting for filename, so
-it must be done in the print spooler during OpenPrinter or StartDocPrinter
-while it still has the user session available.
-Since we can't modify the print spooler like Microsoft did for FILE:,
-we have to hack around
-to get the user session and do it ourselves.
+    /* call the common dialog box */
+    /* The following call may be needed to make the dialog
+    appear on the correct session.
+    Need to call this in spoolss.dll, so we need to load this
+    DLL dynamically.
+    This was used in NT4 local port monitor, but not in NT5 local port monitor.
+    The NT5 local port monitor has no code for prompting for filename, so
+    it must be done in the print spooler during OpenPrinter or StartDocPrinter
+    while it still has the user session available.
+    Since we can't modify the print spooler like Microsoft did for FILE:,
+    we have to hack around
+    to get the user session and do it ourselves.
 
-	hToken = RevertToPrinterSelf();
-*/
-	if (save)
-	    flag = GetSaveFileName(&ofn);
-	else
-	    flag = GetOpenFileName(&ofn);
-/*
-	if (hToken)
-            ImpersonatePrinterClient(hToken);
-*/
+        hToken = RevertToPrinterSelf();
+    */
+    if (save)
+        flag = GetSaveFileName(&ofn);
+    else
+        flag = GetOpenFileName(&ofn);
+    /*
+        if (hToken)
+                ImpersonatePrinterClient(hToken);
+    */
 
-	if (flag)
-	    SetDlgItemText(hwnd, control, szFilename);
-	return flag;
+    if (flag)
+        SetDlgItemText(hwnd, control, szFilename);
+    return flag;
 }
 
-int
-lstrcmpn(LPTSTR s1, LPTSTR s2, int len2)
-{
-int flag = 0;
+int lstrcmpn(LPTSTR s1, LPTSTR s2, int len2) {
+    int flag = 0;
     for (; len2 && *s1 && *s2 ; len2--) {
-	flag = *s1 - *s2;
-	s1++;
-	s2++;
+        flag = *s1 - *s2;
+        s1++;
+        s2++;
     }
     return flag;
 }
@@ -2588,11 +2309,9 @@ int flag = 0;
 /* Get the directory for temporary files */
 /* Store the result in buf */
 /* Don't copy if length is greater than len characters */
-BOOL
-get_temp(LPTSTR value, int len)
-{
-TCHAR buf[256];
-DWORD dwLength;
+BOOL get_temp(LPTSTR value, int len) {
+    TCHAR buf[256];
+    DWORD dwLength;
     /* If we run from the Windows NT SYSTEM account, many
      * environment variables aren't set.  We need to look
      * in several places to find the name of a directory
@@ -2600,7 +2319,7 @@ DWORD dwLength;
      */
 
     if (!len)
-	return FALSE;
+        return FALSE;
     value[0] = '\0';
 
     dwLength = GetEnvironmentVariable(TEXT("TEMP"), value, len);
@@ -2608,36 +2327,36 @@ DWORD dwLength;
         dwLength = GetEnvironmentVariable(TEXT("TMP"), value, len);
 
     if (dwLength == 0) {
-	HKEY hkey;
-	DWORD cbData, keytype;
-	value[0] = '\0';
-        if ( RegOpenKeyEx(HKEY_USERS, TEXT(".DEFAULT\\Environment"), 0,
-		KEY_ALL_ACCESS, &hkey) == ERROR_SUCCESS ) {
-	    keytype = REG_SZ;
-	    buf[0] = '\0';
-	    cbData = sizeof(buf);
-	    if (RegQueryValueEx(hkey, TEXT("TEMP"), 0, &keytype,
-		(LPBYTE)buf, &cbData) == ERROR_SUCCESS)
-		dwLength = cbData;
-	    if (dwLength == 0) {
-		buf[0] = '\0';
-		cbData = sizeof(buf);
-		if (RegQueryValueEx(hkey, TEXT("TMP"), 0, &keytype,
-		    (LPBYTE)buf, &cbData) == ERROR_SUCCESS)
-		    dwLength = cbData;
-	    }
-	    RegCloseKey(hkey);
-	    if (dwLength) {
-		/* Replace %USERPROFILE%, %SystemDrive% etc. */
-		dwLength = ExpandEnvironmentStrings(buf, value, len);
-	    }
-	}
+        HKEY hkey;
+        DWORD cbData, keytype;
+        value[0] = '\0';
+        if (RegOpenKeyEx(HKEY_USERS, TEXT(".DEFAULT\\Environment"), 0,
+                         KEY_ALL_ACCESS, &hkey) == ERROR_SUCCESS) {
+            keytype = REG_SZ;
+            buf[0] = '\0';
+            cbData = sizeof(buf);
+            if (RegQueryValueEx(hkey, TEXT("TEMP"), 0, &keytype,
+                                (LPBYTE)buf, &cbData) == ERROR_SUCCESS)
+                dwLength = cbData;
+            if (dwLength == 0) {
+                buf[0] = '\0';
+                cbData = sizeof(buf);
+                if (RegQueryValueEx(hkey, TEXT("TMP"), 0, &keytype,
+                                    (LPBYTE)buf, &cbData) == ERROR_SUCCESS)
+                    dwLength = cbData;
+            }
+            RegCloseKey(hkey);
+            if (dwLength) {
+                /* Replace %USERPROFILE%, %SystemDrive% etc. */
+                dwLength = ExpandEnvironmentStrings(buf, value, len);
+            }
+        }
     }
 
     if (dwLength == 0)
-	GetWindowsDirectory(value, len);
+        GetWindowsDirectory(value, len);
     if (dwLength)
-	return TRUE;
+        return TRUE;
     return FALSE;
 }
 
@@ -2646,34 +2365,32 @@ DWORD dwLength;
  * and store name in filename.
  * Return TRUE if success.
  */
-int
-create_tempfile(LPTSTR filename, DWORD len)
-{
-TCHAR temp[256];
-TCHAR buf[256];
-LPTSTR p;
-int i;
-HANDLE hf;
+int create_tempfile(LPTSTR filename, DWORD len) {
+    TCHAR temp[256];
+    TCHAR buf[256];
+    LPTSTR p;
+    int i;
+    HANDLE hf;
 
-    get_temp(temp, sizeof(temp)/sizeof(TCHAR));
+    get_temp(temp, sizeof(temp) / sizeof(TCHAR));
 
     if (lstrlen(temp) > 0) {
-	p = temp + lstrlen(temp) - 1;
-	if (*p != '\\')
-	    lstrcat(temp, TEXT("\\"));
+        p = temp + lstrlen(temp) - 1;
+        if (*p != '\\')
+            lstrcat(temp, TEXT("\\"));
     }
     lstrcat(temp, TEXT("RedMon"));
-    for (i=0; i<100000; i++) {
-	wsprintf(buf, TEXT("%s%02d.%03d"), temp, i / 1000, i % 1000);
-	if ((int)len < lstrlen(buf) + 1)
-	    return FALSE;
+    for (i = 0; i < 100000; i++) {
+        wsprintf(buf, TEXT("%s%02d.%03d"), temp, i / 1000, i % 1000);
+        if ((int)len < lstrlen(buf) + 1)
+            return FALSE;
         hf = CreateFile(buf, GENERIC_WRITE, 0 /* no sharing */,
-	    NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hf != INVALID_HANDLE_VALUE) {
-	    CloseHandle(hf);
-	    lstrcpy(filename, buf);
-	    return TRUE;
-	}
+                        NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hf != INVALID_HANDLE_VALUE) {
+            CloseHandle(hf);
+            lstrcpy(filename, buf);
+            return TRUE;
+        }
     }
     return FALSE;
 }
@@ -2681,56 +2398,54 @@ HANDLE hf;
 
 
 /* True Win32 method, using OpenPrinter, WritePrinter etc. */
-int
-redmon_printfile(REDATA * prd, TCHAR *filename)
-{
-HGLOBAL hbuffer;
-BYTE *buffer;
-DWORD cbRead;
-HANDLE hread;
+int redmon_printfile(REDATA * prd, TCHAR * filename) {
+    HGLOBAL hbuffer;
+    BYTE * buffer;
+    DWORD cbRead;
+    HANDLE hread;
 
     if (prd->config.szPrinter[0] == '\0')
-	return FALSE;
+        return FALSE;
 
     /* allocate buffer for reading data */
     if ((hbuffer = GlobalAlloc(GPTR, (DWORD)PRINT_BUF_SIZE)) == NULL)
-	return FALSE;
+        return FALSE;
     if ((buffer = (BYTE *)GlobalLock(hbuffer)) == (BYTE *)NULL) {
-	GlobalFree(hbuffer);
+        GlobalFree(hbuffer);
         return FALSE;
     }
 
     /* open file to print */
     if ((hread = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ,
-	NULL, OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE) {
-	if (prd->config.dwLogFileDebug) {
-	    DWORD err = GetLastError();
-	    TCHAR buf[256];
-	    wsprintf(buf, TEXT("CreateFile() failed, error code = %d\r\n"),
-		err);
-	    write_string_to_log(prd, buf);
-	    write_error(prd, err);
-	}
-	GlobalUnlock(hbuffer);
-	GlobalFree(hbuffer);
-	return FALSE;
+                            NULL, OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE) {
+        if (prd->config.dwLogFileDebug) {
+            DWORD err = GetLastError();
+            TCHAR buf[256];
+            wsprintf(buf, TEXT("CreateFile() failed, error code = %d\r\n"),
+                     err);
+            write_string_to_log(prd, buf);
+            write_error(prd, err);
+        }
+        GlobalUnlock(hbuffer);
+        GlobalFree(hbuffer);
+        return FALSE;
     }
 
     /* open a printer */
     if (!redmon_open_printer(prd)) {
-	CloseHandle(hread);
-	GlobalUnlock(hbuffer);
-	GlobalFree(hbuffer);
-	return FALSE;
+        CloseHandle(hread);
+        GlobalUnlock(hbuffer);
+        GlobalFree(hbuffer);
+        return FALSE;
     }
 
     while (ReadFile(hread, buffer, PRINT_BUF_SIZE, &cbRead, NULL)
-		&& cbRead) {
-	if (!redmon_write_printer(prd, buffer, cbRead)) {
-	    CloseHandle(hread);
-	    redmon_abort_printer(prd);
-	    return FALSE;
-	}
+            && cbRead) {
+        if (!redmon_write_printer(prd, buffer, cbRead)) {
+            CloseHandle(hread);
+            redmon_abort_printer(prd);
+            return FALSE;
+        }
     }
     CloseHandle(hread);
     GlobalUnlock(hbuffer);
@@ -2742,32 +2457,29 @@ HANDLE hread;
 }
 
 
-
-BOOL
-redmon_open_printer(REDATA *prd)
-{
+BOOL redmon_open_printer(REDATA * prd) {
     TCHAR buf[256];
     DOC_INFO_1 di;
-    PRINTER_INFO_2 *prinfo;
+    PRINTER_INFO_2 * prinfo;
     HGLOBAL hglobal;
     DWORD needed, count;
     BOOL fail = FALSE;
 
     prd->printer = INVALID_HANDLE_VALUE;
     if (lstrlen(prd->config.szPrinter) == 0)
-	return FALSE;
+        return FALSE;
 
     /* open a printer */
     if (!OpenPrinter(prd->config.szPrinter, &prd->printer, NULL)) {
-	if (prd->config.dwLogFileDebug) {
-	    DWORD err = GetLastError();
-	    wsprintf(buf,
-	      TEXT("OpenPrinter() failed for \042%s\042, error code = %d\r\n"),
-		prd->config.szPrinter, err);
-	    write_string_to_log(prd, buf);
-	    write_error(prd, err);
-	}
-	return FALSE;
+        if (prd->config.dwLogFileDebug) {
+            DWORD err = GetLastError();
+            wsprintf(buf,
+                     TEXT("OpenPrinter() failed for \042%s\042, error code = %d\r\n"),
+                     prd->config.szPrinter, err);
+            write_string_to_log(prd, buf);
+            write_error(prd, err);
+        }
+        return FALSE;
     }
     /* from here until ClosePrinter, should AbortPrinter on error */
 
@@ -2775,148 +2487,138 @@ redmon_open_printer(REDATA *prd)
     needed = 0;
     GetPrinter(prd->printer, 2, NULL, 0, &needed);
     if (needed == 0)
-	fail = TRUE;
+        fail = TRUE;
     if (!fail)
         if ((hglobal = GlobalAlloc(GPTR, (DWORD)needed)) == NULL)
-	    fail = TRUE;
+            fail = TRUE;
     if (!fail)
-	if ((prinfo = (PRINTER_INFO_2 *)GlobalLock(hglobal)) ==
-		(PRINTER_INFO_2 *)NULL) {
-	    GlobalFree(hglobal);
-	    fail = TRUE;
-	}
+        if ((prinfo = (PRINTER_INFO_2 *)GlobalLock(hglobal)) ==
+                (PRINTER_INFO_2 *)NULL) {
+            GlobalFree(hglobal);
+            fail = TRUE;
+        }
     if (!fail) {
-	count = needed;
-	if (!GetPrinter(prd->printer, 2, (LPBYTE)prinfo, count, &needed)) {
-	    GlobalUnlock(hglobal);
-	    GlobalFree(hglobal);
-	    fail = TRUE;
-	}
+        count = needed;
+        if (!GetPrinter(prd->printer, 2, (LPBYTE)prinfo, count, &needed)) {
+            GlobalUnlock(hglobal);
+            GlobalFree(hglobal);
+            fail = TRUE;
+        }
     }
     if (!fail) {
-	if (lstrcmp(prinfo->pPortName, prd->portname) == 0) {
-	  write_string_to_log(prd,
-	    TEXT("Talking to yourself is a sign of madness.\r\n"));
-	  write_string_to_log(prd,
-	    TEXT("Writing to the port being redirected is not permitted.\r\n"));
-	    fail = TRUE;
-	}
-	GlobalUnlock(hglobal);
-	GlobalFree(hglobal);
+        if (lstrcmp(prinfo->pPortName, prd->portname) == 0) {
+            write_string_to_log(prd,
+                                TEXT("Talking to yourself is a sign of madness.\r\n"));
+            write_string_to_log(prd,
+                                TEXT("Writing to the port being redirected is not permitted.\r\n"));
+            fail = TRUE;
+        }
+        GlobalUnlock(hglobal);
+        GlobalFree(hglobal);
     }
     if (fail) {
-	redmon_abort_printer(prd);
-	return FALSE;
+        redmon_abort_printer(prd);
+        return FALSE;
     }
 
 
-    di.pDocName = prd->pDocName;	/* keep original document name */
+    di.pDocName = prd->pDocName;    /* keep original document name */
     di.pOutputFile = NULL;
-    di.pDatatype = TEXT("RAW");	/* for available types see EnumPrintProcessorDatatypes */
+    di.pDatatype = TEXT("RAW"); /* for available types see EnumPrintProcessorDatatypes */
     if (!StartDocPrinter(prd->printer, 1, (LPBYTE)&di)) {
-	if (prd->config.dwLogFileDebug) {
-	    DWORD err = GetLastError();
-	    wsprintf(buf,
-		TEXT("StartDocPrinter() failed, error code = %d\r\n"),
-		err);
-	    write_string_to_log(prd, buf);
-	    write_error(prd, err);
-	}
-	redmon_abort_printer(prd);
-	return FALSE;
+        if (prd->config.dwLogFileDebug) {
+            DWORD err = GetLastError();
+            wsprintf(buf,
+                     TEXT("StartDocPrinter() failed, error code = %d\r\n"),
+                     err);
+            write_string_to_log(prd, buf);
+            write_error(prd, err);
+        }
+        redmon_abort_printer(prd);
+        return FALSE;
     }
     return TRUE;
 }
 
-BOOL
-redmon_abort_printer(REDATA *prd)
-{
+BOOL redmon_abort_printer(REDATA * prd) {
     if (prd->config.dwLogFileDebug)
-	write_string_to_log(prd, TEXT("AbortPrinter\r\n"));
+        write_string_to_log(prd, TEXT("AbortPrinter\r\n"));
     if (prd->printer != INVALID_HANDLE_VALUE)
-	AbortPrinter(prd->printer);
+        AbortPrinter(prd->printer);
     prd->printer = INVALID_HANDLE_VALUE;
     return TRUE;
 }
 
-BOOL
-redmon_close_printer(REDATA *prd)
-{
+BOOL redmon_close_printer(REDATA * prd) {
     TCHAR buf[256];
     if (prd->printer == INVALID_HANDLE_VALUE)
-	return TRUE;
+        return TRUE;
     if (!EndDocPrinter(prd->printer)) {
-	if (prd->config.dwLogFileDebug) {
-	    DWORD err = GetLastError();
-	    wsprintf(buf,
-		TEXT("EndDocPrinter() failed, error code = %d\r\n"), err);
-	    write_string_to_log(prd, buf);
-	    write_error(prd, err);
-	}
-	redmon_abort_printer(prd);
-	return FALSE;
+        if (prd->config.dwLogFileDebug) {
+            DWORD err = GetLastError();
+            wsprintf(buf,
+                     TEXT("EndDocPrinter() failed, error code = %d\r\n"), err);
+            write_string_to_log(prd, buf);
+            write_error(prd, err);
+        }
+        redmon_abort_printer(prd);
+        return FALSE;
     }
 
     if (!ClosePrinter(prd->printer)) {
-	if (prd->config.dwLogFileDebug) {
-	    DWORD err = GetLastError();
-	    wsprintf(buf,
-		TEXT("ClosePrinter() failed, error code = %d\r\n"),
-		err);
-	    write_string_to_log(prd, buf);
-	    write_error(prd, err);
-	}
+        if (prd->config.dwLogFileDebug) {
+            DWORD err = GetLastError();
+            wsprintf(buf,
+                     TEXT("ClosePrinter() failed, error code = %d\r\n"),
+                     err);
+            write_string_to_log(prd, buf);
+            write_error(prd, err);
+        }
         prd->printer = INVALID_HANDLE_VALUE;
-	return FALSE;
+        return FALSE;
     }
     prd->printer = INVALID_HANDLE_VALUE;
     return TRUE;
 }
 
-BOOL
-redmon_write_printer(REDATA *prd, BYTE *ptr, DWORD len)
-{
-DWORD cbWritten;
+BOOL redmon_write_printer(REDATA * prd, BYTE * ptr, DWORD len) {
+    DWORD cbWritten;
     if (prd->printer == INVALID_HANDLE_VALUE)
-	return FALSE;
+        return FALSE;
     if (!WritePrinter(prd->printer, (LPVOID)ptr, len, &cbWritten)) {
-	TCHAR buf[256];
-	DWORD err = GetLastError();
-	wsprintf(buf,
-	    TEXT("WritePrinter() failed, error code = %d\r\n"), err);
-	write_string_to_log(prd, buf);
-	write_error(prd, err);
-	return FALSE;
+        TCHAR buf[256];
+        DWORD err = GetLastError();
+        wsprintf(buf,
+                 TEXT("WritePrinter() failed, error code = %d\r\n"), err);
+        write_string_to_log(prd, buf);
+        write_error(prd, err);
+        return FALSE;
     }
     if (len != cbWritten) {
-	TCHAR buf[256];
-	wsprintf(buf,
-	    TEXT("WritePrinter() error: wrote %d bytes of %d\r\n"),
-	    cbWritten, len);
-	write_string_to_log(prd, buf);
+        TCHAR buf[256];
+        wsprintf(buf,
+                 TEXT("WritePrinter() error: wrote %d bytes of %d\r\n"),
+                 cbWritten, len);
+        write_string_to_log(prd, buf);
     }
     prd->printer_bytes += cbWritten;
     return TRUE;
 }
 
 
-BOOL CALLBACK
-AbortProc(HDC hdcPrn, int code)
-{
+BOOL CALLBACK AbortProc(HDC hdcPrn, int code) {
     if (code == SP_OUTOFDISK)
-	return FALSE;	/* cancel job */
+        return FALSE;   /* cancel job */
     return TRUE;
 }
 
 /* This may be called if an error has occurred,
  * to print out the log file as an error report.
  */
-BOOL
-redmon_print_error(REDATA *prd)
-{
+BOOL redmon_print_error(REDATA * prd) {
     HDC hdc;
     TCHAR driverbuf[2048];
-    TCHAR *device, *driver, *output, *p;
+    TCHAR * device, *driver, *output, *p;
     DOCINFO di;
     HFONT hfont;
     HANDLE hfile;
@@ -2930,21 +2632,21 @@ redmon_print_error(REDATA *prd)
     /* open printer */
     device = prd->config.szPrinter;
     GetProfileString(TEXT("Devices"), device, TEXT(""), driverbuf,
-	sizeof(driverbuf) / sizeof(TCHAR));
+                     sizeof(driverbuf) / sizeof(TCHAR));
     p = driverbuf;
     driver = p;
     while (*p && *p != ',')
-	p++;
+        p++;
     if (*p)
-	*p++ = '\0';
+        *p++ = '\0';
     output = p;
     while (*p && *p != ',')
-	p++;
+        p++;
     if (*p)
-	*p++ = '\0';
+        *p++ = '\0';
 
-    if ( (hdc = CreateDC(driver, device, NULL, NULL)) == NULL) {
-	return FALSE;
+    if ((hdc = CreateDC(driver, device, NULL, NULL)) == NULL) {
+        return FALSE;
     }
 
     SetAbortProc(hdc, AbortProc);
@@ -2952,113 +2654,114 @@ redmon_print_error(REDATA *prd)
     di.lpszDocName = TEXT("RedMon error report");
     di.lpszOutput = output;
     if ((error = (StartDoc(hdc, &di) == SP_ERROR)) != 0) {
-	TCHAR buf[1024];
-	DWORD last_error = GetLastError();
-	wsprintf(buf,
-	    TEXT("StartDoc \042%s\042,\042%s\042,\042%s\042 Error=%d"),
-	    device, di.lpszDocName, di.lpszOutput, last_error);
-	MessageBox(HWND_DESKTOP, buf, TEXT("RedMon"), MB_OK);
+        TCHAR buf[1024];
+        DWORD last_error = GetLastError();
+        wsprintf(buf,
+                 TEXT("StartDoc \042%s\042,\042%s\042,\042%s\042 Error=%d"),
+                 device, di.lpszDocName, di.lpszOutput, last_error);
+        MessageBox(HWND_DESKTOP, buf, TEXT("RedMon"), MB_OK);
     }
 
     if (!error && (StartPage(hdc) != SP_ERROR)) {
-	xdpi = GetDeviceCaps(hdc, LOGPIXELSX);
-	ydpi = GetDeviceCaps(hdc, LOGPIXELSY);
-	memset(&lf, 0, sizeof(LOGFONT));
-	lf.lfHeight = 10 * ydpi / 72;	/* 10 pts high */
-	lstrcpy(lf.lfFaceName, TEXT("Arial"));
-	hfont = CreateFontIndirect(&lf);
-	SelectObject(hdc, hfont);
+        xdpi = GetDeviceCaps(hdc, LOGPIXELSX);
+        ydpi = GetDeviceCaps(hdc, LOGPIXELSY);
+        memset(&lf, 0, sizeof(LOGFONT));
+        lf.lfHeight = 10 * ydpi / 72;   /* 10 pts high */
+        lstrcpy(lf.lfFaceName, TEXT("Arial"));
+        hfont = CreateFontIndirect(&lf);
+        SelectObject(hdc, hfont);
 
-	ymin = 36 * ydpi / 72;	/* top of page */
-	ymax = 756 * ydpi / 72;	/* bottom of page */
-	yskip = 10 * ydpi / 72;	/* line spacing */
-	x = 36 * xdpi / 72;		/* left margin */
-	y = ymin;
+        ymin = 36 * ydpi / 72;  /* top of page */
+        ymax = 756 * ydpi / 72; /* bottom of page */
+        yskip = 10 * ydpi / 72; /* line spacing */
+        x = 36 * xdpi / 72;     /* left margin */
+        y = ymin;
 
-	/* write RedMon header */
-	p = TEXT("RedMon error report");
-	TextOut(hdc, x, y, p, lstrlen(p));
-	y+=yskip;
-	lstrcpy(driverbuf, copyright);
-	p = driverbuf + lstrlen(driverbuf) - 1;
-	if (*p == '\n')
-	    *p = '\0';
-	p = driverbuf;
-	TextOut(hdc, x, y, p, lstrlen(p));
-	y+=yskip;
-	lstrcpy(driverbuf, version);
-	p = driverbuf + lstrlen(driverbuf) - 1;
-	if (*p == '\n')
-	    *p = '\0';
-	p = driverbuf;
-	TextOut(hdc, x, y, p, lstrlen(p));
-	y+=yskip;
-	p = driverbuf;
-	wsprintf(driverbuf, TEXT("  Port=\042%s\042  Printer=\042%s\042"),
-	    prd->portname, prd->pPrinterName);
-	TextOut(hdc, x, y, p, lstrlen(p));
-	y+=yskip;
-	wsprintf(driverbuf, TEXT("  DocumentName=\042%s\042"), prd->pDocName);
-	TextOut(hdc, x, y, p, lstrlen(p));
-	y+=yskip;
-/*
-	wsprintf(driverbuf, TEXT("  Command=\042%s\042), prd->command);
-	TextOut(hdc, x, y, p, lstrlen(p));
-	y+=yskip;
-*/
-	y+=yskip;
+        /* write RedMon header */
+        p = TEXT("RedMon error report");
+        TextOut(hdc, x, y, p, lstrlen(p));
+        y += yskip;
+        lstrcpy(driverbuf, copyright);
+        p = driverbuf + lstrlen(driverbuf) - 1;
+        if (*p == '\n')
+            *p = '\0';
+        p = driverbuf;
+        TextOut(hdc, x, y, p, lstrlen(p));
+        y += yskip;
+        lstrcpy(driverbuf, version);
+        p = driverbuf + lstrlen(driverbuf) - 1;
+        if (*p == '\n')
+            *p = '\0';
+        p = driverbuf;
+        TextOut(hdc, x, y, p, lstrlen(p));
+        y += yskip;
+        p = driverbuf;
+        wsprintf(driverbuf, TEXT("  Port=\042%s\042  Printer=\042%s\042"),
+                 prd->portname, prd->pPrinterName);
+        TextOut(hdc, x, y, p, lstrlen(p));
+        y += yskip;
+        wsprintf(driverbuf, TEXT("  DocumentName=\042%s\042"), prd->pDocName);
+        TextOut(hdc, x, y, p, lstrlen(p));
+        y += yskip;
+        /*
+            wsprintf(driverbuf, TEXT("  Command=\042%s\042), prd->command);
+            TextOut(hdc, x, y, p, lstrlen(p));
+            y+=yskip;
+        */
+        y += yskip;
 
 
-	if (prd->config.szLogFileName[0] != '\0') {
-	    /* log file was written (but isn't currently open) */
-	    /* open log file */
-	    if ((hfile = CreateFile(prd->config.szLogFileName, GENERIC_READ,
-		FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL))
-		!= INVALID_HANDLE_VALUE) {
-		/* copy log file to printer */
-		int i = 0;
-		DWORD dwRead = 0;
-		BOOL eol = FALSE;
-		while (ReadFile(hfile, &line[i], 1, &dwRead, NULL) &&
-		    (dwRead == 1)) {
-		    eol = FALSE;
-		    switch (line[i]) {
-			case '\r':
-			    /* do nothing */
-			    break;
-			case '\n':
-			    /* end of line */
-			    eol = TRUE;
-			    line[i]='\0';
-			    break;
-			default:
-			    i++;
-			    if (i > 80) {
-				eol = TRUE;
-				line[i]='\0';
-			    }
-		    }
+        if (prd->config.szLogFileName[0] != '\0') {
+            /* log file was written (but isn't currently open) */
+            /* open log file */
+            if ((hfile = CreateFile(prd->config.szLogFileName, GENERIC_READ,
+                                    FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL))
+                    != INVALID_HANDLE_VALUE) {
+                /* copy log file to printer */
+                int i = 0;
+                DWORD dwRead = 0;
+                BOOL eol = FALSE;
+                while (ReadFile(hfile, &line[i], 1, &dwRead, NULL) &&
+                        (dwRead == 1)) {
+                    eol = FALSE;
+                    switch (line[i]) {
+                    case '\r':
+                        /* do nothing */
+                        break;
+                    case '\n':
+                        /* end of line */
+                        eol = TRUE;
+                        line[i] = '\0';
+                        break;
+                    default
+                            :
+                        i++;
+                        if (i > 80) {
+                            eol = TRUE;
+                            line[i] = '\0';
+                        }
+                    }
 
-		    if (eol) {
-			if (y >= ymax) {
-			    EndPage(hdc);
-			    StartPage(hdc);
-			    y = ymin;
-			}
-			TextOutA(hdc, x, y, line, i);
-			y+=yskip;
-			i = 0;
-		    }
-		    dwRead = 0;
-		}
-		if (i)
-		    TextOutA(hdc, x, y, line, i);
-		CloseHandle(hfile);
-	    }
-	}
-	/* close printer */
-	EndPage(hdc);
-	EndDoc(hdc);
+                    if (eol) {
+                        if (y >= ymax) {
+                            EndPage(hdc);
+                            StartPage(hdc);
+                            y = ymin;
+                        }
+                        TextOutA(hdc, x, y, line, i);
+                        y += yskip;
+                        i = 0;
+                    }
+                    dwRead = 0;
+                }
+                if (i)
+                    TextOutA(hdc, x, y, line, i);
+                CloseHandle(hfile);
+            }
+        }
+        /* close printer */
+        EndPage(hdc);
+        EndDoc(hdc);
     }
 
     DeleteDC(hdc);
@@ -3067,342 +2770,322 @@ redmon_print_error(REDATA *prd)
 
 
 /* Add Port dialog box */
-DLGRETURN CALLBACK
-AddDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    RECONFIG *pconfig = (RECONFIG *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
-    switch(message) {
-        case WM_INITDIALOG:
-	    /* save pointer to port name */
-	    pconfig = (RECONFIG *)lParam;
-	    SetWindowLongPtr(hDlg, GWLP_USERDATA, (REDLONGPTR)lParam);
-	    SetDlgItemText(hDlg, IDC_PORTNAME, pconfig->szPortName);
-	    SetForegroundWindow(hDlg);
-            return( TRUE);
-        case WM_COMMAND:
-            switch(LOWORD(wParam)) {
-	      case IDC_HELPBUTTON:
-		  show_help(hDlg, IDS_HELPADD);
-                  return(TRUE);
-              case IDC_PORTNAME:
-                  return(TRUE);
-	      case IDOK:
-	        GetDlgItemText(hDlg, IDC_PORTNAME, pconfig->szPortName,
-			MAXSHORTSTR-1);
-		EndDialog(hDlg, TRUE);
-		return(TRUE);
-	      case IDCANCEL:
-                EndDialog(hDlg, FALSE);
-                return(TRUE);
-              default:
-                return(FALSE);
-            }
-        default:
-            return(FALSE);
+DLGRETURN CALLBACK AddDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+    RECONFIG * pconfig = (RECONFIG *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+    switch (message) {
+    case WM_INITDIALOG:
+        /* save pointer to port name */
+        pconfig = (RECONFIG *)lParam;
+        SetWindowLongPtr(hDlg, GWLP_USERDATA, (REDLONGPTR)lParam);
+        SetDlgItemText(hDlg, IDC_PORTNAME, pconfig->szPortName);
+        SetForegroundWindow(hDlg);
+        return (TRUE);
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case IDC_HELPBUTTON:
+//        show_help(hDlg, IDS_HELPADD);
+            return (TRUE);
+        case IDC_PORTNAME:
+            return (TRUE);
+        case IDOK:
+            GetDlgItemText(hDlg, IDC_PORTNAME, pconfig->szPortName,
+                           MAXSHORTSTR - 1);
+            EndDialog(hDlg, TRUE);
+            return (TRUE);
+        case IDCANCEL:
+            EndDialog(hDlg, FALSE);
+            return (TRUE);
+        default
+                :
+            return (FALSE);
+        }
+    default
+            :
+        return (FALSE);
     }
 }
 
 /* Log file dialog box */
-DLGRETURN CALLBACK
-LogfileDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch(message) {
-        case WM_INITDIALOG:
-	    {
-	    RECONFIG *config;
-	    TCHAR buf[MAXSTR];
-	    TCHAR str[MAXSTR];
+DLGRETURN CALLBACK LogfileDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+    case WM_INITDIALOG: {
+        RECONFIG * config;
+        TCHAR buf[MAXSTR];
+        TCHAR str[MAXSTR];
 
-	    /* save pointer to configuration data */
-	    SetWindowLongPtr(hDlg, GWLP_USERDATA, (REDLONGPTR)lParam);
-	    config = (RECONFIG *)lParam;
+        /* save pointer to configuration data */
+        SetWindowLongPtr(hDlg, GWLP_USERDATA, (REDLONGPTR)lParam);
+        config = (RECONFIG *)lParam;
 
-	    SetDlgItemText(hDlg, IDC_LOGNAME, config->szLogFileName);
-	    SendDlgItemMessage(hDlg, IDC_LOGDEBUG, BM_SETCHECK,
-		config->dwLogFileDebug, 0);
-	    SendDlgItemMessage(hDlg, IDC_LOGUSE, BM_SETCHECK,
-		config->dwLogFileUse, 0);
+        SetDlgItemText(hDlg, IDC_LOGNAME, config->szLogFileName);
+        SendDlgItemMessage(hDlg, IDC_LOGDEBUG, BM_SETCHECK,
+                           config->dwLogFileDebug, 0);
+        SendDlgItemMessage(hDlg, IDC_LOGUSE, BM_SETCHECK,
+                           config->dwLogFileUse, 0);
 
-	    EnableWindow(GetDlgItem(hDlg, IDC_LOGNAMEPROMPT),
-		config->dwLogFileUse);
-	    EnableWindow(GetDlgItem(hDlg, IDC_LOGNAME),
-		config->dwLogFileUse);
-	    EnableWindow(GetDlgItem(hDlg, IDC_LOGDEBUG),
-		config->dwLogFileUse);
-	    EnableWindow(GetDlgItem(hDlg, IDC_BROWSE),
-		config->dwLogFileUse);
+        EnableWindow(GetDlgItem(hDlg, IDC_LOGNAMEPROMPT),
+                     config->dwLogFileUse);
+        EnableWindow(GetDlgItem(hDlg, IDC_LOGNAME),
+                     config->dwLogFileUse);
+        EnableWindow(GetDlgItem(hDlg, IDC_LOGDEBUG),
+                     config->dwLogFileUse);
+        EnableWindow(GetDlgItem(hDlg, IDC_BROWSE),
+                     config->dwLogFileUse);
 
-	    LoadString(hdll, IDS_CONFIGLOGFILE, str,
-		sizeof(str)/sizeof(TCHAR) - 1);
-	    wsprintf(buf, str, config->szPortName);
-	    SetWindowText(hDlg, buf);
-	    }
-            return( TRUE);
-        case WM_COMMAND:
-            switch(LOWORD(wParam)) {
-	      case IDC_HELPBUTTON:
-		  show_help(hDlg, IDS_HELPLOG);
-                  return(TRUE);
-	      case IDC_BROWSE:
-		  browse(hDlg, IDC_LOGNAME, IDS_FILTER_TXT, TRUE);
-                  return(TRUE);
-	      case IDC_LOGUSE:
-		  if (HIWORD(wParam) == BN_CLICKED) {
-		    BOOL enabled = (BOOL)SendDlgItemMessage(hDlg,
-				IDC_LOGUSE, BM_GETCHECK, 0, 0);
-		    enabled = !enabled;
-		    SendDlgItemMessage(hDlg, IDC_LOGUSE,
-			BM_SETCHECK, enabled, 0);
-		    EnableWindow(GetDlgItem(hDlg, IDC_LOGNAMEPROMPT), enabled);
-		    EnableWindow(GetDlgItem(hDlg, IDC_LOGNAME), enabled);
-		    EnableWindow(GetDlgItem(hDlg, IDC_LOGDEBUG), enabled);
-		    EnableWindow(GetDlgItem(hDlg, IDC_BROWSE), enabled);
-		   }
-		   return TRUE;
-	      case IDC_LOGFILE:
-                    return(TRUE);
-/* should we fall through to IDOK */
-	      case IDOK:
-		{
-		    RECONFIG *config =
-			    (RECONFIG *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
-		    config->dwLogFileUse = (BOOL)SendDlgItemMessage(hDlg,
-			IDC_LOGUSE, BM_GETCHECK, 0, 0);
-		    if (config->dwLogFileUse) {
-		      GetDlgItemText(hDlg, IDC_LOGNAME, config->szLogFileName,
-		    	sizeof(config->szLogFileName)/sizeof(TCHAR) - 1);
-		      config->dwLogFileDebug = SendDlgItemMessage(hDlg,
-			IDC_LOGDEBUG, BM_GETCHECK, 0, 0);
-		    }
-		}
-		EndDialog(hDlg, TRUE);
-		return(TRUE);
-	      case IDCANCEL:
-                EndDialog(hDlg, FALSE);
-                return(TRUE);
-              default:
-                return(FALSE);
+        LoadString(hdll, IDS_CONFIGLOGFILE, str,
+                   sizeof(str) / sizeof(TCHAR) - 1);
+        wsprintf(buf, str, config->szPortName);
+        SetWindowText(hDlg, buf);
+    }
+    return (TRUE);
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case IDC_HELPBUTTON:
+//        show_help(hDlg, IDS_HELPLOG);
+            return (TRUE);
+        case IDC_BROWSE:
+            browse(hDlg, IDC_LOGNAME, IDS_FILTER_TXT, TRUE);
+            return (TRUE);
+        case IDC_LOGUSE:
+            if (HIWORD(wParam) == BN_CLICKED) {
+                BOOL enabled = (BOOL)SendDlgItemMessage(hDlg,
+                                                        IDC_LOGUSE, BM_GETCHECK, 0, 0);
+                enabled = !enabled;
+                SendDlgItemMessage(hDlg, IDC_LOGUSE,
+                                   BM_SETCHECK, enabled, 0);
+                EnableWindow(GetDlgItem(hDlg, IDC_LOGNAMEPROMPT), enabled);
+                EnableWindow(GetDlgItem(hDlg, IDC_LOGNAME), enabled);
+                EnableWindow(GetDlgItem(hDlg, IDC_LOGDEBUG), enabled);
+                EnableWindow(GetDlgItem(hDlg, IDC_BROWSE), enabled);
             }
-        default:
-            return(FALSE);
+            return TRUE;
+        case IDC_LOGFILE:
+            return (TRUE);
+            /* should we fall through to IDOK */
+        case IDOK: {
+            RECONFIG * config =
+                (RECONFIG *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+            config->dwLogFileUse = (BOOL)SendDlgItemMessage(hDlg,
+                                   IDC_LOGUSE, BM_GETCHECK, 0, 0);
+            if (config->dwLogFileUse) {
+                GetDlgItemText(hDlg, IDC_LOGNAME, config->szLogFileName,
+                               sizeof(config->szLogFileName) / sizeof(TCHAR) - 1);
+                config->dwLogFileDebug = SendDlgItemMessage(hDlg,
+                                         IDC_LOGDEBUG, BM_GETCHECK, 0, 0);
+            }
+        }
+        EndDialog(hDlg, TRUE);
+        return (TRUE);
+        case IDCANCEL:
+            EndDialog(hDlg, FALSE);
+            return (TRUE);
+        default
+                :
+            return (FALSE);
+        }
+    default
+            :
+        return (FALSE);
     }
 }
 
 /* setup up combo box with list of printers */
-void
-init_printer_list(HWND hDlg, LPTSTR portname)
-{
-unsigned int i;
-DWORD count, needed;
-PRINTER_INFO_2 *prinfo;
-LPTSTR enumbuffer;
-HGLOBAL hglobal;
-BOOL fail = FALSE;
+void init_printer_list(HWND hDlg, LPTSTR portname) {
+    unsigned int i;
+    DWORD count, needed;
+    PRINTER_INFO_2 * prinfo;
+    LPTSTR enumbuffer;
+    HGLOBAL hglobal;
+    BOOL fail = FALSE;
 
     /* enumerate all available printers */
     needed = 0;
     EnumPrinters(PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL,
-	NULL, 2, NULL, 0, &needed, &count);
+                 NULL, 2, NULL, 0, &needed, &count);
     if (needed == 0)
-	fail = TRUE;
+        fail = TRUE;
     if (!fail)
         if ((hglobal = GlobalAlloc(GPTR, (DWORD)needed)) == NULL)
-	    fail = TRUE;
+            fail = TRUE;
     if (!fail)
-	if ((enumbuffer = (LPTSTR)GlobalLock(hglobal)) == (LPTSTR)NULL) {
-	    GlobalFree(hglobal);
-	    fail = TRUE;
-	}
+        if ((enumbuffer = (LPTSTR)GlobalLock(hglobal)) == (LPTSTR)NULL) {
+            GlobalFree(hglobal);
+            fail = TRUE;
+        }
 
     if (!fail)
-	if (!EnumPrinters(PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL,
-	    NULL, 2, (LPBYTE)enumbuffer, needed, &needed, &count)) {
-	    GlobalUnlock(hglobal);
-	    GlobalFree(hglobal);
-	    fail = TRUE;
-	}
+        if (!EnumPrinters(PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL,
+                          NULL, 2, (LPBYTE)enumbuffer, needed, &needed, &count)) {
+            GlobalUnlock(hglobal);
+            GlobalFree(hglobal);
+            fail = TRUE;
+        }
 
     if (fail) {
-	EnableWindow(GetDlgItem(hDlg, IDC_PRINTER), FALSE);
-    }
-    else {
-	prinfo = (PRINTER_INFO_2 *)enumbuffer;
-	SendDlgItemMessage(hDlg, IDC_PRINTER, CB_RESETCONTENT,
-	    (WPARAM)0, (LPARAM)0);
-	for (i=0; i<count; i++) {
-	    if (lstrcmp(prinfo[i].pPortName, portname) != 0)
-	      SendDlgItemMessage(hDlg, IDC_PRINTER, CB_ADDSTRING, 0,
-		(LPARAM)(prinfo[i].pPrinterName));
-	}
-	GlobalUnlock(hglobal);
-	GlobalFree(hglobal);
+        EnableWindow(GetDlgItem(hDlg, IDC_PRINTER), FALSE);
+    } else {
+        prinfo = (PRINTER_INFO_2 *)enumbuffer;
+        SendDlgItemMessage(hDlg, IDC_PRINTER, CB_RESETCONTENT,
+                           (WPARAM)0, (LPARAM)0);
+        for (i = 0; i < count; i++) {
+            if (lstrcmp(prinfo[i].pPortName, portname) != 0)
+                SendDlgItemMessage(hDlg, IDC_PRINTER, CB_ADDSTRING, 0,
+                                   (LPARAM)(prinfo[i].pPrinterName));
+        }
+        GlobalUnlock(hglobal);
+        GlobalFree(hglobal);
     }
 }
 
 
 /* Configure Port dialog box */
-DLGRETURN CALLBACK
-ConfigDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch(message) {
-        case WM_INITDIALOG:
-	    {
-	    RECONFIG *config;
-	    TCHAR buf[MAXSTR];
-	    TCHAR str[MAXSTR];
-#ifdef OLD
-	    HKEY hkey;
-	    DWORD cbData, keytype;
-	    DWORD show;
-	    DWORD output;
-	    DWORD runuser;
-	    DWORD delay;
-	    DWORD printerror;
-#endif
-	    int i;
+DLGRETURN CALLBACK ConfigDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+    case WM_INITDIALOG: {
+        RECONFIG * config;
+        TCHAR buf[MAXSTR];
+        TCHAR str[MAXSTR];
+        int i;
 
-	    /* save pointer to configuration data */
-	    SetWindowLongPtr(hDlg, GWLP_USERDATA, (REDLONGPTR)lParam);
-	    config = (RECONFIG *)lParam;
+        /* save pointer to configuration data */
+        SetWindowLongPtr(hDlg, GWLP_USERDATA, (REDLONGPTR)lParam);
+        config = (RECONFIG *)lParam;
 
-	    SetDlgItemText(hDlg, IDC_COMMAND, config->szCommand);
-	    SetDlgItemText(hDlg, IDC_ARGS, config->szArguments);
+        SetDlgItemText(hDlg, IDC_COMMAND, config->szCommand);
+        SetDlgItemText(hDlg, IDC_ARGS, config->szArguments);
 
-	    SendDlgItemMessage(hDlg, IDC_OUTPUT, CB_RESETCONTENT,
-		(WPARAM)0, (LPARAM)0);
-	    for (i=0; i<=OUTPUT_LAST; i++) {
-		LoadString(hdll, IDS_OUTPUTBASE + i, buf,
-		    sizeof(buf)/sizeof(TCHAR) - 1);
-		SendDlgItemMessage(hDlg, IDC_OUTPUT, CB_ADDSTRING,
-		    (WPARAM)0, (LPARAM)buf);
-	    }
-	    SendDlgItemMessage(hDlg, IDC_OUTPUT, CB_SETCURSEL,
-		(WPARAM)config->dwOutput, (LPARAM)0);
+        SendDlgItemMessage(hDlg, IDC_OUTPUT, CB_RESETCONTENT,
+                           (WPARAM)0, (LPARAM)0);
+        for (i = 0; i <= OUTPUT_LAST; i++) {
+            LoadString(hdll, IDS_OUTPUTBASE + i, buf,
+                       sizeof(buf) / sizeof(TCHAR) - 1);
+            SendDlgItemMessage(hDlg, IDC_OUTPUT, CB_ADDSTRING,
+                               (WPARAM)0, (LPARAM)buf);
+        }
+        SendDlgItemMessage(hDlg, IDC_OUTPUT, CB_SETCURSEL,
+                           (WPARAM)config->dwOutput, (LPARAM)0);
 
-	    init_printer_list(hDlg, config->szPortName);
-	    if (SendDlgItemMessage(hDlg, IDC_PRINTER, CB_SELECTSTRING, -1,
-	        (LPARAM)(config->szPrinter)) == CB_ERR)
-	        SendDlgItemMessage(hDlg, IDC_PRINTER, CB_SETCURSEL, 0, 0);
+        init_printer_list(hDlg, config->szPortName);
+        if (SendDlgItemMessage(hDlg, IDC_PRINTER, CB_SELECTSTRING, -1,
+                               (LPARAM)(config->szPrinter)) == CB_ERR)
+            SendDlgItemMessage(hDlg, IDC_PRINTER, CB_SETCURSEL, 0, 0);
 
-	    EnableWindow(GetDlgItem(hDlg, IDC_PRINTER),
-	      ((config->dwOutput == OUTPUT_STDOUT)
-		|| (config->dwOutput == OUTPUT_FILE)
-		|| (config->dwOutput == OUTPUT_HANDLE)) );
-	    EnableWindow(GetDlgItem(hDlg, IDC_PRINTERTEXT),
-	      ((config->dwOutput == OUTPUT_STDOUT)
-		|| (config->dwOutput == OUTPUT_FILE)
-		|| (config->dwOutput == OUTPUT_HANDLE)) );
+        EnableWindow(GetDlgItem(hDlg, IDC_PRINTER),
+                     ((config->dwOutput == OUTPUT_STDOUT)
+                      || (config->dwOutput == OUTPUT_FILE)
+                      || (config->dwOutput == OUTPUT_HANDLE)));
+        EnableWindow(GetDlgItem(hDlg, IDC_PRINTERTEXT),
+                     ((config->dwOutput == OUTPUT_STDOUT)
+                      || (config->dwOutput == OUTPUT_FILE)
+                      || (config->dwOutput == OUTPUT_HANDLE)));
 
-	    SendDlgItemMessage(hDlg, IDC_SHOW, CB_RESETCONTENT,
-		(WPARAM)0, (LPARAM)0);
-	    for (i=0; i<=SHOW_HIDE; i++) {
-		LoadString(hdll, IDS_SHOWBASE + i, buf,
-		    sizeof(buf)/sizeof(TCHAR) - 1);
-		SendDlgItemMessage(hDlg, IDC_SHOW, CB_ADDSTRING,
-		    (WPARAM)0, (LPARAM)buf);
-	    }
-	    SendDlgItemMessage(hDlg, IDC_SHOW, CB_SETCURSEL,
-		(WPARAM)config->dwShow, (LPARAM)0);
+        SendDlgItemMessage(hDlg, IDC_SHOW, CB_RESETCONTENT,
+                           (WPARAM)0, (LPARAM)0);
+        for (i = 0; i <= SHOW_HIDE; i++) {
+            LoadString(hdll, IDS_SHOWBASE + i, buf,
+                       sizeof(buf) / sizeof(TCHAR) - 1);
+            SendDlgItemMessage(hDlg, IDC_SHOW, CB_ADDSTRING,
+                               (WPARAM)0, (LPARAM)buf);
+        }
+        SendDlgItemMessage(hDlg, IDC_SHOW, CB_SETCURSEL,
+                           (WPARAM)config->dwShow, (LPARAM)0);
 
-	    SendDlgItemMessage(hDlg, IDC_RUNUSER, BM_SETCHECK,
-		(WPARAM)config->dwRunUser, (LPARAM)0);
-#ifndef UNICODE
-	    EnableWindow(GetDlgItem(hDlg, IDC_RUNUSER), FALSE);
-#endif
+        SendDlgItemMessage(hDlg, IDC_RUNUSER, BM_SETCHECK,
+                           (WPARAM)config->dwRunUser, (LPARAM)0);
 #if (defined(NT40) || defined(NT50)) && !defined(__BORLANDC__)
-	    if (ntver >= 400)
-	        EnableWindow(GetDlgItem(hDlg, IDC_RUNUSER), TRUE);
+        if (ntver >= 400)
+            EnableWindow(GetDlgItem(hDlg, IDC_RUNUSER), TRUE);
 #endif
 
-	    SetDlgItemInt(hDlg, IDC_DELAY, config->dwDelay, FALSE);
+        SetDlgItemInt(hDlg, IDC_DELAY, config->dwDelay, FALSE);
 
 
-	    SendDlgItemMessage(hDlg, IDC_PRINTERROR, BM_SETCHECK,
-		config->dwPrintError, 0);
+        SendDlgItemMessage(hDlg, IDC_PRINTERROR, BM_SETCHECK,
+                           config->dwPrintError, 0);
 
-	    LoadString(hdll, IDS_CONFIGPROP, str,
-		sizeof(str)/sizeof(TCHAR) - 1);
-	    wsprintf(buf, str, config->szPortName);
-	    SetWindowText(hDlg, buf);
-	    SetForegroundWindow(hDlg);
-	    }
-            return( TRUE);
-        case WM_COMMAND:
-            switch(LOWORD(wParam)) {
-	      case IDC_HELPBUTTON:
-		  show_help(hDlg, IDS_HELPCONFIG);
-                  return(TRUE);
-	      case IDC_BROWSE:
-		  browse(hDlg, IDC_COMMAND, IDS_FILTER_EXE, FALSE);
-                  return(TRUE);
-	      case IDC_LOGFILE:
-		  DialogBoxParam(hdll, MAKEINTRESOURCE(IDD_CONFIGLOG), hDlg,
-			LogfileDlgProc,
-			(LPARAM)GetWindowLongPtr(hDlg, GWLP_USERDATA));
-                  return(TRUE);
-	      case IDC_OUTPUT:
-		  if (HIWORD(wParam) == CBN_SELCHANGE)  {
-		      int i = SendDlgItemMessage(hDlg, IDC_OUTPUT,
-			CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-	      	      BOOL enabled = ((i == OUTPUT_STDOUT) ||
-			    (i == OUTPUT_FILE) || (i == OUTPUT_HANDLE));
-		      EnableWindow(GetDlgItem(hDlg, IDC_PRINTER), enabled);
-		      EnableWindow(GetDlgItem(hDlg, IDC_PRINTERTEXT), enabled);
-		      EnableWindow(GetDlgItem(hDlg, IDC_PRINTERROR), enabled);
-		  }
-                  return(TRUE);
-              case IDC_COMMAND:
-              case IDC_ARGS:
-                    return(TRUE);
-/* should we fall through to IDOK */
-	      case IDOK:
-		{
-		    BOOL success;
-		    int i;
-		    RECONFIG *config =
-			    (RECONFIG *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
-		    GetDlgItemText(hDlg, IDC_COMMAND, config->szCommand,
-			sizeof(config->szCommand)/sizeof(TCHAR) - 1);
-		    GetDlgItemText(hDlg, IDC_ARGS, config->szArguments,
-			sizeof(config->szArguments)/sizeof(TCHAR) - 1);
-		    /* Remove trailing CRLF */
-		    for (i = lstrlen(config->szArguments) - 1; i>0; i--) {
-			if ((config->szArguments[i] == '\r') ||
-			    (config->szArguments[i] == '\n')) {
-			    config->szArguments[i] = '\0';
-			}
-			else
-			    break;
-		    }
-		    config->dwOutput = SendDlgItemMessage(hDlg, IDC_OUTPUT,
-			CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-		    GetDlgItemText(hDlg, IDC_PRINTER, config->szPrinter,
-			sizeof(config->szPrinter)/sizeof(TCHAR) - 1);
-		    config->dwShow = SendDlgItemMessage(hDlg, IDC_SHOW,
-			CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-		    config->dwRunUser = (BOOL)SendDlgItemMessage(hDlg,
-			IDC_RUNUSER, BM_GETCHECK, 0, 0);
-		    config->dwDelay = (DWORD)GetDlgItemInt(hDlg, IDC_DELAY,
-			&success, FALSE);
- 		    if (!success)
-			config->dwDelay = DEFAULT_DELAY;
-		    if ((config->dwOutput == OUTPUT_STDOUT)
-			|| (config->dwOutput == OUTPUT_FILE)
-			|| (config->dwOutput == OUTPUT_HANDLE)) {
-			config->dwPrintError = SendDlgItemMessage(hDlg,
-			    IDC_PRINTERROR, BM_GETCHECK, 0, 0);
-		    }
-		}
-		EndDialog(hDlg, TRUE);
-		return(TRUE);
-	      case IDCANCEL:
-                EndDialog(hDlg, FALSE);
-                return(TRUE);
-              default:
-                return(FALSE);
+        LoadString(hdll, IDS_CONFIGPROP, str,
+                   sizeof(str) / sizeof(TCHAR) - 1);
+        wsprintf(buf, str, config->szPortName);
+        SetWindowText(hDlg, buf);
+        SetForegroundWindow(hDlg);
+    }
+    return (TRUE);
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case IDC_HELPBUTTON:
+//        show_help(hDlg, IDS_HELPCONFIG);
+            return (TRUE);
+        case IDC_BROWSE:
+            browse(hDlg, IDC_COMMAND, IDS_FILTER_EXE, FALSE);
+            return (TRUE);
+        case IDC_LOGFILE:
+            DialogBoxParam(hdll, MAKEINTRESOURCE(IDD_CONFIGLOG), hDlg,
+                           LogfileDlgProc,
+                           (LPARAM)GetWindowLongPtr(hDlg, GWLP_USERDATA));
+            return (TRUE);
+        case IDC_OUTPUT:
+            if (HIWORD(wParam) == CBN_SELCHANGE)  {
+                int i = SendDlgItemMessage(hDlg, IDC_OUTPUT,
+                                           CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+                BOOL enabled = ((i == OUTPUT_STDOUT) ||
+                                (i == OUTPUT_FILE) || (i == OUTPUT_HANDLE));
+                EnableWindow(GetDlgItem(hDlg, IDC_PRINTER), enabled);
+                EnableWindow(GetDlgItem(hDlg, IDC_PRINTERTEXT), enabled);
+                EnableWindow(GetDlgItem(hDlg, IDC_PRINTERROR), enabled);
             }
-        default:
-            return(FALSE);
+            return (TRUE);
+        case IDC_COMMAND:
+        case IDC_ARGS:
+            return (TRUE);
+            /* should we fall through to IDOK */
+        case IDOK: {
+            BOOL success;
+            int i;
+            RECONFIG * config =
+                (RECONFIG *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+            GetDlgItemText(hDlg, IDC_COMMAND, config->szCommand,
+                           sizeof(config->szCommand) / sizeof(TCHAR) - 1);
+            GetDlgItemText(hDlg, IDC_ARGS, config->szArguments,
+                           sizeof(config->szArguments) / sizeof(TCHAR) - 1);
+            /* Remove trailing CRLF */
+            for (i = lstrlen(config->szArguments) - 1; i > 0; i--) {
+                if ((config->szArguments[i] == '\r') ||
+                        (config->szArguments[i] == '\n')) {
+                    config->szArguments[i] = '\0';
+                } else
+                    break;
+            }
+            config->dwOutput = SendDlgItemMessage(hDlg, IDC_OUTPUT,
+                                                  CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+            GetDlgItemText(hDlg, IDC_PRINTER, config->szPrinter,
+                           sizeof(config->szPrinter) / sizeof(TCHAR) - 1);
+            config->dwShow = SendDlgItemMessage(hDlg, IDC_SHOW,
+                                                CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+            config->dwRunUser = (BOOL)SendDlgItemMessage(hDlg,
+                                IDC_RUNUSER, BM_GETCHECK, 0, 0);
+            config->dwDelay = (DWORD)GetDlgItemInt(hDlg, IDC_DELAY,
+                                                   &success, FALSE);
+            if (!success)
+                config->dwDelay = DEFAULT_DELAY;
+            if ((config->dwOutput == OUTPUT_STDOUT)
+                    || (config->dwOutput == OUTPUT_FILE)
+                    || (config->dwOutput == OUTPUT_HANDLE)) {
+                config->dwPrintError = SendDlgItemMessage(hDlg,
+                                       IDC_PRINTERROR, BM_GETCHECK, 0, 0);
+            }
+        }
+        EndDialog(hDlg, TRUE);
+        return (TRUE);
+        case IDCANCEL:
+            EndDialog(hDlg, FALSE);
+            return (TRUE);
+        default
+                :
+            return (FALSE);
+        }
+    default
+            :
+        return (FALSE);
     }
 }
 
@@ -3410,79 +3093,78 @@ ConfigDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 /* Retrieve the security token for the user we wish to impersonate */
 /* Thanks to Guy Hachlili at Cogniview for this code */
 /* This may pick the wrong session if the user is logged in twice */
-HANDLE get_token_for_user(LPCTSTR pUsername)
-{
+HANDLE get_token_for_user(LPCTSTR pUsername) {
     DWORD dwProcesses[128], dwProcs;
     HANDLE hToken, hFullToken = NULL;
 
     /* no user */
     if (pUsername == NULL)
-	return NULL;
+        return NULL;
 
     /* Go over the list for running processes, and find one which */
     /* has the same user */
-    if (EnumProcesses(dwProcesses, sizeof(DWORD)*128, &dwProcs)) {
-	DWORD i;
-	for (i=0;(hFullToken == NULL) && (i<min(dwProcs, 128));i++) {
-	    HANDLE hProc =
-		OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ,
-		FALSE, dwProcesses[i]);
-	    if (hProc != NULL) {
-		if (OpenProcessToken(hProc, TOKEN_READ, &hToken)) {
-		    TOKEN_USER* pTU;
-		    DWORD dw;
-		    GetTokenInformation(hToken, TokenUser, NULL, 0, &dw);
-		    if (dw > 0) {
-			HGLOBAL hglobal = GlobalAlloc(GPTR, dw);
-			pTU = (TOKEN_USER*)GlobalLock(hglobal);
-			if (GetTokenInformation(hToken, TokenUser, pTU,
-			    dw, &dw)) {
-			    TCHAR cName[255], cDomain[255];
-			    DWORD dwName = 255, dwDomain = 255;
-			    SID_NAME_USE use;
-			    if (LookupAccountSid(NULL, pTU->User.Sid, cName,
-				&dwName, cDomain, &dwDomain, &use)) {
-				if (_tcscmp(cName, pUsername) == 0) {
-				    HANDLE hTemp;
-				    /* Found a process of the same user */
-				    /* Create a token */
-				    if (OpenProcessToken(hProc,
-					STANDARD_RIGHTS_REQUIRED |
-					TOKEN_ASSIGN_PRIMARY |
-					TOKEN_DUPLICATE |
-					TOKEN_IMPERSONATE |
-					TOKEN_QUERY |
-					TOKEN_QUERY_SOURCE |
-					TOKEN_ADJUST_PRIVILEGES |
-					TOKEN_ADJUST_GROUPS |
-					TOKEN_ADJUST_DEFAULT, &hTemp)) {
-					SECURITY_ATTRIBUTES saAttr;
-					/* Set the bInheritHandle flag so */
-					/* pipe handles are inherited. */
-					saAttr.nLength =
-					    sizeof(SECURITY_ATTRIBUTES);
-					saAttr.bInheritHandle = TRUE;
-					saAttr.lpSecurityDescriptor = NULL;
-					if (!DuplicateTokenEx(hTemp,
-					    MAXIMUM_ALLOWED, NULL,
-					    SecurityImpersonation,
-					    TokenPrimary,
-					    &hFullToken))
-					    hFullToken = NULL;
-					CloseHandle(hTemp);
-				    }
-				}
-			    }
-			}
-			GlobalUnlock(hglobal);
-			GlobalFree(hglobal);
-		    }
-		    CloseHandle(hToken);
-		    hToken = NULL;
-		}
-		CloseHandle(hProc);
-	    }
-	}
+    if (EnumProcesses(dwProcesses, sizeof(DWORD) * 128, &dwProcs)) {
+        DWORD i;
+        for (i = 0; (hFullToken == NULL) && (i < min(dwProcs, 128)); i++) {
+            HANDLE hProc =
+                OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+                            FALSE, dwProcesses[i]);
+            if (hProc != NULL) {
+                if (OpenProcessToken(hProc, TOKEN_READ, &hToken)) {
+                    TOKEN_USER * pTU;
+                    DWORD dw;
+                    GetTokenInformation(hToken, TokenUser, NULL, 0, &dw);
+                    if (dw > 0) {
+                        HGLOBAL hglobal = GlobalAlloc(GPTR, dw);
+                        pTU = (TOKEN_USER *)GlobalLock(hglobal);
+                        if (GetTokenInformation(hToken, TokenUser, pTU,
+                                                dw, &dw)) {
+                            TCHAR cName[255], cDomain[255];
+                            DWORD dwName = 255, dwDomain = 255;
+                            SID_NAME_USE use;
+                            if (LookupAccountSid(NULL, pTU->User.Sid, cName,
+                                                 &dwName, cDomain, &dwDomain, &use)) {
+                                if (_tcscmp(cName, pUsername) == 0) {
+                                    HANDLE hTemp;
+                                    /* Found a process of the same user */
+                                    /* Create a token */
+                                    if (OpenProcessToken(hProc,
+                                                         STANDARD_RIGHTS_REQUIRED |
+                                                         TOKEN_ASSIGN_PRIMARY |
+                                                         TOKEN_DUPLICATE |
+                                                         TOKEN_IMPERSONATE |
+                                                         TOKEN_QUERY |
+                                                         TOKEN_QUERY_SOURCE |
+                                                         TOKEN_ADJUST_PRIVILEGES |
+                                                         TOKEN_ADJUST_GROUPS |
+                                                         TOKEN_ADJUST_DEFAULT, &hTemp)) {
+                                        SECURITY_ATTRIBUTES saAttr;
+                                        /* Set the bInheritHandle flag so */
+                                        /* pipe handles are inherited. */
+                                        saAttr.nLength =
+                                            sizeof(SECURITY_ATTRIBUTES);
+                                        saAttr.bInheritHandle = TRUE;
+                                        saAttr.lpSecurityDescriptor = NULL;
+                                        if (!DuplicateTokenEx(hTemp,
+                                                              MAXIMUM_ALLOWED, NULL,
+                                                              SecurityImpersonation,
+                                                              TokenPrimary,
+                                                              &hFullToken))
+                                            hFullToken = NULL;
+                                        CloseHandle(hTemp);
+                                    }
+                                }
+                            }
+                        }
+                        GlobalUnlock(hglobal);
+                        GlobalFree(hglobal);
+                    }
+                    CloseHandle(hToken);
+                    hToken = NULL;
+                }
+                CloseHandle(hProc);
+            }
+        }
     }
 
     /* When we got here, there's either a user token or NULL */
@@ -3490,50 +3172,45 @@ HANDLE get_token_for_user(LPCTSTR pUsername)
 }
 
 void
-fill_primary_token(REDATA *prd)
-{
+fill_primary_token(REDATA * prd) {
     if (prd->primary_token == NULL)
-	prd->primary_token = get_token_for_user(prd->pUserName);
+        prd->primary_token = get_token_for_user(prd->pUserName);
 }
 #endif
 
 
-BOOL
-get_job_info(REDATA *prd)
-{
-HGLOBAL hPrinter;
+BOOL get_job_info(REDATA * prd) {
+    HGLOBAL hPrinter;
     if (OpenPrinter(prd->pPrinterName, &hPrinter, NULL)) {
-	DWORD dwNeeded = 0;
-	HGLOBAL hglobal = GlobalAlloc(GPTR, (DWORD)4096);
-	JOB_INFO_1 *pjob = (JOB_INFO_1 *)GlobalLock(hglobal);
-	if ((pjob != (JOB_INFO_1 *)NULL) &&
-	     GetJob(hPrinter, prd->JobId, 1, (LPBYTE)pjob,
-		4096, &dwNeeded)) {
-	    lstrcpyn(prd->pMachineName, pjob->pMachineName,
-		sizeof(prd->pMachineName)/sizeof(TCHAR)-1);
-	    lstrcpyn(prd->pUserName, pjob->pUserName,
-		sizeof(prd->pUserName)/sizeof(TCHAR)-1);
-	}
-	if (pjob != (JOB_INFO_1 *)NULL) {
-	    GlobalUnlock(hglobal);
-	    GlobalFree(hglobal);
-	}
-	ClosePrinter(hPrinter);
-	return TRUE;
+        DWORD dwNeeded = 0;
+        HGLOBAL hglobal = GlobalAlloc(GPTR, (DWORD)4096);
+        JOB_INFO_1 * pjob = (JOB_INFO_1 *)GlobalLock(hglobal);
+        if ((pjob != (JOB_INFO_1 *)NULL) &&
+                GetJob(hPrinter, prd->JobId, 1, (LPBYTE)pjob,
+                       4096, &dwNeeded)) {
+            lstrcpyn(prd->pMachineName, pjob->pMachineName,
+                     sizeof(prd->pMachineName) / sizeof(TCHAR) - 1);
+            lstrcpyn(prd->pUserName, pjob->pUserName,
+                     sizeof(prd->pUserName) / sizeof(TCHAR) - 1);
+        }
+        if (pjob != (JOB_INFO_1 *)NULL) {
+            GlobalUnlock(hglobal);
+            GlobalFree(hglobal);
+        }
+        ClosePrinter(hPrinter);
+        return TRUE;
     }
     return FALSE;
 }
 
 /* return length of env in characters (which may not be bytes) */
-int
-env_length(LPTSTR env)
-{
-LPTSTR p;
+int env_length(LPTSTR env) {
+    LPTSTR p;
     p = env;
     while (*p) {
-	while (*p)
-	    p++;
-	p++;
+        while (*p)
+            p++;
+        p++;
     }
     p++;
     return (p - env);
@@ -3543,21 +3220,19 @@ LPTSTR p;
  * to a new environment block.  The caller must free this with
  * GlobalFree() when it is finished.
  */
-HGLOBAL
-join_env(LPTSTR env1, LPTSTR env2)
-{
-int len1, len2;
-HGLOBAL henv;
-LPTSTR env;
-    len1 = env_length(env1);	/* length in characters, not bytes */
+HGLOBAL join_env(LPTSTR env1, LPTSTR env2) {
+    int len1, len2;
+    HGLOBAL henv;
+    LPTSTR env;
+    len1 = env_length(env1);    /* length in characters, not bytes */
     len2 = env_length(env2);
-    henv = GlobalAlloc(GPTR, (DWORD)((len1 + len2)*sizeof(TCHAR)));
+    henv = GlobalAlloc(GPTR, (DWORD)((len1 + len2) * sizeof(TCHAR)));
     env = GlobalLock(henv);
     if (env == NULL)
-	return NULL;
-    MoveMemory(env, env1, len1*sizeof(TCHAR));
+        return NULL;
+    MoveMemory(env, env1, len1 * sizeof(TCHAR));
     env += len1 - 1;
-    MoveMemory(env, env2, len2*sizeof(TCHAR));
+    MoveMemory(env, env2, len2 * sizeof(TCHAR));
     GlobalUnlock(henv);
     return henv;
 }
@@ -3570,31 +3245,28 @@ LPTSTR env;
  *  len is the length of name in bytes, including the trailing null.
  *  value is the environment variable value.
  */
-void
-append_env(LPTSTR env, LPTSTR name, int len, LPTSTR value)
-{
-int oldlen;
-  oldlen = env_length(env);
-  env = env + oldlen - 1;
-  MoveMemory(env, name, len);
-  env += len/sizeof(TCHAR) - 1;
-  MoveMemory(env, value, lstrlen(value)*sizeof(TCHAR));
-  env += lstrlen(value) + 1;
-  *env = '\0';
+void append_env(LPTSTR env, LPTSTR name, int len, LPTSTR value) {
+    int oldlen;
+    oldlen = env_length(env);
+    env = env + oldlen - 1;
+    MoveMemory(env, name, len);
+    env += len / sizeof(TCHAR) - 1;
+    MoveMemory(env, value, lstrlen(value)*sizeof(TCHAR));
+    env += lstrlen(value) + 1;
+    *env = '\0';
 }
 
 /* create an environment variable block which contains
  * some RedMon extras about the print job.
  */
-HGLOBAL make_job_env(REDATA *prd)
-{
-int len;
-TCHAR buf[32];
-TCHAR temp[256];
-HGLOBAL henv;
-LPTSTR env;
-BOOL bTEMP = FALSE;
-BOOL bTMP = FALSE;
+HGLOBAL make_job_env(REDATA * prd) {
+    int len;
+    TCHAR buf[32];
+    TCHAR temp[256];
+    HGLOBAL henv;
+    LPTSTR env;
+    BOOL bTEMP = FALSE;
+    BOOL bTMP = FALSE;
 
     wsprintf(buf, TEXT("%d"), prd->JobId);
     len = sizeof(REDMON_PORT) +
@@ -3608,33 +3280,33 @@ BOOL bTMP = FALSE;
           sizeof(REDMON_FILENAME) +
           sizeof(REDMON_SESSIONID) +
           (lstrlen(prd->portname) +
-          lstrlen(buf) + 1 +
-          lstrlen(prd->pPrinterName) + 1 +
-          lstrlen(prd->config.szPrinter) + 1 +
-          lstrlen(prd->pMachineName) + 1 +
-          lstrlen(prd->pUserName) + 1 +
-          lstrlen(prd->pDocName) + 1 +
-          lstrlen(prd->pBaseName) + 1 +
-          lstrlen(prd->tempname) + 1 +
-          lstrlen(prd->pSessionId) + 1 +
-	  1) * sizeof(TCHAR);
+           lstrlen(buf) + 1 +
+           lstrlen(prd->pPrinterName) + 1 +
+           lstrlen(prd->config.szPrinter) + 1 +
+           lstrlen(prd->pMachineName) + 1 +
+           lstrlen(prd->pUserName) + 1 +
+           lstrlen(prd->pDocName) + 1 +
+           lstrlen(prd->pBaseName) + 1 +
+           lstrlen(prd->tempname) + 1 +
+           lstrlen(prd->pSessionId) + 1 +
+           1) * sizeof(TCHAR);
 
     if (GetEnvironmentVariable(TEXT("TEMP"), temp,
-	sizeof(temp)/sizeof(TCHAR)-1) == 0)
-	bTEMP = TRUE;	/* Need to define TEMP */
+                               sizeof(temp) / sizeof(TCHAR) - 1) == 0)
+        bTEMP = TRUE;   /* Need to define TEMP */
     if (GetEnvironmentVariable(TEXT("TMP"), temp,
-	sizeof(temp)/sizeof(TCHAR)-1) == 0)
-	bTMP = TRUE;	/* Need to define TMP */
-    get_temp(temp, sizeof(temp)/sizeof(TCHAR));
+                               sizeof(temp) / sizeof(TCHAR) - 1) == 0)
+        bTMP = TRUE;    /* Need to define TMP */
+    get_temp(temp, sizeof(temp) / sizeof(TCHAR));
     if (bTEMP)
-	len += sizeof(REDMON_TEMP) + (lstrlen(temp) + 1) * sizeof(TCHAR);
+        len += sizeof(REDMON_TEMP) + (lstrlen(temp) + 1) * sizeof(TCHAR);
     if (bTMP)
-	len += sizeof(REDMON_TMP) + (lstrlen(temp) + 1) * sizeof(TCHAR);
+        len += sizeof(REDMON_TMP) + (lstrlen(temp) + 1) * sizeof(TCHAR);
 
     henv = GlobalAlloc(GPTR, len);
     env = GlobalLock(henv);
     if (env == NULL)
-	return NULL;
+        return NULL;
     append_env(env, REDMON_PORT, sizeof(REDMON_PORT), prd->portname);
     append_env(env, REDMON_JOB, sizeof(REDMON_JOB), buf);
     append_env(env, REDMON_PRINTER, sizeof(REDMON_PRINTER), prd->pPrinterName);
@@ -3646,9 +3318,9 @@ BOOL bTMP = FALSE;
     append_env(env, REDMON_FILENAME, sizeof(REDMON_FILENAME), prd->tempname);
     append_env(env, REDMON_SESSIONID, sizeof(REDMON_SESSIONID), prd->pSessionId);
     if (bTEMP)
-	append_env(env, REDMON_TEMP, sizeof(REDMON_TEMP), temp);
+        append_env(env, REDMON_TEMP, sizeof(REDMON_TEMP), temp);
     if (bTMP)
-	append_env(env, REDMON_TMP, sizeof(REDMON_TMP), temp);
+        append_env(env, REDMON_TMP, sizeof(REDMON_TMP), temp);
     GlobalUnlock(henv);
     return henv;
 }
@@ -3656,31 +3328,28 @@ BOOL bTMP = FALSE;
 
 
 /* write contents of the environment block to the log file */
-void
-dump_env(REDATA *prd, LPTSTR env)
-{
-LPTSTR name, next;
+void dump_env(REDATA * prd, LPTSTR env) {
+    LPTSTR name, next;
     write_string_to_log(prd, TEXT("Environment:\r\n  "));
     next = env;
     while (*next) {
         name = next;
-	while (*next)
-	    next++;
-	write_string_to_log(prd, name);
-	write_string_to_log(prd, TEXT("\r\n  "));
-	next++;
+        while (*next)
+            next++;
+        write_string_to_log(prd, name);
+        write_string_to_log(prd, TEXT("\r\n  "));
+        next++;
     }
     write_string_to_log(prd, TEXT("\r\n"));
 }
 
-BOOL make_env(REDATA * prd)
-{
-LPTSTR env_block = NULL;
-LPTSTR env_strings = NULL;
-LPTSTR env = NULL;
-LPTSTR extra_env;
-BOOL destroy_env = FALSE;
-HGLOBAL h_extra_env;
+BOOL make_env(REDATA * prd) {
+    LPTSTR env_block = NULL;
+    LPTSTR env_strings = NULL;
+    LPTSTR env = NULL;
+    LPTSTR extra_env;
+    BOOL destroy_env = FALSE;
+    HGLOBAL h_extra_env;
     /* Add some environment variables */
     /* It would be simpler to use SetEnvironmentVariable()
      * and then GetEnvironmentStrings(), then to delete
@@ -3695,104 +3364,93 @@ HGLOBAL h_extra_env;
      * Delete and recreate it to update REDMON_FILENAME.
      */
     if (prd->environment) {
-	GlobalUnlock(prd->environment);
-	GlobalFree(prd->environment);
-	prd->environment = NULL;
+        GlobalUnlock(prd->environment);
+        GlobalFree(prd->environment);
+        prd->environment = NULL;
     }
 
 #if defined(UNICODE) && (defined(NT40) || defined(NT50)) && !defined(__BORLANDC__)
     if (prd->config.dwRunUser) {
-	BOOL flag;
-	TCHAR buf[MAXSTR];
-	fill_primary_token(prd);
-	if (prd->primary_token != NULL)
-	    if (!CreateEnvironmentBlock(&env_block, prd->primary_token, FALSE))
-		env_block = NULL;
-	if (env_block != NULL)
-	    env = env_block;
+        BOOL flag;
+        TCHAR buf[MAXSTR];
+        fill_primary_token(prd);
+        if (prd->primary_token != NULL)
+            if (!CreateEnvironmentBlock(&env_block, prd->primary_token, FALSE))
+                env_block = NULL;
+        if (env_block != NULL)
+            env = env_block;
     }
 #endif
     if (env == NULL)
-	env = env_strings = GetEnvironmentStrings();
+        env = env_strings = GetEnvironmentStrings();
 
-    h_extra_env= make_job_env(prd);
+    h_extra_env = make_job_env(prd);
     extra_env = GlobalLock(h_extra_env);
     prd->environment = join_env(env, extra_env);
     GlobalUnlock(h_extra_env);
     GlobalFree(h_extra_env);
 
-#if defined(UNICODE) && (defined(NT40) || defined(NT50)) && !defined(__BORLANDC__)
     if (env_block)
-	DestroyEnvironmentBlock(env_block);
-#endif
+        DestroyEnvironmentBlock(env_block);
     if (env_strings)
         FreeEnvironmentStrings(env_strings);
 
     if (prd->hLogFile != INVALID_HANDLE_VALUE) {
         env = GlobalLock(prd->environment);
-	dump_env(prd, env);
-	GlobalUnlock(prd->environment);
+        dump_env(prd, env);
+        GlobalUnlock(prd->environment);
     }
     return TRUE;
 }
 
-#ifdef UNICODE
 /* Query session id from a primary token obtained from
  * the impersonation token of the thread.
  * Session id is needed to identify client a WTS session.
  */
-BOOL query_session_id(REDATA * prd)
-{
+BOOL query_session_id(REDATA * prd) {
     BOOL fRet = TRUE;
     HANDLE htoken = NULL, hduptoken = NULL;
     TCHAR buf[MAXSTR];
 
     /* get impersonation token */
-    if ( !(fRet = OpenThreadToken(GetCurrentThread() ,
-	TOKEN_DUPLICATE | TOKEN_IMPERSONATE,
-	TRUE, &htoken)) ) {
-	DWORD err = GetLastError();
-	wsprintf(buf, TEXT("OpenThreadToken failed, error code=%d\r\n"),
-	    err);
-	write_string_to_log(prd, buf);
-	write_error(prd, err);
-	lstrcpy(prd->pSessionId, TEXT("0"));
+    if (!(fRet = OpenThreadToken(GetCurrentThread() ,
+                                 TOKEN_DUPLICATE | TOKEN_IMPERSONATE,
+                                 TRUE, &htoken))) {
+        DWORD err = GetLastError();
+        wsprintf(buf, TEXT("OpenThreadToken failed, error code=%d\r\n"),
+                 err);
+        write_string_to_log(prd, buf);
+        write_error(prd, err);
+        lstrcpy(prd->pSessionId, TEXT("0"));
     }
 
     if (fRet) {
-	/* Duplicate it to create a primary token */
-	if ( !(fRet = DuplicateTokenEx(htoken, TOKEN_ALL_ACCESS, NULL,
-	       SecurityImpersonation, TokenPrimary, &hduptoken)) ) {
-	    DWORD err = GetLastError();
-	    wsprintf(buf, TEXT("DuplicateTokenEx failed, error code=%d\r\n"),
-	    err);
-	    write_string_to_log(prd, buf);
-	    write_error(prd, err);
-	    lstrcpy(prd->pSessionId, TEXT("0"));
-	}
+        /* Duplicate it to create a primary token */
+        if (!(fRet = DuplicateTokenEx(htoken, TOKEN_ALL_ACCESS, NULL,
+                                      SecurityImpersonation, TokenPrimary, &hduptoken))) {
+            DWORD err = GetLastError();
+            wsprintf(buf, TEXT("DuplicateTokenEx failed, error code=%d\r\n"),
+                     err);
+            write_string_to_log(prd, buf);
+            write_error(prd, err);
+            lstrcpy(prd->pSessionId, TEXT("0"));
+        }
         CloseHandle(htoken);
     }
 
-    if ( fRet ) {
-	DWORD dwRetLen = 0;
-	DWORD dwSessionId = 0;
-	/* query session-id from token */
-	fRet = GetTokenInformation(hduptoken, TokenSessionId,
-			   &dwSessionId, sizeof (DWORD), &dwRetLen);
-	if (fRet)
-	    wsprintf(prd->pSessionId, TEXT("%ld"), dwSessionId);
+    if (fRet) {
+        DWORD dwRetLen = 0;
+        DWORD dwSessionId = 0;
+        /* query session-id from token */
+        fRet = GetTokenInformation(hduptoken, TokenSessionId,
+                                   &dwSessionId, sizeof(DWORD), &dwRetLen);
+        if (fRet)
+            wsprintf(prd->pSessionId, TEXT("%ld"), dwSessionId);
         CloseHandle(hduptoken);
     }
 
-    return(fRet);
+    return (fRet);
 }
-#else
-BOOL query_session_id(REDATA * prd)
-{
-    lstrcpy(prd->pSessionId, TEXT("0"));
-    return TRUE;
-}
-#endif
 
 
 /* start_redirect() was originally based on an example in the Win32 SDK
@@ -3810,8 +3468,7 @@ BOOL query_session_id(REDATA * prd)
  */
 
 /* Start child program with redirected standard input and output */
-BOOL start_redirect(REDATA * prd)
-{
+BOOL start_redirect(REDATA * prd) {
     SECURITY_ATTRIBUTES saAttr;
     STARTUPINFO siStartInfo;
     HANDLE hPipeTemp;
@@ -3834,45 +3491,45 @@ BOOL start_redirect(REDATA * prd)
      * of our end of the pipe, then close the inheritable handle.
      */
     if (!CreatePipe(&prd->hChildStdinRd, &hPipeTemp, &saAttr, 0))
-	return FALSE;
+        return FALSE;
     if (!DuplicateHandle(GetCurrentProcess(), hPipeTemp,
-            GetCurrentProcess(), &prd->hChildStdinWr, 0,
-            FALSE,       /* not inherited */
-            DUPLICATE_SAME_ACCESS)) {
+                         GetCurrentProcess(), &prd->hChildStdinWr, 0,
+                         FALSE,       /* not inherited */
+                         DUPLICATE_SAME_ACCESS)) {
         CloseHandle(hPipeTemp);
-	return FALSE;
+        return FALSE;
     }
     CloseHandle(hPipeTemp);
 
     if (!CreatePipe(&hPipeTemp, &prd->hChildStdoutWr, &saAttr, 0))
-	return FALSE;	/* cleanup of pipes will occur in caller */
+        return FALSE;   /* cleanup of pipes will occur in caller */
     if (!DuplicateHandle(GetCurrentProcess(), hPipeTemp,
-            GetCurrentProcess(), &prd->hChildStdoutRd, 0,
-            FALSE,       /* not inherited */
-            DUPLICATE_SAME_ACCESS)) {
+                         GetCurrentProcess(), &prd->hChildStdoutRd, 0,
+                         FALSE,       /* not inherited */
+                         DUPLICATE_SAME_ACCESS)) {
         CloseHandle(hPipeTemp);
-	return FALSE;
+        return FALSE;
     }
     CloseHandle(hPipeTemp);
 
     if (!CreatePipe(&hPipeTemp, &prd->hChildStderrWr, &saAttr, 0))
-	return FALSE;
+        return FALSE;
     if (!DuplicateHandle(GetCurrentProcess(), hPipeTemp,
-            GetCurrentProcess(), &prd->hChildStderrRd, 0,
-            FALSE,       /* not inherited */
-            DUPLICATE_SAME_ACCESS)) {
+                         GetCurrentProcess(), &prd->hChildStderrRd, 0,
+                         FALSE,       /* not inherited */
+                         DUPLICATE_SAME_ACCESS)) {
         CloseHandle(hPipeTemp);
-	return FALSE;
+        return FALSE;
     }
     CloseHandle(hPipeTemp);
 
 #ifdef SAVESTD
     if (!SetStdHandle(STD_OUTPUT_HANDLE, prd->hChildStdoutWr))
-	return FALSE;
+        return FALSE;
     if (!SetStdHandle(STD_ERROR_HANDLE, prd->hChildStderrWr))
-	return FALSE;
+        return FALSE;
     if (!SetStdHandle(STD_INPUT_HANDLE, prd->hChildStdinRd))
-	return FALSE;
+        return FALSE;
 #endif
 
     /* Now create the child process. */
@@ -3883,19 +3540,20 @@ BOOL start_redirect(REDATA * prd)
     siStartInfo.lpReserved = NULL;
     siStartInfo.lpDesktop = NULL;
     siStartInfo.lpTitle = NULL;  /* use executable name as title */
-    siStartInfo.dwX = siStartInfo.dwY = CW_USEDEFAULT;		/* ignored */
-    siStartInfo.dwXSize = siStartInfo.dwYSize = CW_USEDEFAULT;	/* ignored */
+    siStartInfo.dwX = siStartInfo.dwY = CW_USEDEFAULT;      /* ignored */
+    siStartInfo.dwXSize = siStartInfo.dwYSize = CW_USEDEFAULT;  /* ignored */
     siStartInfo.dwXCountChars = 80;
     siStartInfo.dwYCountChars = 25;
-    siStartInfo.dwFillAttribute = 0;			/* ignored */
+    siStartInfo.dwFillAttribute = 0;            /* ignored */
     siStartInfo.dwFlags = STARTF_USESTDHANDLES;
-    siStartInfo.wShowWindow = SW_SHOWNORMAL;		/* ignored */
+    siStartInfo.wShowWindow = SW_SHOWNORMAL;        /* ignored */
     if (prd->config.dwShow != SHOW_NORMAL)
         siStartInfo.dwFlags |= STARTF_USESHOWWINDOW;
     if (prd->config.dwShow == SHOW_MIN)
         siStartInfo.wShowWindow = SW_SHOWMINNOACTIVE;
-    else if (prd->config.dwShow == SHOW_HIDE)
-        siStartInfo.wShowWindow = SW_HIDE;
+    else
+        if (prd->config.dwShow == SHOW_HIDE)
+            siStartInfo.wShowWindow = SW_HIDE;
     siStartInfo.cbReserved2 = 0;
     siStartInfo.lpReserved2 = NULL;
     siStartInfo.hStdInput = prd->hChildStdinRd;
@@ -3905,72 +3563,68 @@ BOOL start_redirect(REDATA * prd)
     if (prd->environment)
         env = GlobalLock(prd->environment);
     else
-	env = NULL;
+        env = NULL;
 
     /* Create the child process. */
 
 #if defined(UNICODE) && (defined(NT40) || defined(NT50)) && !defined(__BORLANDC__)
 //     if (prd->config.dwRunUser) {
-// 	BOOL flag;
-// 	TCHAR buf[MAXSTR];
+//  BOOL flag;
+//  TCHAR buf[MAXSTR];
 //
-// 	/* Be default, the process is created on an invisible desktop.
-// 	 * that can't receive input.
-// 	 * Instead we try to put the process on the main desktop.
-// 	 * The following attempts to get the primary user token needed
-//  	 * to access the user desktop/session.
-//  	 */
-// 	fill_primary_token(prd);
+//  /* Be default, the process is created on an invisible desktop.
+//   * that can't receive input.
+//   * Instead we try to put the process on the main desktop.
+//   * The following attempts to get the primary user token needed
+//       * to access the user desktop/session.
+//       */
+//  fill_primary_token(prd);
 //
-// 	if ( !(flag = CreateProcessAsUser(prd->primary_token, NULL,
-// 		prd->command,  /* command line                       */
-// 		NULL,          /* process security attributes        */
-// 		NULL,          /* primary thread security attributes */
-// 		TRUE,          /* handles are inherited              */
-// 		CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
-// 		env,           /* environment                        */
-// 		NULL,          /* use parent's current directory     */
-// 		&siStartInfo,  /* STARTUPINFO pointer                */
-// 		&prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
-// 	   ) {
-// 	    DWORD err = GetLastError();
-// 	    wsprintf(buf, TEXT("CreateProcessAsUser failed, error code=%d\r\n"),
-// 		err);
-// 	    write_string_to_log(prd, buf);
-// 	    write_error(prd, err);
-// 	}
+//  if ( !(flag = CreateProcessAsUser(prd->primary_token, NULL,
+//      prd->command,  /* command line                       */
+//      NULL,          /* process security attributes        */
+//      NULL,          /* primary thread security attributes */
+//      TRUE,          /* handles are inherited              */
+//      CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
+//      env,           /* environment                        */
+//      NULL,          /* use parent's current directory     */
+//      &siStartInfo,  /* STARTUPINFO pointer                */
+//      &prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
+//     ) {
+//      DWORD err = GetLastError();
+//      wsprintf(buf, TEXT("CreateProcessAsUser failed, error code=%d\r\n"),
+//      err);
+//      write_string_to_log(prd, buf);
+//      write_error(prd, err);
+//  }
 //
-// 	if (!flag)
-// 	   prd->config.dwRunUser = FALSE;
+//  if (!flag)
+//     prd->config.dwRunUser = FALSE;
 //     }
 //     if (!prd->config.dwRunUser)
 #endif
 
     if (!CreateProcess(NULL,
-        prd->command,  /* command line                       */
-        NULL,          /* process security attributes        */
-        NULL,          /* primary thread security attributes */
-        TRUE,          /* handles are inherited              */
-#ifdef UNICODE
-	CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
-#else
-	0,             /* creation flags                     */
-#endif
-	env,           /* environment                        */
-        NULL,          /* use parent's current directory     */
-        &siStartInfo,  /* STARTUPINFO pointer                */
-        &prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
-	  return FALSE;
+                       prd->command,  /* command line                       */
+                       NULL,          /* process security attributes        */
+                       NULL,          /* primary thread security attributes */
+                       TRUE,          /* handles are inherited              */
+                       CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
+                       env,           /* environment                        */
+                       NULL,          /* use parent's current directory     */
+                       &siStartInfo,  /* STARTUPINFO pointer                */
+                       &prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
+        return FALSE;
 
     /* After process creation, restore the saved STDIN and STDOUT. */
 
 #ifdef SAVESTD
     if (!SetStdHandle(STD_INPUT_HANDLE, prd->hSaveStdin))
-	return FALSE;
+        return FALSE;
     if (!SetStdHandle(STD_OUTPUT_HANDLE, prd->hSaveStdout))
-	return FALSE;
+        return FALSE;
     if (!SetStdHandle(STD_ERROR_HANDLE, prd->hSaveStderr))
-	return FALSE;
+        return FALSE;
 #endif
 
     /* We now close our copy of the inheritable pipe handles.
@@ -3979,13 +3633,13 @@ BOOL start_redirect(REDATA * prd)
      * handle.
      */
     if (prd->hChildStdinRd != INVALID_HANDLE_VALUE)
-	CloseHandle(prd->hChildStdinRd);
+        CloseHandle(prd->hChildStdinRd);
     prd->hChildStdinRd = INVALID_HANDLE_VALUE;
     if (prd->hChildStdoutWr != INVALID_HANDLE_VALUE)
-	CloseHandle(prd->hChildStdoutWr);
+        CloseHandle(prd->hChildStdoutWr);
     prd->hChildStdoutWr = INVALID_HANDLE_VALUE;
     if (prd->hChildStderrWr != INVALID_HANDLE_VALUE)
-	CloseHandle(prd->hChildStderrWr);
+        CloseHandle(prd->hChildStderrWr);
     prd->hChildStderrWr = INVALID_HANDLE_VALUE;
 
     return TRUE;
@@ -3996,8 +3650,7 @@ BOOL start_redirect(REDATA * prd)
  * This is needed to make the SaveAs dialog appear on the WTS client
  * instead of the server.
  */
-BOOL get_filename_as_user(REDATA * prd)
-{
+BOOL get_filename_as_user(REDATA * prd) {
 //     SECURITY_ATTRIBUTES saAttr;
 //     STARTUPINFO siStartInfo;
 //     HANDLE hPipeTemp;
@@ -4026,13 +3679,13 @@ BOOL get_filename_as_user(REDATA * prd)
 //      */
 //
 //     if (!CreatePipe(&hPipeTemp, &hPipeWrite, &saAttr, 0))
-// 	return FALSE;	/* cleanup of pipes will occur in caller */
+//  return FALSE;   /* cleanup of pipes will occur in caller */
 //     if (!DuplicateHandle(GetCurrentProcess(), hPipeTemp,
 //             GetCurrentProcess(), &hPipeRead, 0,
 //             FALSE,       /* not inherited */
 //             DUPLICATE_SAME_ACCESS)) {
 //         CloseHandle(hPipeTemp);
-// 	return FALSE;
+//  return FALSE;
 //     }
 //     CloseHandle(hPipeTemp);
 //
@@ -4044,7 +3697,7 @@ BOOL get_filename_as_user(REDATA * prd)
 //      */
 //     GetModuleFileName(hdll, dllname, sizeof(dllname)/sizeof(TCHAR));
 //     wsprintf(command, TEXT("C:\\Windows\\System32\\rundll32.exe %s,GetFileName %lu %s"),
-// 	dllname, hPipeWrite, prd->tempname);
+//  dllname, hPipeWrite, prd->tempname);
 //     write_string_to_log(prd, command);
 //     write_string_to_log(prd, TEXT("\r\n"));
 //
@@ -4056,13 +3709,13 @@ BOOL get_filename_as_user(REDATA * prd)
 //     siStartInfo.lpReserved = NULL;
 //     siStartInfo.lpDesktop = NULL;
 //     siStartInfo.lpTitle = NULL;  /* use executable name as title */
-//     siStartInfo.dwX = siStartInfo.dwY = CW_USEDEFAULT;		/* ignored */
-//     siStartInfo.dwXSize = siStartInfo.dwYSize = CW_USEDEFAULT;	/* ignored */
+//     siStartInfo.dwX = siStartInfo.dwY = CW_USEDEFAULT;       /* ignored */
+//     siStartInfo.dwXSize = siStartInfo.dwYSize = CW_USEDEFAULT;   /* ignored */
 //     siStartInfo.dwXCountChars = 80;
 //     siStartInfo.dwYCountChars = 25;
-//     siStartInfo.dwFillAttribute = 0;			/* ignored */
+//     siStartInfo.dwFillAttribute = 0;         /* ignored */
 //     siStartInfo.dwFlags = STARTF_USESTDHANDLES;
-//     siStartInfo.wShowWindow = SW_SHOWNORMAL;		/* ignored */
+//     siStartInfo.wShowWindow = SW_SHOWNORMAL;     /* ignored */
 //     siStartInfo.dwFlags |= STARTF_USESHOWWINDOW;
 //     siStartInfo.cbReserved2 = 0;
 //     siStartInfo.lpReserved2 = NULL;
@@ -4078,7 +3731,7 @@ BOOL get_filename_as_user(REDATA * prd)
 //     if (prd->environment)
 //         env = GlobalLock(prd->environment);
 //     else
-// 	env = NULL;
+//  env = NULL;
 //
 //     /* Create the child process. */
 //     fill_primary_token(prd);
@@ -4095,24 +3748,24 @@ BOOL get_filename_as_user(REDATA * prd)
 //      */
 //     siStartInfo.lpDesktop = TEXT("");
 //     if ( !(flag = CreateProcessAsUser(prd->primary_token, NULL,
-// 	    command,  /* command line                       */
-// 	    NULL,          /* process security attributes        */
-// 	    NULL,          /* primary thread security attributes */
-// 	    TRUE,          /* handles are inherited              */
-// 	    CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
-// 	    env,           /* environment                        */
-// 	    NULL,          /* use parent's current directory     */
-// 	    &siStartInfo,  /* STARTUPINFO pointer                */
-// 	    &prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
+//      command,  /* command line                       */
+//      NULL,          /* process security attributes        */
+//      NULL,          /* primary thread security attributes */
+//      TRUE,          /* handles are inherited              */
+//      CREATE_UNICODE_ENVIRONMENT,  /* creation flags       */
+//      env,           /* environment                        */
+//      NULL,          /* use parent's current directory     */
+//      &siStartInfo,  /* STARTUPINFO pointer                */
+//      &prd->piProcInfo))  /* receives PROCESS_INFORMATION  */
 //        ) {
-// 	DWORD err = GetLastError();
-// 	wsprintf(buf, TEXT("CreateProcessAsUser failed, error code=%d\r\n"),
-// 	    err);
-// 	write_string_to_log(prd, buf);
-// 	write_error(prd, err);
+//  DWORD err = GetLastError();
+//  wsprintf(buf, TEXT("CreateProcessAsUser failed, error code=%d\r\n"),
+//      err);
+//  write_string_to_log(prd, buf);
+//  write_error(prd, err);
 //     }
 //     if (flag && (prd->piProcInfo.hProcess == INVALID_HANDLE_VALUE))
-// 	flag = FALSE;
+//  flag = FALSE;
 //
 //     /* Close our copy of the pipe write handle, so pipe will close
 //      * when the other process terminates.
@@ -4127,39 +3780,39 @@ BOOL get_filename_as_user(REDATA * prd)
 //     if (flag) {
 //         DWORD bytes_available = 0;
 //         BOOL result;
-// 	pHandles[0] = hPipeRead;
-// 	pHandles[1] = prd->piProcInfo.hProcess;
+//  pHandles[0] = hPipeRead;
+//  pHandles[1] = prd->piProcInfo.hProcess;
 //         for (i=0; i<prd->config.dwDelay; i++) {
-// 	    dwWait = WaitForMultipleObjects(2, pHandles, FALSE, 1000);
-// 	    if (dwWait == WAIT_OBJECT_0) {
-// 		/* Pipe has data */
+//      dwWait = WaitForMultipleObjects(2, pHandles, FALSE, 1000);
+//      if (dwWait == WAIT_OBJECT_0) {
+//      /* Pipe has data */
 // write_string_to_log(prd, TEXT("Starting reading filename from pipe\r\n"));
-// 		    flag = ReadFile(hPipeRead, buf, sizeof(buf)-1,
-// 			&dwBytesRead, NULL);
+//          flag = ReadFile(hPipeRead, buf, sizeof(buf)-1,
+//          &dwBytesRead, NULL);
 // write_string_to_log(prd, TEXT("Finished reading filename from pipe\r\n"));
-// 		break;
-// 	    }
-// 	    else if (dwWait == WAIT_OBJECT_0 + 1) {
+//      break;
+//      }
+//      else if (dwWait == WAIT_OBJECT_0 + 1) {
 // write_string_to_log(prd, TEXT("GetFileNameW process has changed state\r\n"));
-// 		if (GetExitCodeProcess(prd->piProcInfo.hProcess,
-// 		    &exit_status)) {
-// 		    if (exit_status != STILL_ACTIVE) {
+//      if (GetExitCodeProcess(prd->piProcInfo.hProcess,
+//          &exit_status)) {
+//          if (exit_status != STILL_ACTIVE) {
 // write_string_to_log(prd, TEXT("GetFileNameW has exited, so did not return a filename\r\n"));
-// 			break;
-// 		    }
-// 		}
-// 		/* Process ended without writing anything */
-// 		flag = FALSE;
-// 		break;
-// 	    }
-// 	    /* else if (dwWait == WAIT_TIMEOUT) */
+//          break;
+//          }
+//      }
+//      /* Process ended without writing anything */
+//      flag = FALSE;
+//      break;
+//      }
+//      /* else if (dwWait == WAIT_TIMEOUT) */
 //             Sleep(1000);
-// 	}
+//  }
 //     }
 //
 //     if (flag) {
-// 	if (dwBytesRead < sizeof(prd->tempname))
-// 	    CopyMemory(prd->tempname, buf, dwBytesRead);
+//  if (dwBytesRead < sizeof(prd->tempname))
+//      CopyMemory(prd->tempname, buf, dwBytesRead);
 // write_string_to_log(prd, TEXT("GetFileNameW returns '"));
 // write_string_to_log(prd, buf);
 // write_string_to_log(prd, TEXT("'\r\n"));
@@ -4167,58 +3820,53 @@ BOOL get_filename_as_user(REDATA * prd)
 // write_string_to_log(prd, buf);
 //     }
 //     else {
-// 	write_string_to_log(prd, TEXT("GetFileNameW cancelled"));
+//  write_string_to_log(prd, TEXT("GetFileNameW cancelled"));
 //     }
 //
 //
 //     if (prd->piProcInfo.hProcess != INVALID_HANDLE_VALUE) {
-// 	CloseHandle(prd->piProcInfo.hProcess);
-// 	prd->piProcInfo.hProcess = INVALID_HANDLE_VALUE;
+//  CloseHandle(prd->piProcInfo.hProcess);
+//  prd->piProcInfo.hProcess = INVALID_HANDLE_VALUE;
 //     }
 //
 //     if (prd->piProcInfo.hThread != INVALID_HANDLE_VALUE) {
-// 	CloseHandle(prd->piProcInfo.hThread);
-// 	prd->piProcInfo.hThread = INVALID_HANDLE_VALUE;
+//  CloseHandle(prd->piProcInfo.hThread);
+//  prd->piProcInfo.hThread = INVALID_HANDLE_VALUE;
 //     }
 //
 //     if (hPipeRead != INVALID_HANDLE_VALUE)
 //         CloseHandle(hPipeRead);
 //
 //     if (prd->environment)
-// 	GlobalUnlock(prd->environment);
+//  GlobalUnlock(prd->environment);
 //
 //     return flag;
 }
 #endif
 
 
-void WriteLog(HANDLE hFile, LPCTSTR str)
-{
+void WriteLog(HANDLE hFile, LPCTSTR str) {
     DWORD dwBytesWritten;
     WriteFile(hFile, str,
-	  lstrlen(str) * sizeof(TCHAR), &dwBytesWritten, NULL);
+              lstrlen(str) * sizeof(TCHAR), &dwBytesWritten, NULL);
 }
 
-void
-WriteError(HANDLE hFile, DWORD err)
-{
+void WriteError(HANDLE hFile, DWORD err) {
     LPVOID lpMessageBuffer;
     DWORD dwBytesWritten = 0;
     FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-	FORMAT_MESSAGE_FROM_SYSTEM,
-	NULL, err,
-	MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), /* user default language */
-	(LPTSTR) &lpMessageBuffer, 0, NULL);
+                  FORMAT_MESSAGE_FROM_SYSTEM,
+                  NULL, err,
+                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), /* user default language */
+                  (LPTSTR) &lpMessageBuffer, 0, NULL);
     if (lpMessageBuffer) {
-	WriteFile(hFile, (LPTSTR)lpMessageBuffer,
-	    lstrlen(lpMessageBuffer) * sizeof(TCHAR),
-	    &dwBytesWritten, NULL);
-	LocalFree(LocalHandle(lpMessageBuffer));
+        WriteFile(hFile, (LPTSTR)lpMessageBuffer,
+                  lstrlen(lpMessageBuffer) * sizeof(TCHAR),
+                  &dwBytesWritten, NULL);
+        LocalFree(LocalHandle(lpMessageBuffer));
     }
 }
 
-
-#ifdef UNICODE
 
 /* This is used to run on the client to get the file name.
  *  rundll32 redmon.dll,GetFileName  pipehandle previous_name
@@ -4228,8 +3876,7 @@ WriteError(HANDLE hFile, DWORD err)
  *
  */
 __declspec(dllexport) void CALLBACK
-GetFileNameW(HWND hwnd, HINSTANCE hinst, LPTSTR lpCmdLine, int nCmdShow)
-{
+GetFileNameW(HWND hwnd, HINSTANCE hinst, LPTSTR lpCmdLine, int nCmdShow) {
     LPTSTR command_line;
     LPTSTR p;
     HANDLE hPipe;
@@ -4246,17 +3893,17 @@ GetFileNameW(HWND hwnd, HINSTANCE hinst, LPTSTR lpCmdLine, int nCmdShow)
 
     /* Command line contains "pipename filename" */
     dwLen = lstrlen(lpCmdLine);
-    for (i=0; i<dwLen; i++) {
-	if (lpCmdLine[i] != ' ')
-	    szPipeName[i] = lpCmdLine[i];
-	else {
-	    szPipeName[i] = '\0';
-	    break;
-	}
+    for (i = 0; i < dwLen; i++) {
+        if (lpCmdLine[i] != ' ')
+            szPipeName[i] = lpCmdLine[i];
+        else {
+            szPipeName[i] = '\0';
+            break;
+        }
     }
-    for (;i<dwLen; i++) {
-	if (lpCmdLine[i] != ' ')
-	    break;
+    for (; i < dwLen; i++) {
+        if (lpCmdLine[i] != ' ')
+            break;
     }
 
     lstrcpy(szFileName, &lpCmdLine[i]);
@@ -4265,47 +3912,48 @@ GetFileNameW(HWND hwnd, HINSTANCE hinst, LPTSTR lpCmdLine, int nCmdShow)
     hPipe = redmon_to_handle(szPipeName);
 
     if (hPipe == INVALID_HANDLE_VALUE)
-	return;
+        return;
 
 
     FillMemory((PVOID)&ofn, sizeof(ofn), 0);
     ofn.lStructSize = sizeof(OPENFILENAME);
     ofn.hwndOwner = HWND_DESKTOP;
     ofn.lpstrFile = szFileName;
-    ofn.nMaxFile = sizeof(szFileName)/sizeof(TCHAR)-1;
+    ofn.nMaxFile = sizeof(szFileName) / sizeof(TCHAR) - 1;
     lstrcpyn(szFilter, TEXT("All Files (*.*)|*.*|PRN Documents (*.prn)|*.prn|PDF Documents (*.pdf)|*.pdf|PostScript Documents (*.ps)|*.ps|"),
-	sizeof(szFilter)/sizeof(TCHAR)-1);
-    cReplace = szFilter[lstrlen(szFilter)-1];
-    for (i=0; szFilter[i] != '\0'; i++)
-	if (szFilter[i] == cReplace)
-	    szFilter[i] = '\0';
+             sizeof(szFilter) / sizeof(TCHAR) - 1);
+    cReplace = szFilter[lstrlen(szFilter) - 1];
+    for (i = 0; szFilter[i] != '\0'; i++)
+        if (szFilter[i] == cReplace)
+            szFilter[i] = '\0';
     ofn.lpstrFilter = szFilter;
     ofn.nFilterIndex = 0;
 
     /* Split the directory name and filename */
     if (lstrlen(ofn.lpstrFile)) {
-	lstrcpy(szDir, ofn.lpstrFile);
-	for (i=lstrlen(szDir)-1; i; i--) {
-	    if (szDir[i] == '\\') {
-		lstrcpy(ofn.lpstrFile, szDir+i+1);
-		szDir[i+1] = '\0';
-		ofn.lpstrInitialDir = szDir;
-		break;
-	    }
-	}
+        lstrcpy(szDir, ofn.lpstrFile);
+        for (i = lstrlen(szDir) - 1; i; i--) {
+            if (szDir[i] == '\\') {
+                lstrcpy(ofn.lpstrFile, szDir + i + 1);
+                szDir[i + 1] = '\0';
+                ofn.lpstrInitialDir = szDir;
+                break;
+            }
+        }
     }
 
     if ((ofn.lpstrInitialDir == NULL) || (ofn.lpstrInitialDir[0] == '\0')) {
         if (GetEnvironmentVariable(TEXT("USERPROFILE"), szDir,
-	    sizeof(szDir)/sizeof(TCHAR)-1));
-	    ofn.lpstrInitialDir = szDir;
+                                   sizeof(szDir) / sizeof(TCHAR) - 1))
+            ;
+        ofn.lpstrInitialDir = szDir;
     }
 
     flag = GetSaveFileName(&ofn);
 
     if (flag)
-	WriteFile(hPipe, szFileName,
-	  (lstrlen(szFileName)+1) * sizeof(TCHAR), &dwBytesWritten, NULL);
+        WriteFile(hPipe, szFileName,
+                  (lstrlen(szFileName) + 1) * sizeof(TCHAR), &dwBytesWritten, NULL);
 
     CloseHandle(hPipe);
     return;
@@ -4315,8 +3963,7 @@ GetFileNameW(HWND hwnd, HINSTANCE hinst, LPTSTR lpCmdLine, int nCmdShow)
  * to make it appear in the user session.  Should only be used
  * on Windows NT 2000 and earlier.
  */
-BOOL get_filename_client(REDATA * prd, OPENFILENAME *pofn)
-{
+BOOL get_filename_client(REDATA * prd, OPENFILENAME * pofn) {
     BOOL fRet = TRUE;
     HANDLE htoken = NULL, hduptoken = NULL;
     TCHAR buf[MAXSTR];
@@ -4325,11 +3972,11 @@ BOOL get_filename_client(REDATA * prd, OPENFILENAME *pofn)
     DWORD err;
 
 
-    if ( fRet ) {
-	DWORD dwRetLen = 0;
-	/* query session-id from token */
-	fRet = GetTokenInformation(hduptoken, TokenSessionId,
-			   &dwClientSessionId, sizeof (DWORD), &dwRetLen);
+    if (fRet) {
+        DWORD dwRetLen = 0;
+        /* query session-id from token */
+        fRet = GetTokenInformation(hduptoken, TokenSessionId,
+                                   &dwClientSessionId, sizeof(DWORD), &dwRetLen);
         CloseHandle(hduptoken);
     }
 #ifdef DEBUG_REDMON
@@ -4338,14 +3985,14 @@ BOOL get_filename_client(REDATA * prd, OPENFILENAME *pofn)
 #endif
 
     /* Get the servers session Id */
-    if ( fRet ) {
-	DWORD dwRetLen = 0;
-	/* query session-id from token */
-	fRet = GetTokenInformation(GetCurrentThread(), TokenSessionId,
-		   &dwSystemSessionId, sizeof (DWORD), &dwRetLen);
-	if (fRet) {
-	    wsprintf(buf, TEXT("Failed to get system SessionId\r\n"));
-	    write_string_to_log(prd, buf);
+    if (fRet) {
+        DWORD dwRetLen = 0;
+        /* query session-id from token */
+        fRet = GetTokenInformation(GetCurrentThread(), TokenSessionId,
+                                   &dwSystemSessionId, sizeof(DWORD), &dwRetLen);
+        if (fRet) {
+            wsprintf(buf, TEXT("Failed to get system SessionId\r\n"));
+            write_string_to_log(prd, buf);
         }
     }
 #ifdef DEBUG_REDMON
@@ -4359,8 +4006,5 @@ BOOL get_filename_client(REDATA * prd, OPENFILENAME *pofn)
 
     fRet = GetSaveFileName(pofn);
 
-    return(fRet);
+    return (fRet);
 }
-#endif
-
-/* end of redmon.c */
