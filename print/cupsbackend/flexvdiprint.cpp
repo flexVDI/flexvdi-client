@@ -39,8 +39,8 @@ int main(int argc, char * argv[]) {
     Log(L_DEBUG) << "Printing " << jobCopies << " copies of job " << jobId <<
     ": \"" << jobTitle << "\", from " << cupsUser << " with options: " << jobOptions;
 
-    jobOptions += string("copies=") + jobCopies;
-    jobOptions += string("title=\"") + jobTitle + "\"";
+    jobOptions += string(" copies=") + jobCopies;
+    jobOptions += string(" title=\"") + jobTitle + "\"";
     ifstream inFile;
     if (argc > 6) inFile.open(argv[6]);
     bool result = sendJob(argc > 6 ? inFile : cin, jobOptions);
