@@ -1,7 +1,8 @@
 [Version]
 Signature="$Windows NT$"
-DriverVer=09/01/2015
+DriverVer=01/01/2015,1.0.0.1
 Class=Printer
+ClassGUID={4D36E979-E325-11CE-BFC1-08002BE10318}
 Provider=%Provider%
 LayoutFile=ntprint.inf
 
@@ -9,23 +10,23 @@ LayoutFile=ntprint.inf
 DefaultDestDir=66000 ; DIRID_PRINTER_DRIVERS
 
 [Manufacturer]
-%Provider%=flexVDI, NTamd64
+%Provider%=flexVDI, NTx86, NTamd64
 
 [flexVDI]
+"flexVDI Printer" = flexvdips
+
+[flexVDI.NTx86]
 "flexVDI Printer" = flexvdips
 
 [flexVDI.NTamd64]
 "flexVDI Printer" = flexvdips
 
 [flexvdips]
-CopyFiles=@flexvdips.ppd    ; PPD file.
-DataSection=PSCRIPT_DATA    ; PSCRIPT Data Section
+CopyFiles=@flexvdips.ppd        ; PPD file.
 DataFile=flexvdips.ppd
-Include=NTPRINT.INF         ; Include NTPRINT.INF.
-Needs=PSCRIPT.OEM           ; Install PSCRIPT.
-
-; ConfigFile=... ; ui plugin
-; DriverFile=... ; rendering plugin
+DataSection=PSCRIPT_DATA        ; PSCRIPT Data Section
+Include=NTPRINT.INF             ; Include NTPRINT.INF.
+Needs=PSCRIPT.OEM,PSCRIPT_DATA  ; Install PSCRIPT.
 
 [Strings]
 Provider = "Flexible Software Solutions S.L."
