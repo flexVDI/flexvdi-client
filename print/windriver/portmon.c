@@ -36,24 +36,11 @@
 #define STRICT
 #include <windows.h>
 #include <htmlhelp.h>
-#include "portmon.h"
-#include "portrc.h"
+#include "redmon.h"
 
 /* These are our only global variables */
 TCHAR rekey[MAXSTR];   /* Registry key name for our use */
 HINSTANCE hdll;
-int ntver;  /* 351, 400, 500 */
-/* 601 = Windows 7 or Windows Server 2008 R2
- * 600 = Windows Vista or Windows Server 2008
- * 502 = Windows XP x64 or Windows Server 2003
- * 501 = Windows XP
- * 500 = Windows 2000
- * 400 = Windows NT 4.0
- * 351 = Windows NT 3.51
- */
-
-/* REDATA must be defined */
-
 
 /* we don't rely on the import library having XcvData,
  * since we may be compiling with VC++ 5.0 */
@@ -62,10 +49,8 @@ BOOL WINAPI XcvData(HANDLE hXcv, LPCWSTR pszDataName,
                     PBYTE pOutputData, DWORD cbOutputData, PDWORD pcbOutputNeeded,
                     PDWORD pdwStatus);
 
-
 #define PORTSNAME TEXT("Ports")
 #define BACKSLASH TEXT("\\")
-
 
 #ifdef DEBUG_REDMON
 void syslog(LPCTSTR buf) {
@@ -122,7 +107,7 @@ void sysnum(DWORD num) {
 }
 #endif
 
-LONG RedMonOpenKey(HANDLE hMonitor, LPCTSTR pszSubKey, REGSAM samDesired, PHANDLE phkResult) {
+LONG RedMonOpenKey(HANDLE hMonitor, LPCTSTR pszSubKey, REGSAM samDesired, PHKEY phkResult) {
     LONG rc = ERROR_SUCCESS;
 #ifdef DEBUG_REDMON
     syslog(TEXT("RedMonOpenKey "));
@@ -136,7 +121,7 @@ LONG RedMonOpenKey(HANDLE hMonitor, LPCTSTR pszSubKey, REGSAM samDesired, PHANDL
                  pMonitorInit->hckRegistryRoot,
                  pszSubKey,
                  samDesired,
-                 phkResult,
+                 (PHANDLE)phkResult,
                  pMonitorInit->hSpooler);
     } else {
         TCHAR buf[MAXSTR];
@@ -208,7 +193,7 @@ LONG RedMonEnumKey(HANDLE hMonitor, HANDLE hcKey, DWORD dwIndex,
 LONG RedMonCreateKey(HANDLE hMonitor, HANDLE hcKey, LPCTSTR pszSubKey,
                      DWORD dwOptions, REGSAM samDesired,
                      PSECURITY_ATTRIBUTES pSecurityAttributes,
-                     PHANDLE phckResult, PDWORD pdwDisposition) {
+                     PHKEY phckResult, PDWORD pdwDisposition) {
     LONG rc = ERROR_SUCCESS;
 #ifdef DEBUG_REDMON
     syslog(TEXT("RedMonCreateKey "));
@@ -220,7 +205,7 @@ LONG RedMonCreateKey(HANDLE hMonitor, HANDLE hcKey, LPCTSTR pszSubKey,
         MONITORINIT * pMonitorInit = (MONITORINIT *)hMonitor;
         rc = pMonitorInit->pMonitorReg->fpCreateKey(
                  hcKey, pszSubKey, dwOptions,
-                 samDesired, pSecurityAttributes, phckResult,
+                 samDesired, pSecurityAttributes, (PHANDLE)phckResult,
                  pdwDisposition, pMonitorInit->hSpooler);
     } else {
         rc = RegCreateKeyEx(hcKey, pszSubKey, 0, 0, dwOptions,
@@ -360,8 +345,7 @@ BOOL WINAPI rsEnumPorts(HANDLE hMonitor, LPTSTR pName, DWORD Level,
     if (rc != ERROR_SUCCESS)
         return TRUE;    /* There are no ports */
 
-    LoadString(hdll, IDS_MONITORNAME, monitorname,
-               sizeof(monitorname) / sizeof(TCHAR) - 1);
+    lstrcpyn(monitorname, MONITORNAME, sizeof(monitorname) / sizeof(TCHAR) - 1);
 
     /* First pass is to calculate the number of bytes needed */
     needed = 0;
@@ -618,37 +602,10 @@ BOOL MakeXcvName(LPTSTR pServerName, LPCTSTR pServer, LPCTSTR pType,
 }
 
 DWORD cConfigurePortUI(HANDLE hXcv, HWND hWnd, PCWSTR pszPortName) {
-    DWORD config_len = redmon_sizeof_config();
-    HGLOBAL hglobal = GlobalAlloc(GPTR, config_len);
-    RECONFIG * pconfig = GlobalLock(hglobal);
-    DWORD dwOutput = 0;
-    DWORD dwNeeded = 0;
-    DWORD dwError = ERROR_SUCCESS;
-
 #ifdef DEBUG_REDMON
     syslog(TEXT("cConfigurePortUI\r\n"));
 #endif
-
-    /* get current configuration */
-    if (!XcvData(hXcv, TEXT("GetConfig"), (PBYTE)pszPortName,
-                 sizeof(TCHAR) * (lstrlen(pszPortName) + 1),
-                 (PBYTE)pconfig, config_len, &dwNeeded, &dwError))
-        dwError = GetLastError();
-
-    /* update it */
-    if (dwError == ERROR_SUCCESS) {
-        if (DialogBoxParam(hdll, MAKEINTRESOURCE(IDD_CONFIGPORT),
-                           hWnd, ConfigDlgProc, (LPARAM)pconfig)) {
-            if (!XcvData(hXcv, TEXT("SetConfig"),
-                         (PBYTE)pconfig, config_len,
-                         (PBYTE)(&dwOutput), 0, &dwNeeded, &dwError))
-                dwError = GetLastError();
-        }
-    }
-
-    GlobalUnlock(hglobal);
-    GlobalFree(hglobal);
-    return dwError;
+    return ERROR_SUCCESS;
 }
 
 BOOL WINAPI rcConfigurePortUI(PCWSTR pszServer, HWND hWnd, PCWSTR pszPortName) {
@@ -691,8 +648,7 @@ BOOL sAddPort(HANDLE hMonitor, LPTSTR pszPortName) {
         return FALSE;
 
     /* store new port name in registry */
-    LoadString(hdll, IDS_MONITORNAME, szPortDesc,
-               sizeof(szPortDesc) / sizeof(TCHAR) - 1);
+    lstrcpyn(szPortDesc, MONITORNAME, sizeof(szPortDesc) / sizeof(TCHAR) - 1);
     rc = RedMonOpenKey(hMonitor, PORTSNAME, KEY_ALL_ACCESS, &hkey);
     if (rc != ERROR_SUCCESS) {
         /* try to create the Ports key */
@@ -720,169 +676,9 @@ BOOL sAddPort(HANDLE hMonitor, LPTSTR pszPortName) {
 }
 
 
-LONG cAddPortUI(HANDLE hXcv, HWND hWnd,
-                PCWSTR pszPortNameIn, PWSTR pszPortNameOut) {
-    DWORD dwStatus;
-    DWORD dwOutput;
-    DWORD dwNeeded;
-    TCHAR str[MAXSTR];
-    TCHAR buf[MAXSTR];
-    BOOL unique;
-    int i;
-    DWORD config_len = redmon_sizeof_config();
-    HGLOBAL hglobal;
-    RECONFIG * pconfig;
-    LPTSTR portname;    /* pointer to port name in RECONFIG */
-
-#ifdef DEBUG_REDMON
-    syslog(TEXT("cAddPortUI "));
-    syslog(pszPortNameIn);
-    syslog(TEXT("\r\n"));
-#endif
-    *pszPortNameOut = '\0';
-
-    hglobal = GlobalAlloc(GPTR, config_len);
-    pconfig = GlobalLock(hglobal);
-    if (pconfig == NULL)
-        return ERROR_NOT_ENOUGH_MEMORY;
-    portname = redmon_init_config(pconfig);
-
-    dwStatus = ERROR_SUCCESS;
-    unique = TRUE;
-    do {
-        if (!unique) {
-            LoadString(hdll, IDS_NOTUNIQUE, str, sizeof(str) / sizeof(TCHAR) - 1);
-            wsprintf(buf, str, portname);
-            LoadString(hdll, IDS_ADDPORT, str, sizeof(str) / sizeof(TCHAR) - 1);
-            if (MessageBox(hWnd, buf, str, MB_OKCANCEL) == IDCANCEL) {
-                dwStatus = ERROR_CANCELLED;
-                break;
-            }
-        }
-        if (dwStatus == ERROR_CANCELLED)
-            break;
-
-        /* Suggest a unique port name */
-        for (i = 1; i < 10; i++) {
-            if (!redmon_suggest_portname(portname, MAXSHORTSTR, i))
-                break;
-            dwStatus = ERROR_SUCCESS;
-            if (!XcvData(hXcv, TEXT("PortExists"), (PBYTE)portname,
-                         sizeof(TCHAR) * (lstrlen(portname) + 1),
-                         (PBYTE)(&dwOutput), 0, &dwNeeded, &dwStatus)) {
-                dwStatus = GetLastError();
-            }
-            if (dwStatus == ERROR_SUCCESS)
-                break;  /* unique name */
-        }
-
-        if (!DialogBoxParam(hdll, MAKEINTRESOURCE(IDD_ADDPORT),
-                            hWnd, AddDlgProc, (LPARAM)pconfig)) {
-            dwStatus = ERROR_CANCELLED;
-            break;
-        }
-
-        if (lstrlen(portname) && portname[lstrlen(portname) - 1] != ':')
-            lstrcat(portname, TEXT(":"));   /* append ':' if not present */
-
-        dwStatus = ERROR_SUCCESS;
-        if (!XcvData(hXcv, TEXT("PortExists"), (PBYTE)portname,
-                     sizeof(TCHAR) * (lstrlen(portname) + 1),
-                     (PBYTE)(&dwOutput), 0, &dwNeeded, &dwStatus))
-            dwStatus = GetLastError();
-        if (dwStatus != ERROR_SUCCESS)
-            unique = FALSE;
-    } while (!unique);
-
-    if (dwStatus == ERROR_SUCCESS) {
-        if (!XcvData(hXcv, TEXT("AddPort"), (PBYTE)portname,
-                     sizeof(TCHAR) * (lstrlen(portname) + 1),
-                     (PBYTE)(&dwOutput), 0, &dwNeeded, &dwStatus))
-            dwStatus = GetLastError();
-        else
-            lstrcpyn(pszPortNameOut, portname, MAXSTR - 1);
-    }
-
-    if (dwStatus == ERROR_SUCCESS) {
-        /* Set configuration if supplied */
-        dwOutput = 0;
-        dwNeeded = 0;
-        if (!XcvData(hXcv, TEXT("SetConfig"),
-                     (PBYTE)pconfig, config_len,
-                     (PBYTE)(&dwOutput), 0, &dwNeeded, &dwStatus))
-            dwStatus = GetLastError();
-    }
-
-    GlobalUnlock(hglobal);
-    GlobalFree(hglobal);
-
-    return dwStatus;
-}
-
 BOOL WINAPI rcAddPortUI(PCWSTR pszServer, HWND hWnd,
                         PCWSTR pszPortNameIn, PWSTR * ppszPortNameOut) {
-    TCHAR pszServerName[MAXSTR];
-    TCHAR portname[MAXSTR];
-    PRINTER_DEFAULTS pd;
-    HANDLE hXcv = NULL;
-    DWORD dwError;
-
-#ifdef DEBUG_REDMON
-    syslog(TEXT("rcAddPortUI\r\n"));
-    syslog(TEXT("pszServer=\042"));
-    syslog(pszServer);
-    syslog(TEXT("\042\r\n"));
-    syslog(TEXT("pszPortNameIn=\042"));
-    syslog(pszPortNameIn);
-    syslog(TEXT("\042\r\n"));
-#endif
-    if (!MakeXcvName(pszServerName, pszServer, XcvMonitor, pszPortNameIn)) {
-#ifdef DEBUG_REDMON
-        syslog(TEXT("MakeXcvName failed\r\n"));
-#endif
-        return FALSE;
-    }
-
-    pd.pDatatype = NULL;
-    pd.pDevMode = NULL;
-    pd.DesiredAccess = SERVER_ACCESS_ADMINISTER;
-
-#ifdef DEBUG_REDMON
-    syslog(TEXT("OpenPrinter "));
-    syslog(pszServerName);
-    syslog(TEXT("\r\n"));
-#endif
-    if (!OpenPrinter(pszServerName, &hXcv, &pd)) {
-#ifdef DEBUG_REDMON
-        TCHAR buf[MAXSTR];
-        wsprintf(buf, TEXT("OpenPrinter failed error=%d\r\n"),
-                 GetLastError());
-        syslog(buf);
-        wsprintf(buf, TEXT(" OpenPrinter handle=0x%x\r\n"), hXcv);
-        syslog(buf);
-#endif
-        return FALSE;
-    }
-
-    dwError = cAddPortUI(hXcv, hWnd, pszPortNameIn, portname);
-
-    if (dwError == ERROR_SUCCESS) {
-#ifdef DEBUG_REDMON
-        syslog(TEXT("Added port "));
-        syslog(portname);
-        syslog(TEXT("\r\n"));
-#endif
-        if (ppszPortNameOut) {
-            DWORD len = sizeof(TCHAR) * (lstrlen(portname) + 1);
-            *ppszPortNameOut = GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, len);
-            if (*ppszPortNameOut)
-                CopyMemory(*ppszPortNameOut, portname, len);
-        }
-    }
-
-    ClosePrinter(hXcv);
-
-    return (dwError == ERROR_SUCCESS);
+    return FALSE;
 }
 
 
@@ -1372,16 +1168,6 @@ BOOL WINAPI rSetPortTimeOuts(HANDLE  hPort, LPCOMMTIMEOUTS lpCTO, DWORD reserved
     return flag;
 }
 
-void GetNTversion(void) {
-    OSVERSIONINFO osvi;
-    osvi.dwOSVersionInfoSize = sizeof(osvi);
-    if (GetVersionEx(&osvi)) {
-        ntver = osvi.dwMajorVersion * 100 + osvi.dwMinorVersion;
-    } else {
-        ntver = 0;
-    }
-}
-
 /* Exported functions */
 
 /* Windows 2000 version */
@@ -1410,7 +1196,6 @@ MONITOR2 mon2 = {
 
 PORTMONEXPORT LPMONITOR2 WINAPI _export
 InitializePrintMonitor2(PMONITORINIT pMonitorInit, PHANDLE phMonitor) {
-    GetNTversion();
 #ifdef DEBUG_REDMON
     syslog(TEXT("InitializePrintMonitor2"));
     syslog(TEXT("\r\n  cbSize="));
@@ -1423,8 +1208,6 @@ InitializePrintMonitor2(PMONITORINIT pMonitorInit, PHANDLE phMonitor) {
     syshex((DWORD)(pMonitorInit->pMonitorReg));
     syslog(TEXT("\r\n  bLocal="));
     sysnum(pMonitorInit->bLocal);
-    syslog(TEXT("\r\n  ntver="));
-    sysnum(ntver);
     syslog(TEXT("\r\n"));
 #endif
     /* return pMonitorInit as hMonitor */
@@ -1443,7 +1226,6 @@ PORTMONEXPORT PMONITORUI WINAPI _export InitializePrintMonitorUI(VOID) {
 #ifdef DEBUG_REDMON
     syslog(TEXT("InitializePrintMonitorUI\r\n"));
 #endif
-    GetNTversion();
     return &mui;
 }
 

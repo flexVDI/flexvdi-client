@@ -4,5 +4,3 @@ EXPORTS
     DllMain
     InitializePrintMonitor2
     InitializePrintMonitorUI
-    GetFileNameW
-    RedMonConfigurePortW
