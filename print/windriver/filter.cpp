@@ -7,6 +7,7 @@
 #include <sstream>
 #include <memory>
 #include <algorithm>
+#include <vector>
 #include <windows.h>
 #include <winspool.h>
 #include "iapi.h"
@@ -17,60 +18,147 @@ using namespace flexvm;
 using namespace std;
 
 
-static int GSDLLCALL gsOutputCB(void *instance, const char *str, int len) {
-    static string line;
-    line += string(str, len);
-    size_t newline;
-    while ((newline = line.find_first_of('\n')) != string::npos) {
-        Log(L_DEBUG) << line.substr(0, newline);
-        line = line.substr(newline + 1);
+class GSFilter {
+public:
+    static GSFilter & singleton() {
+        static GSFilter instance;
+        return instance;
     }
-    return len;
-}
 
-
-static int GSDLLCALL gsErrorCB(void *instance, const char *str, int len) {
-    static string line;
-    line += string(str, len);
-    size_t newline;
-    while ((newline = line.find_first_of('\n')) != string::npos) {
-        Log(L_ERROR) << line.substr(0, newline);
-        line = line.substr(newline + 1);
+    static int GSDLLCALL gsOutputCB(void * instance, const char * str, int len) {
+        singleton().out(str, len);
+        return len;
     }
-    return len;
+
+    static int GSDLLCALL gsErrorCB(void * instance, const char * str, int len) {
+        singleton().err(str, len);
+        return len;
+    }
+
+    int runFilter();
+
+private:
+    string outBuffer, errBuffer;
+    vector<string> tmpFiles;
+    string inFileName, outFileName, extraOptions;
+    string printerName, docName;
+    int jobId;
+    shared_ptr<JOB_INFO_2A> jobInfo;
+
+    GSFilter();
+
+    void flush(string & line, LogLevel level) {
+        size_t newline;
+        while ((newline = line.find_first_of('\n')) != string::npos) {
+            Log(level) << line.substr(0, newline);
+            line = line.substr(newline + 1);
+        }
+    }
+
+    void out(const char * str, int len) {
+        flush(outBuffer += string(str, len), L_INFO);
+    }
+
+    void err(const char * str, int len) {
+        flush(errBuffer += string(str, len), L_ERROR);
+    }
+
+    string getTempFileName() {
+        char tempPath[MAX_PATH] = ".\\";
+        GetTempPathA(MAX_PATH, tempPath);
+        char tempFilePath[MAX_PATH];
+        GetTempFileNameA(tempPath, "fpj", 0, tempFilePath); // fpj = FlexVDI Print Job
+        tmpFiles.push_back(string(tempFilePath));
+        return tmpFiles.back();
+    }
+
+    void readEnv() {
+        char buffer[512];
+        GetEnvironmentVariableA("REDMON_PRINTER", buffer, 512);
+        printerName = buffer;
+        GetEnvironmentVariableA("REDMON_JOB", buffer, 512);
+        jobId = stoi(buffer);
+        GetEnvironmentVariableA("REDMON_DOCNAME", buffer, 512);
+        docName = buffer;
+    }
+
+    void getJobInfo();
+    string getMedia();
+    string getJobOptions();
+
+    void dumpStdin(const string & fileName) {
+        ofstream(fileName.c_str(), ios::binary) << cin.rdbuf();
+    }
+
+    int runGhostscript();
+
+};
+
+
+int main(int argc, char * argv[]) {
+    ofstream logFile;
+    logFile.open(Log::getDefaultLogPath() + string("\\flexvdi_print_filter.log"),
+                 ios_base::app);
+    logFile << endl << endl;
+    Log::setLogOstream(&logFile);
+    return GSFilter::singleton().runFilter();
 }
 
 
-static string getTempFileName() {
-    char tempPath[MAX_PATH] = ".\\";
-    GetTempPathA(MAX_PATH, tempPath);
-    char tempFilePath[MAX_PATH];
-    GetTempFileNameA(tempPath, "fpj", 0, tempFilePath); // fpj = FlexVDI Print Job
-    return string(tempFilePath);
+GSFilter::GSFilter() {
+    readEnv();
+    getJobInfo();
+    inFileName = getTempFileName();
+    outFileName = getTempFileName();
 }
 
 
-shared_ptr<JOB_INFO_2A> getJobInfo() {
-    wchar_t printerName[512];
-    GetEnvironmentVariableW(L"REDMON_PRINTER", printerName, 512);
-    wchar_t jobIdString[10];
-    GetEnvironmentVariableW(L"REDMON_JOB", jobIdString, 10);
+int GSFilter::runFilter() {
+    dumpStdin(inFileName);
+    Log(L_DEBUG) << "Saving output to " << outFileName;
+    int result = runGhostscript();
 
-    int jobId = stoi(jobIdString);
+    if (jobInfo->pDevMode->dmCollate == DMCOLLATE_TRUE && jobInfo->pDevMode->dmCopies > 1) {
+        // Update the number of pages printed
+        getJobInfo();
+        // The spooler performed the copies, keep just one
+        int numPages = jobInfo->PagesPrinted / jobInfo->pDevMode->dmCopies;
+        extraOptions = "-dLastPage=" + to_string(numPages);
+        inFileName = outFileName;
+        outFileName = getTempFileName();
+        result = runGhostscript();
+    }
+
+    ifstream pdfFile(outFileName.c_str(), ios::binary);
+    if (result == 0 && pdfFile) {
+        Log(L_DEBUG) << "PDF file correctly created, sending to guest agent";
+        result = sendJob(pdfFile, getJobOptions()) ? 0 : 1;
+        pdfFile.close();
+    }
+
+    for (auto & f : tmpFiles)
+        DeleteFileA(f.c_str());
+
+    return result;
+}
+
+
+void GSFilter::getJobInfo() {
     HANDLE printer;
-    return_if(!OpenPrinterW(printerName, &printer, NULL), "Failed opening printer",
-              shared_ptr<JOB_INFO_2A>());
-
-    DWORD needed;
-    GetJobA(printer, jobId, 2, NULL, 0, &needed);
-    std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
-    return_if(!GetJobA(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed),
-              "Failed getting document properties", shared_ptr<JOB_INFO_2A>());
-    return shared_ptr<JOB_INFO_2A>(buffer, (JOB_INFO_2A *)buffer.get());
+    if (OpenPrinterA((char *)printerName.c_str(), &printer, NULL)) {
+        DWORD needed;
+        GetJobA(printer, jobId, 2, NULL, 0, &needed);
+        std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
+        if(GetJobA(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed)) {
+            jobInfo = shared_ptr<JOB_INFO_2A>(buffer, (JOB_INFO_2A *)buffer.get());
+        }
+        ClosePrinter(printer);
+    }
 }
 
 
-string getMedia(DEVMODEA * devMode) {
+string GSFilter::getMedia() {
+    DEVMODEA * devMode = jobInfo->pDevMode;
     ostringstream media;
     switch (devMode->dmPaperSize) {
         case DMPAPER_TABLOID: media << "Tabloid"; break;
@@ -111,13 +199,11 @@ string getMedia(DEVMODEA * devMode) {
 }
 
 
-string getJobOptions(DEVMODEA * devMode) {
-    char jobName[512];
-    GetEnvironmentVariableA("REDMON_DOCNAME", jobName, 512);
-
+string GSFilter::getJobOptions() {
+    DEVMODEA * devMode = jobInfo->pDevMode;
     ostringstream oss;
-    oss << "title=\"" << jobName << "\"";
-    oss << " media=" << getMedia(devMode);
+    oss << "title=\"" << docName << "\"";
+    oss << " media=" << getMedia();
     switch (devMode->dmDuplex) {
         case DMDUP_HORIZONTAL: oss << " sides=two-sided-short-edge"; break;
         case DMDUP_VERTICAL: oss << " sides=two-sided-long-edge"; break;
@@ -129,18 +215,27 @@ string getJobOptions(DEVMODEA * devMode) {
     if (resolution < 0) resolution = devMode->dmYResolution;
     oss << " Resolution=" << resolution << "dpi";
     oss << (devMode->dmColor == DMCOLOR_COLOR ? " color" : " bn");
-
     return oss.str();
 }
 
 
-void dumpStdin(const string & fileName) {
-    ofstream(fileName.c_str(), ios::binary) << cin.rdbuf();
-}
-
-
-int runGhostscript(int argc, char * argv[]) {
+int GSFilter::runGhostscript() {
     Log(L_DEBUG) << "Running GhostScript";
+    string outFileOption = "-sOutputFile=" + outFileName;
+    string inFileOption = "-f" + inFileName;
+    vector<const char *> cmdLine;
+    cmdLine.push_back("PS2PDF");
+    cmdLine.push_back("-dNOPAUSE");
+    cmdLine.push_back("-dBATCH");
+    cmdLine.push_back("-dSAFER");
+    cmdLine.push_back("-sDEVICE=pdfwrite");
+    // TODO: Add include paths for fonts and lib: "-Ipath\\urwfonts;path\\lib"
+    if (!extraOptions.empty()) cmdLine.push_back(extraOptions.c_str());
+    cmdLine.push_back(outFileOption.c_str());
+    cmdLine.push_back("-c");
+    cmdLine.push_back(".setpdfwrite");
+    cmdLine.push_back(inFileOption.c_str());
+
     void * gsInstance;
     if (gsapi_new_instance(&gsInstance, NULL) < 0) {
         Log(L_ERROR) << "Could not create a GhostScript instance.";
@@ -154,82 +249,9 @@ int runGhostscript(int argc, char * argv[]) {
     }
 
     // Run the GhostScript engine
-    int result = gsapi_init_with_args(gsInstance, argc, argv);
+    int result = gsapi_init_with_args(gsInstance, cmdLine.size(), (char **)cmdLine.data());
     gsapi_exit(gsInstance);
     gsapi_delete_instance(gsInstance);
     Log(L_DEBUG) << "GhostScript returned " << result;
-    return result;
-}
-
-
-int main(int argc, char * argv[]) {
-    ofstream logFile;
-    logFile.open(Log::getDefaultLogPath() + string("\\flexvdi_print_filter.log"),
-                 ios_base::app);
-    logFile << endl << endl;
-    Log::setLogOstream(&logFile);
-
-    /// Command line options used by GhostScript
-    const char * gsArgv[] = {
-        "PS2PDF",
-        "-dNOPAUSE",
-        "-dBATCH",
-        "-dSAFER",
-        "-sDEVICE=pdfwrite",
-        "-sOutputFile=c:\\test.pdf",
-        "-I.\\",
-        "-c",
-        ".setpdfwrite",
-        "-",
-        ""
-    };
-
-    // Add the include directories to the command line flags we'll use with GhostScript:
-//     if (::GetModuleFileName(NULL, cPath, MAX_PATH)) {
-//         // Should be next to the application
-//         char* pPos = strrchr(cPath, '\\');
-//         if (pPos != NULL)
-//             *(pPos) = '\0';
-//         else
-//             cPath[0] = '\0';
-//         // OK, add the fonts and lib folders:
-//         sprintf_s (cInclude, sizeof(cInclude), "-I%s\\urwfonts;%s\\lib", cPath, cPath);
-//         gsArgv[6] = cInclude;
-//     }
-
-    string psFileName = getTempFileName();
-    dumpStdin(psFileName);
-    auto jobInfo = getJobInfo();
-    int numPages = jobInfo->PagesPrinted;
-
-    string inFileOption = "-f" + psFileName;
-    gsArgv[9] = inFileOption.c_str();
-    string pdfFileName = getTempFileName();
-    Log(L_DEBUG) << "Saving output to " << pdfFileName;
-    string outFileOption = "-sOutputFile=" + pdfFileName;
-    gsArgv[5] = outFileOption.c_str();
-    int result = runGhostscript(10, (char **)gsArgv);
-
-    if (jobInfo->pDevMode->dmCollate == DMCOLLATE_TRUE && jobInfo->pDevMode->dmCopies > 1) {
-        // The spooler performed the copies, keep just one
-        numPages /= jobInfo->pDevMode->dmCopies;
-        string lastPageOption = "-dLastPage=" + to_string(numPages);
-        inFileOption = "-f" + pdfFileName;
-        pdfFileName = getTempFileName();
-        outFileOption = "-sOutputFile=" + pdfFileName;
-        gsArgv[5] = outFileOption.c_str();
-        gsArgv[9] = lastPageOption.c_str();
-        gsArgv[10] = inFileOption.c_str();
-        result = runGhostscript(11, (char **)gsArgv);
-    }
-
-    ifstream pdfFile(pdfFileName.c_str(), ios::binary);
-    if (result == 0 && pdfFile) {
-        Log(L_DEBUG) << "PDF file correctly created, sending to guest agent";
-        result = sendJob(pdfFile, getJobOptions(jobInfo->pDevMode)) ? 0 : 1;
-        pdfFile.close();
-        DeleteFileA(pdfFileName.c_str());
-    }
-
     return result;
 }
