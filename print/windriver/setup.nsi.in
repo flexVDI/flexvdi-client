@@ -10,6 +10,7 @@
     File "@PROJECT_SOURCE_DIR@/print/flexvdips.ppd"
     File "@PROJECT_SOURCE_DIR@/print/windriver/gs9.15/gsdll32.dll"
     File "../win32/print/windriver/filter.exe"
+    File "../win32/print/windriver/printer-setup.dll"
     SetOutPath "$INSTDIR"
     ${If} ${RunningX64}
         File "../win64/print/windriver/redmon.dll"
@@ -17,20 +18,17 @@
         File "../win32/print/windriver/redmon.dll"
     ${EndIf}
     Rename /REBOOTOK "$INSTDIR\redmon.dll" "$SYSDIR\${REDMON_DLL}"
-    File "../win32/print/windriver/setup.dll"
-    System::Call 'setup::installRedMon(w "${REDMON_NAME}", w "${REDMON_DLL}", w "${PORT_NAME}", w .r1) i .r0'
+    System::Call 'printdriver\printer-setup::installRedMon(w "${REDMON_NAME}", w "${REDMON_DLL}", w "${PORT_NAME}", w .r1) i .r0'
     ${If} $0 = 0
         DetailPrint "Print monitor installed"
         WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Command" '$INSTDIR\printdriver\filter.exe'
-        WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Arguments" ''
-        WriteRegDWORD HKLM "${PORT_CONFIG_KEY}" "RunUser" 0
         DetailPrint "Installing flexVDI printer"
         nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "${PDF_PRINTER_NAME}" /q'
-        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /if /f "$INSTDIR\printdriver\flexvdips.inf" /m "flexVDI Printer" /r "${PORT_NAME}"'
+        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /if /f "$INSTDIR\printdriver\flexvdips.inf" /m "flexVDI Printer" /r "${PORT_NAME}" /z'
         Pop $0
         ${If} $0 = 0
             DetailPrint "flexVDI printer successfully installed"
-            System::Call 'setup::renamePrinter(w "flexVDI Printer", w "${PDF_PRINTER_NAME}", w .r1) i .r0'
+            System::Call 'printdriver\printer-setup::renamePrinter(w "flexVDI Printer", w "${PDF_PRINTER_NAME}", w .r1) i .r0'
         ${Else}
             MessageBox MB_OK|MB_ICONEXCLAMATION "flexVDI printer NOT installed (error code $0)."
         ${EndIf}
@@ -43,12 +41,11 @@
     nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "${PDF_PRINTER_NAME}" /q'
     nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dd /m "flexVDI Printer" /q'
     SetOutPath "$INSTDIR"
-    System::Call 'setup::uninstallRedMon(w "${REDMON_NAME}", w .r1) i .r0 u'
+    System::Call 'printdriver\printer-setup::uninstallRedMon(w "${REDMON_NAME}", w .r1) i .r0 ? u'
+    DeleteRegKey HKLM "${PORT_CONFIG_KEY}"
     ${If} $0 = 0
         Delete /REBOOTOK "$SYSDIR\redmon.dll"
     ${Else}
         DetailPrint "ERROR Printer monitor could not be removed: $1"
     ${EndIf}
-    SetPluginUnload manual
-    System::Free 0
 !macroend

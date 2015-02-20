@@ -196,7 +196,6 @@ bool PortInstaller::uninstallMonitor() {
 
 
 bool PortInstaller::deletePort(const wchar_t * portName) {
-    wsbuffer filePort(L"FILE:");
     DWORD needed = 0, returned = 0;
     DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
     EnumPrintersW(flags, NULL, 2, NULL, 0, &needed, &returned);
@@ -212,15 +211,7 @@ bool PortInstaller::deletePort(const wchar_t * portName) {
                     pd.DesiredAccess = PRINTER_ALL_ACCESS;
                     HANDLE hPrinter;
                     if (OpenPrinterW(pri2[i].pPrinterName, &hPrinter, &pd)) {
-                        GetPrinterW(hPrinter, 2, NULL, 0, &needed);
-                        if (needed > 0) {
-                            std::unique_ptr<uint8_t[]> pbuf(new uint8_t[needed]);
-                            PRINTER_INFO_2W * pi = (PRINTER_INFO_2W *)pbuf.get();
-                            if (GetPrinterW(hPrinter, 2, (LPBYTE)pi, needed, &needed)) {
-                                pi->pPortName = filePort;
-                                SetPrinterW(hPrinter, 2, (LPBYTE)pi, 0);
-                            }
-                        }
+                        DeletePrinter(hPrinter);
                         ClosePrinter(hPrinter);
                     }
                 }
