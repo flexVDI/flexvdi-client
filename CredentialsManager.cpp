@@ -21,7 +21,7 @@ void CredentialsManager::sendPendingCredentials() {
 
 
 void CredentialsManager::securePendingCredentials(const FlexVDICredentialsMsgPtr & msg) {
-    std::size_t size = getCredentialsMsgSize(msg.get());
+    std::size_t size = messageSize(FLEXVDI_CREDENTIALS, (const uint8_t *) msg.get());
     uint8_t * buffer = (uint8_t *)msg.get();
     pendingCredentials = MessageBuffer(FLEXVDI_CREDENTIALS, size, [size](uint8_t * p) {
         // Manually zero memory, standard algorithms have some issues

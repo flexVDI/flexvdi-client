@@ -30,6 +30,7 @@ static inline void marshallHeader(FlexVDIMessageHeader * header) {
 }
 
 int marshallMessage(uint32_t type, uint8_t * data, size_t bytes);
+size_t messageSize(uint32_t type, const uint8_t * data);
 
 enum {
     FLEXVDI_CREDENTIALS = 0,
@@ -44,7 +45,7 @@ typedef struct FlexVDICredentialsMsg {
     uint32_t userLength;
     uint32_t passLength;
     uint32_t domainLength;
-    char strings[0];
+    char strings[0]; // user + '\0' + password + '\0' + domain + '\0'
 } FlexVDICredentialsMsg;
 
 static inline const char * getCredentialsUser(const FlexVDICredentialsMsg * msg) {
@@ -55,10 +56,6 @@ static inline const char * getCredentialsPassword(const FlexVDICredentialsMsg * 
 }
 static inline const char * getCredentialsDomain(const FlexVDICredentialsMsg * msg) {
     return &msg->strings[msg->userLength + msg->passLength + 2];
-}
-static inline uint32_t getCredentialsMsgSize(const FlexVDICredentialsMsg * msg) {
-    return sizeof(FlexVDICredentialsMsg) +
-        msg->userLength + msg->passLength + msg->domainLength + 3;
 }
 
 
@@ -72,10 +69,6 @@ typedef struct FlexVDIPrintJobMsg {
     char options[0];
 } FlexVDIPrintJobMsg;
 
-static inline uint32_t getPrintJobMsgSize(const FlexVDIPrintJobMsg * msg) {
-    return sizeof(FlexVDIPrintJobMsg) + msg->optionsLength;
-}
-
 
 typedef struct FlexVDIPrintJobDataMsg {
     uint32_t id;
@@ -83,47 +76,64 @@ typedef struct FlexVDIPrintJobDataMsg {
     char data[0];
 } FlexVDIPrintJobDataMsg;
 
-static inline uint32_t getPrintJobDataMsgSize(const FlexVDIPrintJobDataMsg * msg) {
-    return sizeof(FlexVDIPrintJobDataMsg) + msg->dataLength;
-}
 
 
 #ifdef FLEXVDI_PROTO_IMPL
-typedef int (*MarshallingFunction)(uint8_t *, size_t bytes);
+
+typedef int (*MarshallingFunction)(uint8_t *, size_t);
+typedef size_t (*SizeFunction)(const uint8_t *);
+
+#define PROTO_SIZE_FUNC(Msg, extra) \
+static size_t get ## Msg ## Size(const uint8_t * data) { \
+    const Msg * msg = (const Msg *)data; \
+    return sizeof(*msg) + extra; \
+}
+
+PROTO_SIZE_FUNC(FlexVDICredentialsMsg, msg->userLength + msg->passLength + msg->domainLength + 3)
+PROTO_SIZE_FUNC(FlexVDIAskCredentialsMsg, 0)
+PROTO_SIZE_FUNC(FlexVDIPrintJobMsg, msg->optionsLength)
+PROTO_SIZE_FUNC(FlexVDIPrintJobDataMsg, msg->dataLength)
+
+static SizeFunction sizeFunctions[FLEXVDI_MAX_MESSAGE_TYPE] = {
+    [FLEXVDI_CREDENTIALS] = getFlexVDICredentialsMsgSize,
+    [FLEXVDI_ASKCREDENTIALS] = getFlexVDIAskCredentialsMsgSize,
+    [FLEXVDI_PRINTJOB] = getFlexVDIPrintJobMsgSize,
+    [FLEXVDI_PRINTJOBDATA] = getFlexVDIPrintJobDataMsgSize,
+};
+
+size_t messageSize(uint32_t type, const uint8_t * data) {
+    if (type < FLEXVDI_MAX_MESSAGE_TYPE) {
+        return sizeFunctions[type](data);
+    } else {
+        return 0;
+    }
+}
+
+
+#define PROTO_MARSHALL_FUNC(Msg, commands) \
+static int marshall ## Msg(uint8_t * data, size_t bytes) { \
+    if (bytes < sizeof(Msg)) return 0; \
+    Msg * msg = (Msg *)data; \
+    commands \
+    return bytes >= get ## Msg ## Size((const uint8_t *)msg); \
+}
+
+PROTO_MARSHALL_FUNC(FlexVDICredentialsMsg,
+                    BYTESWAP32(msg->userLength);
+                    BYTESWAP32(msg->passLength);
+                    BYTESWAP32(msg->domainLength);
+)
+PROTO_MARSHALL_FUNC(FlexVDIPrintJobMsg,
+                    BYTESWAP32(msg->id);
+                    BYTESWAP32(msg->optionsLength);
+)
+PROTO_MARSHALL_FUNC(FlexVDIPrintJobDataMsg,
+                    BYTESWAP32(msg->id);
+                    BYTESWAP32(msg->dataLength);
+)
 
 static int marshallEmptyMsg(uint8_t * data, size_t bytes) {
     return TRUE;
-}
-
-static int marshallFlexVDICredentialsMsg(uint8_t * data, size_t bytes) {
-    if (bytes < sizeof(FlexVDICredentialsMsg)) {
-        return 0;
-    }
-    FlexVDICredentialsMsg * msg = (FlexVDICredentialsMsg *)data;
-    BYTESWAP32(msg->userLength);
-    BYTESWAP32(msg->passLength);
-    BYTESWAP32(msg->domainLength);
-    return bytes >= getCredentialsMsgSize(msg);
-}
-
-static int marshallFlexVDIPrintJobMsg(uint8_t * data, size_t bytes) {
-    if (bytes < sizeof(FlexVDIPrintJobMsg)) {
-        return 0;
-    }
-    FlexVDIPrintJobMsg * msg = (FlexVDIPrintJobMsg *)data;
-    BYTESWAP32(msg->id);
-    BYTESWAP32(msg->optionsLength);
-    return bytes >= getPrintJobMsgSize(msg);
-}
-
-static int marshallFlexVDIPrintJobDataMsg(uint8_t * data, size_t bytes) {
-    if (bytes < sizeof(FlexVDIPrintJobDataMsg)) {
-        return 0;
-    }
-    FlexVDIPrintJobDataMsg * msg = (FlexVDIPrintJobDataMsg *)data;
-    BYTESWAP32(msg->id);
-    BYTESWAP32(msg->dataLength);
-    return bytes >= getPrintJobDataMsgSize(msg);
 }
 
 static MarshallingFunction marshallers[FLEXVDI_MAX_MESSAGE_TYPE] = {
