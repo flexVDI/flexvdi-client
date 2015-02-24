@@ -2,7 +2,6 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
-#include <map>
 #include <fstream>
 #include "PrintManager.hpp"
 #include "FlexVDIGuestAgent.hpp"
@@ -16,7 +15,7 @@ namespace ph = std::placeholders;
 REGISTER_COMPONENT(PrintManager);
 
 
-void PrintManager::handle(const Connection::Ptr & src, const FlexVDIPrintJobMsgPtr & msg) {
+void PrintManager::handle(const Connection::Ptr & src, const PrintJobMsgPtr & msg) {
     Log(L_DEBUG) << "Ready to send a new print job";
     jobs.emplace_back(src, getNewId());
     Job & job = jobs.back();
@@ -27,8 +26,7 @@ void PrintManager::handle(const Connection::Ptr & src, const FlexVDIPrintJobMsgP
 }
 
 
-void PrintManager::handle(const Connection::Ptr & src,
-                          const FlexVDIPrintJobDataMsgPtr & msg) {
+void PrintManager::handle(const Connection::Ptr & src, const PrintJobDataMsgPtr & msg) {
     auto job = std::find_if(jobs.begin(), jobs.end(),
                             [&src](const Job & j) { return src == j.src; });
     if (job == jobs.end()) {
@@ -38,6 +36,15 @@ void PrintManager::handle(const Connection::Ptr & src,
     msg->id = job->id;
     Connection::Ptr client = FlexVDIGuestAgent::singleton().spiceClient();
     client->send(MessageBuffer(msg));
+}
+
+
+void PrintManager::handle(const Connection::Ptr & src, const SharePrinterMsgPtr & msg) {
+    string printer(getPrinterName(msg.get()));
+}
+
+
+void PrintManager::handle(const Connection::Ptr & src, const UnsharePrinterMsgPtr & msg) {
 }
 
 
