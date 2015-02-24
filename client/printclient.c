@@ -7,28 +7,9 @@
 #include <time.h>
 #include <glib.h>
 #include <glib/gstdio.h>
-#include <unistd.h>
 #include "printclient.h"
 
-
-typedef struct PrintJob {
-    gint fileHandle;
-    gchar * name;
-} PrintJob;
-
 static GHashTable * printJobs;
-
-
-static void openWithApp(const char * file) {
-    char command[1024];
-#ifdef WIN32
-    snprintf(command, 1024, "start %s", file);
-#else
-    snprintf(command, 1024, "xdg-open %s", file);
-    // TODO: on Mac OS X, the command is 'open'
-#endif
-    system(command);
-}
 
 
 static gboolean removeTempFiles(gpointer user_data) {
@@ -59,6 +40,8 @@ static gboolean removeTempFiles(gpointer user_data) {
 void handlePrintJob(FlexVDIPrintJobMsg * msg) {
     PrintJob * job = g_malloc(sizeof(PrintJob));
     job->fileHandle = g_file_open_tmp("fpjXXXXXX.pdf", &job->name, NULL);
+    job->options = g_strndup(msg->options, msg->optionsLength);
+    fprintf(stderr, "Job %s, Options: %.*s\n", job->name, msg->optionsLength, msg->options);
     g_hash_table_insert(printJobs, GINT_TO_POINTER(msg->id), job);
 }
 
@@ -68,7 +51,7 @@ void handlePrintJobData(FlexVDIPrintJobDataMsg * msg) {
     if (job) {
         if (!msg->dataLength) {
             close(job->fileHandle);
-            openWithApp(job->name);
+            printJob(job);
             g_free(job->name);
             g_hash_table_remove(printJobs, GINT_TO_POINTER(msg->id));
         } else {

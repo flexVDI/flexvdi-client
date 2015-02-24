@@ -3,8 +3,10 @@
  **/
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <glib.h>
+#include <glib/gstdio.h>
 #include "flexvdi-spice.h"
 #define FLEXVDI_PROTO_IMPL
 #include "FlexVDIProto.h"
@@ -119,5 +121,49 @@ int flexvdiSpiceSendCredentials(const char * username, const char * password,
     memcpy(&msg->strings[++i], domain, msgTemp.domainLength);
     msg->strings[i += msgTemp.domainLength] = '\0';
     sendMessage(FLEXVDI_CREDENTIALS, buf);
+    return 0;
+}
+
+
+int flexvdiSpiceSharePrinter(const char * printer) {
+    size_t bufSize, nameLength, ppdLength;
+    GStatBuf statbuf;
+    char * ppdName = getPPDFile(printer);
+    int result = 0;
+    nameLength = strnlen(printer, 1024);
+    if (!g_stat(ppdName, &statbuf)) {
+        uint8_t * buf;
+        ppdLength = statbuf.st_size;
+        bufSize = sizeof(FlexVDISharePrinterMsg) + nameLength + 1 + ppdLength;
+        if (buf = getMsgBuffer(bufSize)) {
+            FILE * ppd;
+            if (ppd = g_fopen(ppdName, "r")) {
+                FlexVDISharePrinterMsg * msg = (FlexVDISharePrinterMsg *)buf;
+                msg->printerNameLength = nameLength;
+                msg->ppdLength = ppdLength;
+                strncpy(msg->data, printer, nameLength + 1);
+                fread(&msg->data[nameLength + 1], 1, ppdLength, ppd);
+                sendMessage(FLEXVDI_SHAREPRINTER, buf);
+            } else result = 1;
+            fclose(ppd);
+        } else result = 1;
+    } else result = 1;
+    g_unlink(ppdName);
+    g_free(ppdName);
+    return result;
+}
+
+
+int flexvdiSpiceUnsharePrinter(const char * printer) {
+    size_t bufSize, nameLength;
+    nameLength = strnlen(printer, 1024);
+    uint8_t * buf;
+    bufSize = sizeof(FlexVDIUnsharePrinterMsg) + nameLength + 1;
+    if (buf = getMsgBuffer(bufSize)) {
+        FlexVDIUnsharePrinterMsg * msg = (FlexVDIUnsharePrinterMsg *)buf;
+        msg->printerNameLength = nameLength;
+        strncpy(msg->printerName, printer, nameLength + 1);
+        sendMessage(FLEXVDI_UNSHAREPRINTER, buf);
+    } else return 1;
     return 0;
 }
