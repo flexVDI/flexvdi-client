@@ -33,89 +33,187 @@ int flexvdiSpiceGetPrinterList(GSList ** printerList) {
 }
 
 
-char * getPPDFile(const char * printer) {
-    PPDGenerator * ppd = newPPDGenerator(printer);
-    char * result = NULL;
-
+typedef struct CupsConnection {
     cups_dest_t * dests, * dest;
+    int numDests;
     cups_dinfo_t * dinfo;
     http_t * http;
-    ipp_attribute_t * attr;
-    int i, count;
+} CupsConnection;
 
+
+static CupsConnection * openCups(const char * printer) {
+    CupsConnection * cups = (CupsConnection *)g_malloc0(sizeof(CupsConnection));
     char * name = g_strdup(printer), * instance;
     if ((instance = g_strrstr(name, "/")) != NULL)
         *instance++ = '\0';
-    int numDests = cupsGetDests(&dests);
-    dest = cupsGetDest(name, instance, numDests, dests);
+    cups->numDests = cupsGetDests(&cups->dests);
+    if (cups->dests) {
+        cups->dest = cupsGetDest(name, instance, cups->numDests, cups->dests);
+        if (cups->dest) {
+            cups->http = cupsConnectDest(cups->dest, CUPS_DEST_FLAGS_NONE,
+                                        30000, NULL, NULL, 0, NULL, NULL);
+            if (cups->http) {
+                cups->dinfo = cupsCopyDestInfo(cups->http, cups->dest);
+            }
+        }
+    }
     g_free(name);
-    http = cupsConnectDest(dest, CUPS_DEST_FLAGS_NONE, 30000, NULL, NULL, 0, NULL, NULL);
-    dinfo = cupsCopyDestInfo(http, dest);
+    return cups;
+}
 
-    if (dinfo) {
-        if ((attr = cupsFindDestSupported(http, dest, dinfo, CUPS_PRINT_COLOR_MODE)) != NULL) {
-            i = ippGetCount(attr) - 1;
-            while (i >= 0 && !g_ascii_strcasecmp(ippGetString(attr, i, NULL), "monochrome")) --i;
-            ppdSetColor(ppd, i >= 0);
-        }
 
-        if ((attr = cupsFindDestSupported(http, dest, dinfo, CUPS_SIDES)) != NULL) {
-            i = ippGetCount(attr) - 1;
-            while (i >= 0 && !g_ascii_strcasecmp(ippGetString(attr, i, NULL), "one-sided")) --i;
-            ppdSetDuplex(ppd, i >= 0);
-        }
+static void closeCups(CupsConnection * cups) {
+    cupsFreeDestInfo(cups->dinfo);
+    httpClose(cups->http);
+    cupsFreeDests(cups->numDests, cups->dests);
+    g_free(cups);
+}
 
-        if ((attr = cupsFindDestSupported(http, dest, dinfo, "printer-resolution")) != NULL) {
-            i = ippGetCount(attr) - 1;
-            int yres;
-            ipp_res_t units;
-            while (i >= 0) {
-                ppdAddResolution(ppd, ippGetResolution(attr, i--, &yres, &units));
-            }
-            if ((attr = cupsFindDestDefault(http, dest, dinfo, "printer-resolution")) != NULL) {
-                ppdSetDefaultResolution(ppd, ippGetResolution(attr, 0, &yres, &units));
-            }
-        }
 
-        cups_size_t size;
-        i = cupsGetDestMediaCount(http, dest, dinfo, CUPS_MEDIA_FLAGS_DEFAULT) - 1;
+static ipp_attribute_t * ippIsSupported(CupsConnection * cups, const char * attrName) {
+    return cupsFindDestSupported(cups->http, cups->dest, cups->dinfo, attrName);
+}
+
+
+static ipp_attribute_t * ippGetDefault(CupsConnection * cups, const char * attrName) {
+    return cupsFindDestDefault(cups->http, cups->dest, cups->dinfo, attrName);
+}
+
+
+static int ippHasOtherThan(CupsConnection * cups, const char * attrName, const char * value) {
+    ipp_attribute_t * attr = ippIsSupported(cups, attrName);
+    if (attr) {
+        int i = ippGetCount(attr) - 1;
+        while (i >= 0 && !g_ascii_strcasecmp(ippGetString(attr, i, NULL), value)) --i;
+        return i >= 0;
+    }
+    return FALSE;
+}
+
+
+static void getResolutions(PPDGenerator * ppd, CupsConnection * cups) {
+    ipp_attribute_t * attr;
+    if (attr = ippIsSupported(cups, "printer-resolution")) {
+        int i = ippGetCount(attr) - 1, yres;
+        ipp_res_t units;
         while (i >= 0) {
-            cupsGetDestMediaByIndex(http, dest, dinfo, i--, CUPS_MEDIA_FLAGS_DEFAULT, &size);
-            const char * media = pwgMediaForPWG(size.media)->ppd;
-            ppdAddPaperSize(ppd, media ? media : size.media, size.width, size.length);
+            ppdAddResolution(ppd, ippGetResolution(attr, i--, &yres, &units));
         }
-        if (cupsGetDestMediaDefault(http, dest, dinfo, CUPS_MEDIA_FLAGS_DEFAULT, &size)) {
-            const char * media = pwgMediaForPWG(size.media)->ppd;
-            ppdSetDefaultPaperSize(ppd, media ? media : size.media);
+        if (attr = ippGetDefault(cups, "printer-resolution")) {
+            ppdSetDefaultResolution(ppd, ippGetResolution(attr, 0, &yres, &units));
         }
-        // TODO: get media margins
+    }
+}
 
-        if ((attr = cupsFindDestSupported(http, dest, dinfo, CUPS_MEDIA_SOURCE)) != NULL) {
-            i = ippGetCount(attr) - 1;
-            while (i >= 0) {
-                ppdAddTray(ppd, ippGetString(attr, i--, NULL));
-            }
-            if ((attr = cupsFindDestDefault(http, dest, dinfo, CUPS_MEDIA_SOURCE)) != NULL) {
-                ppdSetDefaultTray(ppd, ippGetString(attr, 0, NULL));
-            }
-        }
 
-        if ((attr = cupsFindDestSupported(http, dest, dinfo, CUPS_MEDIA_TYPE)) != NULL) {
-            i = ippGetCount(attr) - 1;
-            while (i >= 0) {
-                ppdAddMediaType(ppd, ippGetString(attr, i--, NULL));
-            }
-            if ((attr = cupsFindDestDefault(http, dest, dinfo, CUPS_MEDIA_TYPE)) != NULL) {
-                ppdSetDefaultMediaType(ppd, ippGetString(attr, 0, NULL));
-            }
+static char * getPrettyName(const char * pwg) {
+    static char name[1024];
+    // Get middle component
+    const char * start = strchr(pwg, '_');
+    if (start) {
+        const char * end = strchr(++start, '_');
+        if (end) {
+            g_strlcpy(name, start, end - start + 1);
+        } else {
+            g_strlcpy(name, start, 1024);
         }
+    } else {
+        g_strlcpy(name, pwg, 1024);
+    }
+    // Turn _ into spaces
+    g_strdelimit(name, "_", ' ');
+    // For each '-', remove it and capitalize next letter
+    int capitalize = TRUE;
+    char * i = name, * j = i;
+    while (*i != '\0') {
+        if (*i != '-') {
+            if (capitalize) {
+                *j++ = g_ascii_toupper(*i++);
+                capitalize = FALSE;
+            } else
+                *j++ = *i++;
+        } else {
+            ++i;
+            capitalize = TRUE;
+        }
+    }
+    *j = '\0';
+    return name;
+}
 
+
+static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
+    ipp_attribute_t * attr = ippIsSupported(cups, "media");
+    if (attr) {
+        int i = ippGetCount(attr) - 1;
+        while (i >= 0) {
+            pwg_media_t * size = pwgMediaForPWG(ippGetString(attr, i--, NULL));
+            if (g_str_has_prefix(size->pwg, "custom")) continue;
+            ppdAddPaperSize(ppd, size->ppd ? size->ppd : getPrettyName(size->pwg),
+                            size->width * 72 / 2540, size->length * 72 / 2540);
+        }
+        if (attr = ippGetDefault(cups, "media")) {
+            pwg_media_t * size = pwgMediaForPWG(ippGetString(attr, 0, NULL));
+            ppdSetDefaultPaperSize(ppd, size->ppd ? size->ppd : getPrettyName(size->pwg));
+        }
+    }
+    // TODO: get media margins
+}
+
+
+const char * capitalizeFirst(const char * str) {
+    static char buffer[100];
+    g_strlcpy(buffer, str, 100);
+    buffer[0] = g_ascii_toupper(buffer[0]);
+    return buffer;
+}
+
+
+static void getMediaSources(PPDGenerator * ppd, CupsConnection * cups) {
+    ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_SOURCE);
+    if (attr) {
+        int i, count = ippGetCount(attr);
+        for (i = 0; i < count; ++i) {
+            ppdAddTray(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
+        }
+        if (attr = ippGetDefault(cups, CUPS_MEDIA_SOURCE)) {
+            ppdSetDefaultTray(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
+        }
+    }
+}
+
+
+static void getMediaTypes(PPDGenerator * ppd, CupsConnection * cups) {
+    ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_TYPE);
+    if (attr) {
+        int i, count = ippGetCount(attr);
+        for (i = 0; i < count; ++i) {
+            ppdAddMediaType(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
+        }
+        if (attr = ippGetDefault(cups, CUPS_MEDIA_TYPE)) {
+            ppdSetDefaultMediaType(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
+        }
+    }
+}
+
+
+char * getPPDFile(const char * printer) {
+    char * result = NULL;
+    int i;
+    PPDGenerator * ppd = newPPDGenerator(printer);
+    CupsConnection * cups = openCups(printer);
+
+    if (cups->dinfo) {
+        ppdSetColor(ppd, ippHasOtherThan(cups, CUPS_PRINT_COLOR_MODE, "monochrome"));
+        ppdSetDuplex(ppd, ippHasOtherThan(cups, CUPS_SIDES, "one-sided"));
+        getResolutions(ppd, cups);
+        getPapers(ppd, cups);
+        getMediaSources(ppd, cups);
+        getMediaTypes(ppd, cups);
         result = g_strdup(generatePPD(ppd));
     }
 
-    cupsFreeDestInfo(dinfo);
-    httpClose(http);
-    cupsFreeDests(numDests, dests);
+    closeCups(cups);
     deletePPDGenerator(ppd);
     return result;
 }

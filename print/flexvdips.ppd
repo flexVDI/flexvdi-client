@@ -7,11 +7,11 @@
 *LanguageEncoding: ISOLatin1
 *LanguageVersion: English
 *Manufacturer: "Flexible Software Solutions S.L."
-*ModelName: "flexVDI Printer"
+*ModelName: "flexVDI PDF Printer"
 *ShortNickName: "flexVDI"
-*NickName: "flexVDI"
+*NickName: "flexVDI PDF Printer"
 *PCFileName: "flexvdips.ppd"
-*Product: "flexVDI Printer"
+*Product: "(flexVDIPrinter)"
 *PSVersion: "(3010) 815"
 *cupsFilter: "application/pdf  0  pdftopdf-nocopies"
 

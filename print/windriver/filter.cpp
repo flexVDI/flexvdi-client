@@ -44,6 +44,7 @@ private:
     string printerName, docName;
     int jobId;
     shared_ptr<JOB_INFO_2A> jobInfo;
+    shared_ptr<PRINTER_INFO_2A> printerInfo;
 
     GSFilter();
 
@@ -83,7 +84,11 @@ private:
     }
 
     void getJobInfo();
+    void getPrinterInfo();
+    int getPrinterCap(WORD cap, char * buffer);
     string getMedia();
+    int getMediaType();
+    int getMediaSource();
     string getJobOptions();
 
     void dumpStdin(const string & fileName) {
@@ -91,7 +96,6 @@ private:
     }
 
     int runGhostscript();
-
 };
 
 
@@ -108,6 +112,7 @@ int main(int argc, char * argv[]) {
 GSFilter::GSFilter() {
     readEnv();
     getJobInfo();
+    getPrinterInfo();
     inFileName = getTempFileName();
     outFileName = getTempFileName();
 }
@@ -148,62 +153,102 @@ void GSFilter::getJobInfo() {
     if (OpenPrinterA((char *)printerName.c_str(), &printer, NULL)) {
         DWORD needed;
         GetJobA(printer, jobId, 2, NULL, 0, &needed);
-        std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
-        if(GetJobA(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed)) {
-            jobInfo = shared_ptr<JOB_INFO_2A>(buffer, (JOB_INFO_2A *)buffer.get());
+        if (needed > 0) {
+            std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
+            if(GetJobA(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed)) {
+                jobInfo = shared_ptr<JOB_INFO_2A>(buffer, (JOB_INFO_2A *)buffer.get());
+            }
         }
         ClosePrinter(printer);
     }
 }
 
 
+void GSFilter::getPrinterInfo() {
+    HANDLE printer;
+    if (OpenPrinterA((char *)printerName.c_str(), &printer, NULL)) {
+        DWORD needed;
+        GetPrinterA(printer, 2, NULL, 0, &needed);
+        if (needed > 0) {
+            std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
+            if (GetPrinterA(printer, 2, (LPBYTE)buffer.get(), needed, &needed)) {
+                printerInfo = shared_ptr<PRINTER_INFO_2A>(buffer, (PRINTER_INFO_2A *)buffer.get());
+            }
+        }
+        ClosePrinter(printer);
+    }
+}
+
+
+int GSFilter::getPrinterCap(WORD cap, char * buffer) {
+    return DeviceCapabilitiesA(printerInfo->pPrinterName, printerInfo->pPortName,
+                               cap, buffer, printerInfo->pDevMode);
+}
+
+
 string GSFilter::getMedia() {
     DEVMODEA * devMode = jobInfo->pDevMode;
-    ostringstream media;
     switch (devMode->dmPaperSize) {
-        case DMPAPER_TABLOID: media << "Tabloid"; break;
-        case DMPAPER_LEDGER: media << "Ledger"; break;
-        case DMPAPER_LEGAL: media << "Legal"; break;
-        case DMPAPER_LETTER: media << "Letter"; break;
-        case DMPAPER_LETTERSMALL: media << "LetterSmall"; break;
-        case DMPAPER_STATEMENT: media << "Statement"; break;
-        case DMPAPER_NOTE: media << "Note"; break;
-//         case DMPAPER_A0: media << "A0"; break;
-//         case DMPAPER_A1: media << "A1"; break;
-        case DMPAPER_A2: media << "A2"; break;
-        case DMPAPER_A3: media << "A3"; break;
-        case DMPAPER_A4: media << "A4"; break;
-        case DMPAPER_A4SMALL: media << "A4Small"; break;
-        case DMPAPER_A5: media << "A5"; break;
-        case DMPAPER_A6: media << "A6"; break;
-//         case DMPAPER_A7: media << "A7"; break;
-//         case DMPAPER_A8: media << "A8"; break;
-//         case DMPAPER_A9: media << "A9"; break;
-//         case DMPAPER_A10: media << "A10"; break;
-        case DMPAPER_B4: media << "B4"; break;
-        case DMPAPER_B5: media << "B5"; break;
-//         case DMPAPER_B6: media << "B6"; break;
-        case DMPAPER_ENV_C3: media << "EnvC3"; break;
-        case DMPAPER_ENV_C4: media << "EnvC4"; break;
-        case DMPAPER_ENV_C5: media << "EnvC5"; break;
-        case DMPAPER_ENV_C6: media << "EnvC6"; break;
-        default: media << devMode->dmPaperWidth << 'x' << devMode->dmPaperLength;
+        case DMPAPER_TABLOID: return "Tabloid";
+        case DMPAPER_LEDGER: return "Ledger";
+        case DMPAPER_LEGAL: return "Legal";
+        case DMPAPER_LETTER: return "Letter";
+        case DMPAPER_LETTERSMALL: return "LetterSmall";
+        case DMPAPER_STATEMENT: return "Statement";
+        case DMPAPER_NOTE: return "Note";
+//         case DMPAPER_A0: return "A0";
+//         case DMPAPER_A1: return "A1";
+        case DMPAPER_A2: return "A2";
+        case DMPAPER_A3: return "A3";
+        case DMPAPER_A4: return "A4";
+        case DMPAPER_A4SMALL: return "A4Small";
+        case DMPAPER_A5: return "A5";
+        case DMPAPER_A6: return "A6";
+//         case DMPAPER_A7: return "A7";
+//         case DMPAPER_A8: return "A8";
+//         case DMPAPER_A9: return "A9";
+//         case DMPAPER_A10: return "A10";
+        case DMPAPER_B4: return "B4";
+        case DMPAPER_B5: return "B5";
+//         case DMPAPER_B6: return "B6";
+        case DMPAPER_ENV_C3: return "EnvC3";
+        case DMPAPER_ENV_C4: return "EnvC4";
+        case DMPAPER_ENV_C5: return "EnvC5";
+        case DMPAPER_ENV_C6: return "EnvC6";
+        default: {
+            ostringstream media;
+            media << devMode->dmPaperWidth << 'x' << devMode->dmPaperLength;
+            return media.str();
+        }
     }
-    if (devMode->dmMediaType == DMMEDIA_TRANSPARENCY) {
-        media << ",Transparency";
-    } else if (devMode->dmMediaType == DMMEDIA_GLOSSY) {
-        media << ",Glossy";
-    }
-    // TODO: Add media source
-    return media.str();
+}
+
+
+int GSFilter::getMediaSource() {
+    DEVMODEA * devMode = jobInfo->pDevMode;
+    int source = devMode->dmDefaultSource - DMBIN_USER;
+    int numSources = getPrinterCap(DC_BINNAMES, NULL);
+    // FIXME: Windows introduces "Automatic selection" as first source
+    return source > 0 && source < numSources ? source - 1 : 0;
+}
+
+
+int GSFilter::getMediaType() {
+    DEVMODEA * devMode = jobInfo->pDevMode;
+    int mediaType = devMode->dmMediaType - DMMEDIA_USER;
+    int numMediaTypes = getPrinterCap(DC_MEDIATYPENAMES, NULL);
+    return mediaType >= 0 && mediaType < numMediaTypes ? mediaType : 0;
 }
 
 
 string GSFilter::getJobOptions() {
     DEVMODEA * devMode = jobInfo->pDevMode;
     ostringstream oss;
-    oss << "title=\"" << docName << "\"";
+    oss << "printer=\"" << printerName << "\"";
+    oss << " title=\"" << docName << "\"";
     oss << " media=" << getMedia();
+    oss << " media-source=" << getMediaSource();
+    oss << " media-type=" << getMediaType();
     switch (devMode->dmDuplex) {
         case DMDUP_HORIZONTAL: oss << " sides=two-sided-short-edge"; break;
         case DMDUP_VERTICAL: oss << " sides=two-sided-long-edge"; break;
@@ -214,7 +259,7 @@ string GSFilter::getJobOptions() {
     int resolution = devMode->dmPrintQuality;
     if (resolution < 0) resolution = devMode->dmYResolution;
     oss << " Resolution=" << resolution << "dpi";
-    oss << (devMode->dmColor == DMCOLOR_COLOR ? " color" : " bn");
+    oss << (devMode->dmColor == DMCOLOR_COLOR ? " color" : " gray");
     return oss.str();
 }
 

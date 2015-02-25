@@ -6,7 +6,7 @@
 #include <string.h>
 #include <glib.h>
 #ifdef WIN32
-#include <wingdi.h>
+#include <windows.h>
 #endif
 #include "PPDGenerator.h"
 
@@ -51,15 +51,14 @@ struct PPDGenerator {
 
 
 static int isValid(PPDGenerator * ppd) {
-    return ppd->printerName && ppd->file && ppd->paperSizes && ppd->defaultPaperSize &&
-        ppd->resolutions;
+    return ppd->printerName && ppd->file && ppd->paperSizes && ppd->defaultPaperSize;
 };
 
 
 PPDGenerator * newPPDGenerator(const char * printerName) {
     PPDGenerator * result = g_malloc0(sizeof(PPDGenerator));
     result->printerName = g_strdup(printerName);
-    int fd = g_file_open_tmp("flexvdips-XXXXXX.ppd", &result->fileName, NULL);
+    int fd = g_file_open_tmp("fvXXXXXX.ppd", &result->fileName, NULL);
     result->file = fdopen(fd, "w");
     if (fd == -1 || result->file == NULL) {
         deletePPDGenerator(result);
@@ -94,15 +93,17 @@ void ppdSetDuplex(PPDGenerator * ppd, int duplex) {
 }
 
 
-static gint comparePaper(gconstpointer paper, gconstpointer name) {
-    return strcmp((const char *)name, ((PaperDescription *)paper)->name);
+static gint comparePaper(gconstpointer a, gconstpointer b) {
+    return strcmp(((PaperDescription *)a)->name, ((PaperDescription *)b)->name);
 }
 
 
 void ppdAddPaperSize(PPDGenerator * ppd, const char * name, int width, int length) {
-    if (!g_slist_find_custom(ppd->paperSizes, name, comparePaper)) {
-        ppd->paperSizes = g_slist_append(ppd->paperSizes,
-                                         newPaperDescription(name, width, length));
+    PaperDescription tmp;
+    tmp.name = (char *)name;
+    if (!g_slist_find_custom(ppd->paperSizes, &tmp, comparePaper)) {
+        ppd->paperSizes = g_slist_prepend(ppd->paperSizes,
+                                          newPaperDescription(name, width, length));
     }
 }
 
@@ -113,9 +114,16 @@ void ppdSetDefaultPaperSize(PPDGenerator * ppd, const char * name) {
 }
 
 
+static gint compareResolutions(gconstpointer a, gconstpointer b) {
+    return GPOINTER_TO_INT(a) - GPOINTER_TO_INT(b);
+}
+
+
 void ppdAddResolution(PPDGenerator * ppd, int resolution) {
     if (!g_slist_find(ppd->paperSizes, GINT_TO_POINTER(resolution))) {
-        ppd->resolutions = g_slist_append(ppd->resolutions, GINT_TO_POINTER(resolution));
+        ppd->resolutions = g_slist_insert_sorted(ppd->resolutions,
+                                                 GINT_TO_POINTER(resolution),
+                                                 compareResolutions);
         if (resolution > ppd->defaultResolution) ppd->defaultResolution = resolution;
     }
 }
@@ -133,7 +141,7 @@ static gint compareString(gconstpointer a, gconstpointer b) {
 
 void ppdAddMediaType(PPDGenerator * ppd, const gchar * media) {
     if (!g_slist_find_custom(ppd->mediaTypes, media, compareString)) {
-        ppd->mediaTypes = g_slist_append(ppd->mediaTypes, g_strdup(media));
+        ppd->mediaTypes = g_slist_prepend(ppd->mediaTypes, g_strdup(media));
     }
 }
 
@@ -146,7 +154,7 @@ void ppdSetDefaultMediaType(PPDGenerator * ppd, const char * media) {
 
 void ppdAddTray(PPDGenerator * ppd, const gchar * tray) {
     if (!g_slist_find_custom(ppd->trays, tray, compareString)) {
-        ppd->trays = g_slist_append(ppd->trays, g_strdup(tray));
+        ppd->trays = g_slist_prepend(ppd->trays, g_strdup(tray));
     }
 }
 
@@ -165,8 +173,31 @@ void ppdSetHWMargins(PPDGenerator * ppd, int top, int down, int left, int right)
 }
 
 
+static char * sanitize(const char * str) {
+    static char buffer[100];
+    char * result = g_strdup(str); //g_str_to_ascii(str, "C");
+    int i = 0, j = 0;
+    while (i < 99 && result[j] != '\0') {
+        char c = result[j++];
+        if (c >= 33 && c <= 126 && c != '/' && c != ':' && c != '.' && c != ',' && c != '(' && c != ')')
+            buffer[i++] = g_ascii_tolower(c);
+    }
+    buffer[i] = '\0';
+    g_free(result);
+    return buffer;
+}
+
+
 static void generateHeader(PPDGenerator * ppd) {
-    char * baseName = g_strrstr(ppd->fileName, "/") + 1;
+    char * baseName = g_strrstr(ppd->fileName,
+#ifdef WIN32
+                                "\\"
+#else
+                                "/"
+#endif
+                               ) + 1;
+    char * modelName = g_strdup(ppd->printerName);
+    g_strdelimit(modelName, "_", ' ');
     fprintf(ppd->file,
             "*PPD-Adobe: \"4.3\"\n"
             "*FileVersion: \"1.0\"\n"
@@ -175,12 +206,11 @@ static void generateHeader(PPDGenerator * ppd) {
             "*LanguageVersion: English\n"
             "*Manufacturer: \"Flexible Software Solutions S.L.\"\n"
             "*ModelName: \"%s\"\n"
-            "*ShortNickName: \"%s\"\n"
+            "*ShortNickName: \"%.31s\"\n"
             "*NickName: \"%s\"\n"
             "*PCFileName: \"%s\"\n"
-            "*Product: \"%s\"\n"
+            "*Product: \"(%s)\"\n"
             "*PSVersion: \"(3010) 815\"\n"
-            "*cupsFilter: \"application/pdf  0  pdftopdf-nocopies\"\n"
             "*Copyright: \"2014-2015 Flexible Software Solutions S.L.\"\n"
             "*LanguageLevel: \"3\"\n"
             "*ColorDevice: True\n"
@@ -190,35 +220,19 @@ static void generateHeader(PPDGenerator * ppd) {
             "*TTRasterizer: Type42\n"
             "*FreeVM: \"10000000\"\n"
             "*PrintPSErrors: True\n"
-            "*ContoneOnly: True\n\n"
-            , ppd->printerName, ppd->printerName, ppd->printerName, baseName, ppd->printerName);
-}
-
-
-static generateResolutions(PPDGenerator * ppd) {
-    GSList * i;
-    if (ppd->defaultResolution == 0) ppd->defaultResolution = 300;
-    if (!ppd->resolutions)
-        ppd->resolutions = g_slist_append(NULL, GINT_TO_POINTER(ppd->defaultResolution));
-    fprintf(ppd->file,
-            "*%% == Valid resolutions\n"
-            "*OpenUI *Resolution: PickOne\n"
-            "*DefaultResolution: %ddpi\n"
-            "*OrderDependency: 10 AnySetup *Resolution\n"
-            , ppd->defaultResolution > 0 ? ppd->defaultResolution : 300);
-    for (i = ppd->resolutions; i != NULL; i = g_slist_next(i)) {
-        int r = GPOINTER_TO_INT(i->data);
-        fprintf(ppd->file,
-                "*Resolution %ddpi: \"<< /HWResolution [%d %d] >> setpagedevice\"\n"
-                , r, r, r);
-    }
-    fprintf(ppd->file, "*CloseUI: *Resolution\n\n");
+            "*ContoneOnly: True\n"
+            "*cupsFilter: \"application/pdf  0  pdftopdf-nocopies\"\n"
+            "*cupsLanguages: \"en\"\n"
+            "\n"
+            , modelName, modelName, modelName, baseName, modelName);
+    g_free(modelName);
 }
 
 
 static void generatePaperSizes(PPDGenerator * ppd) {
     GSList * i;
     int maxMediaSize = 0;
+    ppd->paperSizes = g_slist_sort(ppd->paperSizes, comparePaper);
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         if (maxMediaSize < desc->width) maxMediaSize = desc->width;
@@ -226,13 +240,12 @@ static void generatePaperSizes(PPDGenerator * ppd) {
     }
     fprintf(ppd->file,
             "*%% == Paper stuff\n"
-            "*%% Page sizes taken from ghostscript gs_statd.ps.\n"
-            "*%% Ghostscript pdfwrite ignores Orientation, so set the\n"
-            "*%% custom page width/length and then use an Install procedure\n"
-            "*%% to rotate the image.\n"
             "*HWMargins: %d %d %d %d\n"
             , ppd->margins[0], ppd->margins[1], ppd->margins[2], ppd->margins[3]);
     fprintf(ppd->file,
+            "*%% Ghostscript pdfwrite ignores Orientation, so set the\n"
+            "*%% custom page width/length and then use an Install procedure\n"
+            "*%% to rotate the image.\n"
             "*ParamCustomPageSize Width: 1 points 1 %d\n"
             "*ParamCustomPageSize Height: 2 points 1 %d\n"
             "*ParamCustomPageSize WidthOffset/Width Margin: 3 points 0 %d\n"
@@ -264,12 +277,12 @@ static void generatePaperSizes(PPDGenerator * ppd) {
             "*OpenUI *PageSize: PickOne\n"
             "*DefaultPageSize: %s\n"
             "*OrderDependency: 20 AnySetup *PageSize\n"
-            , ppd->defaultPaperSize);
+            , sanitize(ppd->defaultPaperSize));
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         fprintf(ppd->file,
-                "*PageSize %s: \"<< /PageSize [%d %d] /ImagingBBox null >> setpagedevice\"\n"
-                , desc->name, desc->width, desc->length);
+                "*PageSize %.34s/%s: \"<< /PageSize [%d %d] /ImagingBBox null >> setpagedevice\"\n"
+                , sanitize(desc->name), desc->name, desc->width, desc->length);
     }
     fprintf(ppd->file,
             "*CloseUI: *PageSize\n\n"
@@ -277,12 +290,12 @@ static void generatePaperSizes(PPDGenerator * ppd) {
             "*OpenUI *PageRegion: PickOne\n"
             "*DefaultPageRegion: %s\n"
             "*OrderDependency: 20 AnySetup *PageRegion\n"
-            , ppd->defaultPaperSize);
+            , sanitize(ppd->defaultPaperSize));
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         fprintf(ppd->file,
-                "*PageRegion %s: \"<< /PageSize [%d %d] /ImagingBBox null >> setpagedevice\"\n"
-                , desc->name, desc->width, desc->length);
+                "*PageRegion %.34s/%s: \"<< /PageSize [%d %d] /ImagingBBox null >> setpagedevice\"\n"
+                , sanitize(desc->name), desc->name, desc->width, desc->length);
     }
     fprintf(ppd->file,
             "*CloseUI: *PageRegion\n\n"
@@ -292,8 +305,8 @@ static void generatePaperSizes(PPDGenerator * ppd) {
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         fprintf(ppd->file,
-                "*ImageableArea %s: \"0 0 %d %d\"\n"
-                , desc->name, desc->width, desc->length);
+                "*ImageableArea %.34s/%s: \"0 0 %d %d\"\n"
+                , sanitize(desc->name), desc->name, desc->width, desc->length);
     }
     fprintf(ppd->file,
             "\n*DefaultPaperDimension: %s\n"
@@ -301,10 +314,34 @@ static void generatePaperSizes(PPDGenerator * ppd) {
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         fprintf(ppd->file,
-                "*PaperDimension %s: \"%d %d\"\n"
-                , desc->name, desc->width, desc->length);
+                "*PaperDimension %.34s/%s: \"%d %d\"\n"
+                , sanitize(desc->name), desc->name, desc->width, desc->length);
     }
     fprintf(ppd->file, "\n");
+}
+
+
+static generateResolutions(PPDGenerator * ppd) {
+    GSList * i;
+    if (ppd->defaultResolution == 0) {
+        ppd->defaultResolution = 300;
+    }
+    if (!ppd->resolutions) {
+        ppd->resolutions = g_slist_append(NULL, GINT_TO_POINTER(ppd->defaultResolution));
+    }
+    fprintf(ppd->file,
+            "*%% == Valid resolutions\n"
+            "*OpenUI *Resolution: PickOne\n"
+            "*DefaultResolution: %ddpi\n"
+            "*OrderDependency: 10 AnySetup *Resolution\n"
+            , ppd->defaultResolution > 0 ? ppd->defaultResolution : 300);
+    for (i = ppd->resolutions; i != NULL; i = g_slist_next(i)) {
+        int r = GPOINTER_TO_INT(i->data);
+        fprintf(ppd->file,
+                "*Resolution %ddpi: \"<< /HWResolution [%d %d] >> setpagedevice\"\n"
+                , r, r, r);
+    }
+    fprintf(ppd->file, "*CloseUI: *Resolution\n\n");
 }
 
 
@@ -316,9 +353,9 @@ static void generateDuplex(PPDGenerator * ppd) {
                 "*OpenUI *Duplex/Double-Sided Printing: PickOne\n"
                 "*OrderDependency: 30 AnySetup *Duplex\n"
                 "*DefaultDuplex: None\n"
-                "*Duplex DuplexNoTumble/Long Edge (Standard): \"<</Duplex true/Tumble false>>setpagedevice\"\n"
-                "*Duplex DuplexTumble/Short Edge (Flip): \"<</Duplex true/Tumble true>>setpagedevice\"\n"
-                "*Duplex None/Off: \"<</Duplex false/Tumble false>>setpagedevice\"\n"
+                "*Duplex DuplexNoTumble/Long Edge (Standard): \"\"\n"
+                "*Duplex DuplexTumble/Short Edge (Flip): \"\"\n"
+                "*Duplex None/Off: \"\"\n"
                 "*CloseUI: *Duplex\n\n");
     }
 }
@@ -326,50 +363,48 @@ static void generateDuplex(PPDGenerator * ppd) {
 
 static void generateTrays(PPDGenerator * ppd) {
     GSList * i;
+    int j;
     if (ppd->trays != NULL) {
-        if (!ppd->defaultTray)
-            ppd->defaultTray = g_strdup((const char *)ppd->trays->data);
+        ppd->trays = g_slist_reverse(ppd->trays);
+        char * defaultTray = ppd->defaultTray;
+        if (!defaultTray) defaultTray = (char *)ppd->trays->data;
+
         fprintf(ppd->file,
                 "*%% == Printer paper trays\n"
                 "*OpenUI *InputSlot/Input Slot: PickOne\n"
                 "*OrderDependency: 30 AnySetup *InputSlot\n"
                 "*DefaultInputSlot: %s\n"
-               , ppd->defaultTray);
-        for (i = ppd->trays; i != NULL; i = g_slist_next(i)) {
-            const char * tray = (const char *)i->data;
-            char * Tray = g_ascii_strdown(tray, -1);
-            Tray[0] = g_ascii_toupper(Tray[0]);
+               , sanitize(defaultTray));
+        for (i = ppd->trays, j = 0; i != NULL; i = g_slist_next(i), ++j) {
             fprintf(ppd->file,
-                    "*InputSlot %s/%s: \"<< /InputAttributes <</Priority [2 0 1]>> >> setpagedevice\"\n"
-                    , tray, Tray);
-            g_free(Tray);
+                    "*InputSlot %s/%s: \"\"\n"
+                    , sanitize((const char *)i->data), (const char *)i->data);
         }
-        fprintf(ppd->file, "*CloseUI *InputSlot\n\n");
+        fprintf(ppd->file, "*CloseUI: *InputSlot\n\n");
     }
 }
 
 
 static void generateMediaTypes(PPDGenerator * ppd) {
     GSList * i;
+    int j;
     if (ppd->mediaTypes != NULL) {
-        if (!ppd->defaultType)
-            ppd->defaultType = g_strdup((const char *)ppd->mediaTypes->data);
+        ppd->mediaTypes = g_slist_reverse(ppd->mediaTypes);
+        char * defaultType = ppd->defaultType;
+        if (!defaultType) defaultType = (char *)ppd->mediaTypes->data;
+
         fprintf(ppd->file,
                 "*%% == Media types\n"
                 "*OpenUI *MediaType/Media Type: PickOne\n"
                 "*OrderDependency: 30 AnySetup *MediaType\n"
                 "*DefaultMediaType: %s\n"
-               , ppd->defaultType);
-        for (i = ppd->mediaTypes; i != NULL; i = g_slist_next(i)) {
-            const char * media = (const char *)i->data;
-            char * Media = g_ascii_strdown(media, -1);
-            Media[0] = g_ascii_toupper(Media[0]);
+               , sanitize(defaultType));
+        for (i = ppd->mediaTypes, j = 0; i != NULL; i = g_slist_next(i), ++j) {
             fprintf(ppd->file,
-                    "*MediaType %s/%s Paper: \"<</MediaType (%s)>> setpagedevice\"\n"
-                    , media, Media, media);
-            g_free(Media);
+                    "*MediaType %s/%s: \"\"\n"
+                    , sanitize((const char *)i->data), (const char *)i->data);
         }
-        fprintf(ppd->file, "*CloseUI *MediaType\n\n");
+        fprintf(ppd->file, "*CloseUI: *MediaType\n\n");
     }
 }
 
@@ -432,8 +467,8 @@ static void generateFonts(PPDGenerator * ppd) {
 gchar * generatePPD(PPDGenerator * ppd) {
     if (!isValid(ppd)) return NULL;
     generateHeader(ppd);
-    generateResolutions(ppd);
     generatePaperSizes(ppd);
+    generateResolutions(ppd);
     generateDuplex(ppd);
     generateTrays(ppd);
     generateMediaTypes(ppd);
