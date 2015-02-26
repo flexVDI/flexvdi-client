@@ -51,7 +51,7 @@ static CupsConnection * openCups(const char * printer) {
         cups->dest = cupsGetDest(name, instance, cups->numDests, cups->dests);
         if (cups->dest) {
             cups->http = cupsConnectDest(cups->dest, CUPS_DEST_FLAGS_NONE,
-                                        30000, NULL, NULL, 0, NULL, NULL);
+                                         30000, NULL, NULL, 0, NULL, NULL);
             if (cups->http) {
                 cups->dinfo = cupsCopyDestInfo(cups->http, cups->dest);
             }
@@ -112,11 +112,7 @@ static char * getPrettyName(const char * pwg) {
     const char * start = strchr(pwg, '_');
     if (start) {
         const char * end = strchr(++start, '_');
-        if (end) {
-            g_strlcpy(name, start, end - start + 1);
-        } else {
-            g_strlcpy(name, start, 1024);
-        }
+        g_strlcpy(name, start, end ? end - start + 1 : 1024);
     } else {
         g_strlcpy(name, pwg, 1024);
     }
@@ -124,18 +120,11 @@ static char * getPrettyName(const char * pwg) {
     g_strdelimit(name, "_", ' ');
     // For each '-', remove it and capitalize next letter
     int capitalize = TRUE;
-    char * i = name, * j = i;
-    while (*i != '\0') {
-        if (*i != '-') {
-            if (capitalize) {
-                *j++ = g_ascii_toupper(*i++);
-                capitalize = FALSE;
-            } else
-                *j++ = *i++;
-        } else {
-            ++i;
-            capitalize = TRUE;
-        }
+    char * i, * j;
+    for (i = name, j = i; *i != '\0'; ++i) {
+        if (*i != '-')
+            *j++ = capitalize ? g_ascii_toupper(*i) : *i;
+        capitalize = *i == '-';
     }
     *j = '\0';
     return name;
