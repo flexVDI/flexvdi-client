@@ -11,7 +11,7 @@ set_target_properties(redmon PROPERTIES
 
 # The following targets must be 32-bit
 if (WIN_BITS EQUAL 32)
-add_library(printer-setup SHARED printer-setup.cpp)
+add_library(printer-setup SHARED printer-setup.cpp $<TARGET_OBJECTS:util_o>)
 set_target_properties(printer-setup PROPERTIES
     LINK_FLAGS "-static"
     PREFIX "")

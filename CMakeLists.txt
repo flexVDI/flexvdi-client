@@ -44,11 +44,11 @@ set(sources FlexVDIGuestAgent.cpp VirtioPort.cpp
     CredentialsManager.cpp
     PrintManager.cpp
     )
-add_library(util_o OBJECT util.cpp)
 add_library(objects OBJECT ${sources})
 
 # Build guest agent
 if (WIN32)
+    add_library(util_o OBJECT util.cpp WinSpoolImpl.cpp)
     configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.rc"
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc" @ONLY)
     add_executable(flexvdi-guest-agent WindowsService.cpp
@@ -58,6 +58,7 @@ if (WIN32)
     configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
                    "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
 else (WIN32)
+    add_library(util_o OBJECT util.cpp)
     add_executable(flexvdi-guest-agent main.cpp
                    $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
     target_link_libraries(flexvdi-guest-agent "${FLEXVDI_LIBRARIES}")

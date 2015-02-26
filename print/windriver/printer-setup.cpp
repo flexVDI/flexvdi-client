@@ -8,29 +8,6 @@
 #include <string>
 #include <memory>
 #include <system_error>
-#include <cwchar>
-
-
-class WindowsLibrary {
-public:
-    WindowsLibrary(const wchar_t * name) {
-        libHandle = LoadLibraryW(name);
-    }
-    ~WindowsLibrary() {
-        if (libHandle)
-            FreeLibrary(libHandle);
-    }
-
-    bool isOpen() const {
-        return libHandle != nullptr;
-    }
-    FARPROC getProcAddress(const char * name) const {
-        return GetProcAddress(libHandle, name);
-    }
-
-private:
-    HMODULE libHandle;
-};
 
 
 class wsbuffer {
@@ -124,22 +101,13 @@ bool PortInstaller::addPort(const wchar_t * portName) {
         return false;
     }
 
-    // MinGw version of XcvDataW seems broken, we load it dynamically
-    typedef BOOL (__stdcall *XcvDataWProc)(HANDLE, PCWSTR, PBYTE, DWORD,
-                                           PBYTE, DWORD, PDWORD, PDWORD);
-    WindowsLibrary spool(L"Winspool.drv");
     bool result = false;
-    if (spool.isOpen()) {
-        XcvDataWProc fp = (XcvDataWProc)spool.getProcAddress("XcvDataW");
-        DWORD status, needed;
-        if (!fp) {
-            reportError(L"XcvDataWProc not found");
-        } else if (!fp(hPrinter, L"AddPort", (BYTE *)portName, xcvSize, NULL, 0, &needed, &status)) {
-            reportError(L"XcvDataWProc failed");
-        } else if (status != NO_ERROR && status != ERROR_ALREADY_EXISTS) {
-            reportError(L"XcvDataWProc failed");
-        } else result = true;
-    }
+    DWORD status, needed;
+    if (!XcvDataW(hPrinter, L"AddPort", (BYTE *)portName, xcvSize, NULL, 0, &needed, &status)) {
+        reportError(L"XcvDataWProc failed");
+    } else if (status != NO_ERROR && status != ERROR_ALREADY_EXISTS) {
+        reportError(L"XcvDataWProc failed");
+    } else result = true;
 
     ClosePrinter(hPrinter);
     return result;
