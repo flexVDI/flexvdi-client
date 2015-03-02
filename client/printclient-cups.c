@@ -208,6 +208,95 @@ char * getPPDFile(const char * printer) {
 }
 
 
+static int getMediaOption(CupsConnection * cups, char * jobOptions,
+                          int numOptions, cups_option_t ** options) {
+    char * media = getJobOption(jobOptions, "media");
+    if (media) {
+        int width, length, result;
+        cups_size_t size;
+        if (sscanf(media, "%dx%d", &width, &length) < 2) {
+            result = cupsGetDestMediaByName(cups->http, cups->dest, cups->dinfo,
+                                            media, CUPS_MEDIA_FLAGS_DEFAULT, &size);
+        } else {
+            result = cupsGetDestMediaBySize(cups->http, cups->dest, cups->dinfo,
+                                            width, length, CUPS_MEDIA_FLAGS_DEFAULT, &size);
+        }
+        g_free(media);
+        if (result) {
+            return cupsAddOption("media", size.media, numOptions, options);
+        }
+    }
+    ipp_attribute_t * attr = ippGetDefault(cups, "media");
+    const char * defaultMedia = attr ? ippGetString(attr, 0, NULL) : "a4";
+    return cupsAddOption("media", defaultMedia, numOptions, options);
+}
+
+
+static int getMediaSourceOption(CupsConnection * cups, char * jobOptions,
+                                int numOptions, cups_option_t ** options) {
+    char * media_source = getJobOption(jobOptions, "media-source");
+    ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_SOURCE);
+    if (media_source) {
+        int value = atoi(media_source);
+        if (attr) {
+            if (value < 0 || value >= ippGetCount(attr)) value = 0;
+            numOptions = cupsAddOption(CUPS_MEDIA_SOURCE, ippGetString(attr, value, NULL),
+                                       numOptions, options);
+        }
+        g_free(media_source);
+    }
+    return numOptions;
+}
+
+
+static int getMediaTypeOption(CupsConnection * cups, char * jobOptions,
+                              int numOptions, cups_option_t ** options) {
+    char * media_type = getJobOption(jobOptions, "media-type");
+    ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_TYPE);
+    if (media_type) {
+        int value = atoi(media_type);
+        if (attr) {
+            if (value < 0 || value >= ippGetCount(attr)) value = 0;
+            numOptions = cupsAddOption(CUPS_MEDIA_TYPE, ippGetString(attr, value, NULL),
+                                       numOptions, options);
+        }
+        g_free(media_type);
+    }
+    return numOptions;
+}
+
+
+static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
+                            cups_option_t ** options) {
+    char * sides = getJobOption(jobOptions, "sides"),
+         * copies = getJobOption(jobOptions, "copies"),
+         * collate = getJobOption(jobOptions, "Collate"),
+         * resolution = getJobOption(jobOptions, "Resolution"),
+         * color = getJobOption(jobOptions, "gray");
+
+    *options = NULL;
+    int numOptions = 0;
+
+    // Media size
+    numOptions = getMediaOption(cups, jobOptions, numOptions, options);
+    numOptions = getMediaSourceOption(cups, jobOptions, numOptions, options);
+    numOptions = getMediaTypeOption(cups, jobOptions, numOptions, options);
+    if (sides) numOptions = cupsAddOption("sides", sides, numOptions, options);
+    if (collate) numOptions = cupsAddOption("Collate", "True", numOptions, options);
+    if (resolution) numOptions = cupsAddOption("Resolution", resolution, numOptions, options);
+    if (copies) numOptions = cupsAddOption("copies", copies, numOptions, options);
+//     if (color) numOptions = cupsAddOption(..., numOptions, options);
+
+    g_free(sides);
+    g_free(collate);
+    g_free(resolution);
+    g_free(copies);
+    g_free(color);
+    fprintf(stderr, "%d options\n", numOptions);
+    return numOptions;
+}
+
+
 void printJob(PrintJob * job) {
     openWithApp(job->name);
 }
