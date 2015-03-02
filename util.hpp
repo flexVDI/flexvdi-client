@@ -17,7 +17,9 @@ std::system_error lastSystemError(const std::string & msg);
 #define throw_if(cond, msg) \
 do { if (cond) throw lastSystemError(msg); } while(0)
 #define return_if(cond, msg, ret) \
-do { if (cond) { Log(L_ERROR) << msg << lastSystemError("").what(); return ret; }} while(0)
+do { if (cond) { \
+    LogError() << msg; \
+    return ret; }} while(0)
 
 struct on_return_struct {
     std::function<void(void)> f;
@@ -77,7 +79,7 @@ public:
     static const char * getDefaultLogPath();
     template <typename P> static void setPrefix(P p) { prefix = p; }
 
-private:
+protected:
     const bool enabled;
     #ifdef NDEBUG
     static const LogLevel minLevel = L_INFO;
@@ -91,6 +93,18 @@ private:
     static void defaultPrefix(Log & log, LogLevel level) {
         log << date() << " [" << levelStr[level] << "] ";
     };
+};
+
+
+class LogError : public Log {
+public:
+    LogError() : Log(L_ERROR) {}
+    ~LogError() {
+        if (enabled) {
+            std::system_error error = lastSystemError("");
+            *out << ", " << error.code() << error.what();
+        }
+    }
 };
 
 
