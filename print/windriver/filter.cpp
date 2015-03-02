@@ -65,11 +65,7 @@ private:
     }
 
     string getTempFileName() {
-        char tempPath[MAX_PATH] = ".\\";
-        GetTempPathA(MAX_PATH, tempPath);
-        char tempFilePath[MAX_PATH];
-        GetTempFileNameA(tempPath, "fpj", 0, tempFilePath); // fpj = FlexVDI Print Job
-        tmpFiles.push_back(string(tempFilePath));
+        tmpFiles.push_back(flexvm::getTempFileName("fpj")); // fpj = FlexVDI Print Job
         return tmpFiles.back();
     }
 
