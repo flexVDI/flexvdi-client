@@ -3,12 +3,18 @@
  **/
 
 #include <fstream>
+#ifdef WIN32
+#include <windows.h>
+#include <winspool.h>
+#else
+#endif
 #include "PrintManager.hpp"
 #include "FlexVDIGuestAgent.hpp"
 #include "util.hpp"
 
 using namespace flexvm;
 using std::string;
+using std::wstring;
 namespace ph = std::placeholders;
 
 
@@ -41,10 +47,31 @@ void PrintManager::handle(const Connection::Ptr & src, const PrintJobDataMsgPtr 
 
 void PrintManager::handle(const Connection::Ptr & src, const SharePrinterMsgPtr & msg) {
     string printer(getPrinterName(msg.get()));
+    const char * ppdText = getPPD(msg.get()), * ppdEnd = ppdText + msg->ppdLength;
+    const char * key = "*PCFileName: \"";
+    const int keyLength = 14;
+    string fileName;
+    for (const char * pos = ppdText; pos < ppdEnd - keyLength; ++pos) {
+        if (!strncmp(pos, key, keyLength)) {
+            pos += keyLength;
+            const char * end = strchr(pos, '"');
+            if (end) {
+                fileName = getTempDirName() + string(pos, end);
+                break;
+            }
+        }
+    }
+    if (fileName.empty()) fileName = getTempFileName("fv") + ".ppd";
+    std::ofstream ppdFile(fileName.c_str());
+    ppdFile.write(ppdText, msg->ppdLength);
+    installPrinter(printer, fileName);
 }
 
 
 void PrintManager::handle(const Connection::Ptr & src, const UnsharePrinterMsgPtr & msg) {
+    string printer(msg->printerName, msg->printerNameLength);
+    Log(L_DEBUG) << "Uninstalling printer " << printer
+                 << (uninstallPrinter(printer) ? " succeeded" : " failed");
 }
 
 
@@ -66,3 +93,122 @@ void PrintManager::closed(const Connection::Ptr & src,
     client->send(buffer);
     jobs.erase(job);
 }
+
+
+#ifdef WIN32
+static bool uninstallPrinterW(const wstring & printer, bool cannotFail = true) {
+    HANDLE hPrinter;
+    PRINTER_DEFAULTSW pd{ NULL, NULL, PRINTER_ALL_ACCESS };
+    if (OpenPrinterW((wchar_t *)printer.c_str(), &hPrinter, &pd)) {
+        DeletePrinter(hPrinter);
+        ClosePrinter(hPrinter);
+        Log(L_DEBUG) << "Uninstalled printer " << printer;
+    }
+    if (!DeletePrinterDriverExW(NULL, NULL, (wchar_t *)printer.c_str(),
+                                DPD_DELETE_UNUSED_FILES, 0) && cannotFail) {
+        LogError() << "DeletePrinterDriverEx failed";
+        return false;
+    }
+    return true;
+}
+
+
+static wstring fileAt(const wstring & srcFile, const wstring & dstDir) {
+    int withSlash = dstDir.back() == '\\' ? 1 : 0;
+    return dstDir + srcFile.substr(srcFile.find_last_of('\\') + withSlash);
+}
+
+
+static bool installPrinterDriver(const wstring & printer, const wstring & ppd) {
+    DWORD needed = 0, returned = 0;
+    EnumPrinterDriversW(NULL, NULL, 2, NULL, 0, &needed, &returned);
+    std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
+    DRIVER_INFO_2W * dinfo = (DRIVER_INFO_2W *)buffer.get();
+    if (needed && EnumPrinterDriversW(NULL, NULL, 2, buffer.get(),
+                                      needed, &needed, &returned)) {
+        for (unsigned int i = 0; i < returned; i++) {
+            if (dinfo[i].pName == wstring(L"flexVDI Printer")) {
+                GetPrinterDriverDirectoryW(NULL, NULL, 1, NULL, 0, &needed);
+                std::unique_ptr<BYTE[]> bufferDir(new BYTE[needed]);
+                if (!needed || !GetPrinterDriverDirectoryW(NULL, NULL, 1, bufferDir.get(),
+                                                           needed, &needed)) {
+                    LogError() << "Failed to get Printer Driver Directory";
+                    return false;
+                }
+                wstring driverPath((wchar_t *)bufferDir.get());
+                wstring ppdNew = fileAt(ppd, driverPath),
+                        config = fileAt(dinfo[i].pConfigFile, driverPath),
+                        driver = fileAt(dinfo[i].pDriverPath, driverPath);
+                bool result = false;
+                if (CopyFileW(ppd.c_str(), ppdNew.c_str(), TRUE) &&
+                    CopyFileW(dinfo[i].pConfigFile, config.c_str(), FALSE) &&
+                    CopyFileW(dinfo[i].pDriverPath, driver.c_str(), FALSE)) {
+                    dinfo[i].pName = (wchar_t *)printer.c_str();
+                    dinfo[i].pDataFile = (wchar_t *)ppdNew.c_str();
+                    if (AddPrinterDriverW(NULL, 2, (LPBYTE)&dinfo[i])) result = true;
+                    else LogError() << "AddPrinterDriver failed";
+                }
+                DeleteFileW(ppdNew.c_str());
+                DeleteFileW(config.c_str());
+                DeleteFileW(driver.c_str());
+                return result;
+            }
+        }
+        LogError() << "No flexVDI printer driver found";
+    } else LogError() << "EnumPrinterDrivers failed";
+    LogError() << "Failed to install printer driver " << printer;
+    return false;
+}
+
+
+static bool installPrinterW(const wstring & printer, const wstring & ppd) {
+    Log(L_DEBUG) << "Installing printer " << printer << " from " << ppd;
+
+    // Just in case...
+    uninstallPrinterW(printer, false);
+
+    if (!installPrinterDriver(printer, ppd)) return false;
+    DWORD needed = 0, returned = 0;
+    DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
+    EnumPrintersW(flags, NULL, 2, NULL, 0, &needed, &returned);
+    std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
+    PRINTER_INFO_2W * pri2 = (PRINTER_INFO_2W *)buffer.get();
+    if (needed && EnumPrintersW(flags, NULL, 2, buffer.get(), needed, &needed, &returned)) {
+        for (unsigned int i = 0; i < returned; i++) {
+            if (pri2[i].pDriverName == wstring(L"flexVDI Printer")) {
+                pri2[i].pDriverName = pri2[i].pPrinterName = (wchar_t *)printer.c_str();
+                if (AddPrinterW(NULL, 2, (LPBYTE)&pri2[i])) {
+                    Log(L_DEBUG) << "Printer " << printer << " added successfully";
+                    return true;
+                } else break;
+            }
+        }
+        LogError() << "No flexVDI printer found";
+    } else LogError() << "EnumPrinters failed";
+    LogError() << "Failed to install printer " << printer;
+    uninstallPrinterW(printer, false);
+    return false;
+}
+
+
+bool PrintManager::installPrinter(const string & printer, const string & ppd) {
+    return installPrinterW(toWstring(printer), toWstring(ppd));
+}
+
+
+bool PrintManager::uninstallPrinter(const string & printer) {
+    return uninstallPrinterW(toWstring(printer));
+}
+
+
+#else
+bool PrintManager::installPrinter(const string & printer, const string & ppd) {
+    return false;
+}
+
+
+bool PrintManager::uninstallPrinter(const string & printer) {
+    return false;
+}
+
+#endif

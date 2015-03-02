@@ -46,6 +46,9 @@ private:
     }
 
     void closed(const Connection::Ptr & src, const boost::system::error_code & error);
+
+    static bool installPrinter(const std::string & printer, const std::string & ppd);
+    static bool uninstallPrinter(const std::string & printer);
 };
 
 }
