@@ -33,8 +33,7 @@ private:
 extern "C" WINBOOL WINAPI XcvDataW(HANDLE hXcv, PCWSTR pszDataName, PBYTE pInputData,
                                    DWORD cbInputData, PBYTE pOutputData, DWORD cbOutputData,
                                    PDWORD pcbOutputNeeded, PDWORD pdwStatus) {
-    typedef WINBOOL (WINAPI *Proc)(HANDLE, PCWSTR, PBYTE, DWORD,
-                                   PBYTE, DWORD, PDWORD, PDWORD);
+    typedef decltype(&XcvDataW) Proc;
     WindowsLibrary spool(L"Winspool.drv");
     if (spool.isOpen()) {
         Proc fp = (Proc)spool.getProcAddress("XcvDataW");
@@ -48,13 +47,13 @@ extern "C" WINBOOL WINAPI XcvDataW(HANDLE hXcv, PCWSTR pszDataName, PBYTE pInput
 }
 
 
-extern "C" WINBOOL WINAPI DeletePrinterDriverExA(LPSTR pName, LPSTR pEnvironment,
-                                                 LPSTR pDriverName, DWORD dwDeleteFlag,
+extern "C" WINBOOL WINAPI DeletePrinterDriverExW(LPWSTR pName, LPWSTR pEnvironment,
+                                                 LPWSTR pDriverName, DWORD dwDeleteFlag,
                                                  DWORD dwVersionFlag) {
-    typedef WINBOOL (WINAPI *Proc)(LPSTR, LPSTR, LPSTR, DWORD, DWORD);
+    typedef decltype(&DeletePrinterDriverExW) Proc;
     WindowsLibrary spool(L"Winspool.drv");
     if (spool.isOpen()) {
-        Proc fp = (Proc)spool.getProcAddress("DeletePrinterDriverExA");
+        Proc fp = (Proc)spool.getProcAddress("DeletePrinterDriverExW");
         if (!fp) {
             return FALSE;
         } else
