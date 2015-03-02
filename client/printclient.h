@@ -2,16 +2,16 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
-#ifndef _FLEXVDI_SPICE_H_
-#define _FLEXVDI_SPICE_H_
+#ifndef _PRINTCLIENT_H_
+#define _PRINTCLIENT_H_
 
 #include <stddef.h>
 #include "FlexVDIProto.h"
 
 typedef struct PrintJob {
-    gint fileHandle;
-    gchar * name;
-    gchar * options;
+    int fileHandle;
+    char * name;
+    char * options;
 } PrintJob;
 
 void initPrintClient();
@@ -24,4 +24,6 @@ char * getPPDFile(const char * printer);
 
 void printJob(PrintJob * job);
 
-#endif /* _FLEXVDI_SPICE_H_ */
+char * getJobOption(char * options, const char * opName);
+
+#endif /* _PRINTCLIENT_H_ */

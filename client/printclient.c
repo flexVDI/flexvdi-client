@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -60,6 +61,30 @@ void handlePrintJobData(FlexVDIPrintJobDataMsg * msg) {
     } else {
         printf("Job %d not found\n", msg->id);
     }
+}
+
+
+char * getJobOption(char * options, const char * opName) {
+    int opLen = strlen(opName);
+    char * opPos = strstr(options, opName);
+    if (!opPos) return NULL;
+    opPos += opLen;
+    int valueLen = 0;
+    if (*opPos == '=') {
+        ++opPos;
+        char delimiter = ' ';
+        if (*opPos == '"') {
+            ++opPos;
+            delimiter = '"';
+        }
+        char * end = strchr(opPos, delimiter);
+        if (!end) return NULL;
+        valueLen = end - opPos;
+    }
+    char * result = g_malloc(valueLen + 1);
+    memcpy(result, opPos, valueLen);
+    result[valueLen] = '\0';
+    return result;
 }
 
 
