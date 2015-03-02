@@ -78,7 +78,7 @@ char * getJobOption(char * options, const char * opName) {
             delimiter = '"';
         }
         char * end = strchr(opPos, delimiter);
-        if (!end) return NULL;
+        if (!end) end = options + strlen(options);
         valueLen = end - opPos;
     }
     char * result = g_malloc(valueLen + 1);
