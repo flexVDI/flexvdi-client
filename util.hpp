@@ -29,6 +29,9 @@ struct on_return_struct {
 #define on_return(code) \
 on_return_struct BOOST_PP_CAT(on_return_, __LINE__)(code)
 
+std::string toString(const std::wstring & str);
+std::wstring toWstring(const std::string & str);
+
 enum LogLevel {
     L_DEBUG = 0,
     L_INFO,
@@ -57,16 +60,19 @@ public:
         return *this;
     }
     Log & operator<<(const wchar_t * par) {
-        if (enabled) {
-            char buffer[512];
-            wcstombs(buffer, par, 511);
-            buffer[511] = '\0';
-            *out << buffer;
-        }
+        if (enabled)
+            *out << toString(par);
         return *this;
     }
     Log & operator<<(wchar_t * par) {
-        return operator<<(const_cast<const wchar_t *>(par));
+        if (enabled)
+            *out << toString(par);
+        return *this;
+    }
+    Log & operator<<(const std::wstring & par) {
+        if (enabled)
+            *out << toString(par);
+        return *this;
     }
 
     struct date {};
@@ -117,6 +123,10 @@ struct LogCall {
         Log(L_DEBUG) << "<--" << fn;
     }
 };
+
+
+std::string getTempFileName(const char * prefix);
+std::string getTempDirName();
 
 }
 

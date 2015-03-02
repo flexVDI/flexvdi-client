@@ -13,8 +13,11 @@
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
+#include <memory>
+#include <random>
 #include <ctime>
 #include <cstring>
+#include <cstdlib>
 #include <chrono>
 #define FLEXVDI_PROTO_IMPL
 #include "FlexVDIProto.h"
@@ -39,6 +42,38 @@ void Log::logDate() {
 }
 
 
+std::string flexvm::toString(const std::wstring & str) {
+    size_t size = str.length()*4 + 1; // The maximum size of an UTF8 encoding of str
+    std::unique_ptr<char[]> buffer(new char[size]);
+    wcstombs(buffer.get(), str.c_str(), size);
+    buffer[size - 1] = '\0';
+    return std::string(buffer.get());
+}
+
+
+std::wstring flexvm::toWstring(const std::string & str) {
+    size_t size = str.length() + 1;
+    std::unique_ptr<wchar_t[]> buffer(new wchar_t[size]);
+    mbstowcs(buffer.get(), str.c_str(), size);
+    buffer[size - 1] = L'\0';
+    return std::wstring(buffer.get());
+}
+
+
+std::string flexvm::getTempFileName(const char * prefix) {
+    static std::default_random_engine generator(
+        high_resolution_clock::now().time_since_epoch().count()
+    );
+    const char charset[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::uniform_int_distribution<int> distribution(0, sizeof(charset) - 1);
+    char randomString[9];
+    for (int i = 0; i < 8; ++i)
+        randomString[i] = charset[distribution(generator)];
+    randomString[8] = '\0';
+    return getTempDirName() + prefix + randomString;
+}
+
+
 #ifdef WIN32
 const char * Log::getDefaultLogPath() {
     static char logPath[MAX_PATH + 9] = "c:";
@@ -57,10 +92,19 @@ std::system_error flexvm::lastSystemError(const std::string & msg) {
 }
 
 
+std::string flexvm::getTempDirName() {
+    char tempPath[MAX_PATH] = ".\\";
+    GetTempPathA(MAX_PATH, tempPath);
+    return std::string(tempPath);
+}
+
+
 #else
 const char * Log::getDefaultLogPath() {
     if (!mkdir("/var/log/flexVDI", 0755) || errno == EEXIST)
         return "/var/log/flexVDI";
+    else if (getenv("TMPDIR"))
+        return getenv("TMPDIR");
     else
         return "/tmp";
 }
@@ -69,4 +113,12 @@ const char * Log::getDefaultLogPath() {
 std::system_error flexvm::lastSystemError(const std::string & msg) {
     return std::system_error(errno, std::system_category(), msg);
 }
+
+
+std::string flexvm::getTempDirName() {
+    const char * envTmp = getenv("TMPDIR");
+    if (envTmp) return std::string(envTmp) + "/";
+    return std::string("/tmp/");
+}
+
 #endif
