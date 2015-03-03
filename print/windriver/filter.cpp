@@ -70,13 +70,27 @@ private:
     }
 
     void readEnv() {
-        char buffer[512];
-        GetEnvironmentVariableA("REDMON_PRINTER", buffer, 512);
-        printerName = buffer;
-        GetEnvironmentVariableA("REDMON_JOB", buffer, 512);
-        jobId = stoi(buffer);
-        GetEnvironmentVariableA("REDMON_DOCNAME", buffer, 512);
-        docName = buffer;
+        std::unique_ptr<char[]> buffer;
+        int size;
+
+        size = GetEnvironmentVariableA("REDMON_PRINTER", NULL, 0);
+        buffer.reset(new char[size]);
+        GetEnvironmentVariableA("REDMON_PRINTER", buffer.get(), size);
+        printerName = buffer.get();
+
+        size = GetEnvironmentVariableA("REDMON_JOB", NULL, 0);
+        buffer.reset(new char[size]);
+        GetEnvironmentVariableA("REDMON_JOB", buffer.get(), size);
+        jobId = stoi(buffer.get());
+
+        size = GetEnvironmentVariableW(L"REDMON_DOCNAME", NULL, 0);
+        std::unique_ptr<wchar_t[]> wbuffer(new wchar_t[size]);
+        GetEnvironmentVariableW(L"REDMON_DOCNAME", wbuffer.get(), size);
+        // We need a UTF-8 version of this string
+        size = WideCharToMultiByte(CP_UTF8, 0, wbuffer.get(), -1, NULL, 0, NULL, NULL);
+        buffer.reset(new char[size]);
+        WideCharToMultiByte(CP_UTF8, 0, wbuffer.get(), -1, buffer.get(), size, NULL, NULL);
+        docName = buffer.get();
     }
 
     void getJobInfo();
