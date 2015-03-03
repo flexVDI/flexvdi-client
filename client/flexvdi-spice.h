@@ -24,7 +24,7 @@ typedef struct FlexVDISpiceCallbacks {
 void flexvdiLog(FlexVDILogLevel level, const char * format, ...);
 
 void flexvdiSpiceInit(FlexVDISpiceCallbacks * callbacks);
-
+void flexvdiSpiceConnected();
 int flexvdiSpiceData(void * data, size_t size);
 
 // SSO API
