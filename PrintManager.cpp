@@ -96,7 +96,7 @@ void PrintManager::closed(const Connection::Ptr & src,
 
 
 #ifdef WIN32
-static bool uninstallPrinterW(const wstring & printer, bool cannotFail = true) {
+static bool uninstallPrinterW(const wstring & printer, bool cannotFail) {
     HANDLE hPrinter;
     PRINTER_DEFAULTSW pd{ NULL, NULL, PRINTER_ALL_ACCESS };
     if (OpenPrinterW((wchar_t *)printer.c_str(), &hPrinter, &pd)) {
@@ -110,6 +110,23 @@ static bool uninstallPrinterW(const wstring & printer, bool cannotFail = true) {
         return false;
     }
     return true;
+}
+
+
+void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) {
+    DWORD needed = 0, returned = 0;
+    DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
+    EnumPrintersW(flags, NULL, 2, NULL, 0, &needed, &returned);
+    std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
+    PRINTER_INFO_2W * pri2 = (PRINTER_INFO_2W *)buffer.get();
+    if (needed && EnumPrintersW(flags, NULL, 2, buffer.get(), needed, &needed, &returned)) {
+        for (unsigned int i = 0; i < returned; i++) {
+            if (pri2[i].pPortName == wstring(L"flexVDIprint") &&
+                pri2[i].pDriverName != wstring(L"flexVDI Printer")) {
+                uninstallPrinterW(pri2[i].pPrinterName, true);
+            }
+        }
+    } else LogError() << "EnumPrinters failed";
 }
 
 
@@ -197,11 +214,15 @@ bool PrintManager::installPrinter(const string & printer, const string & ppd) {
 
 
 bool PrintManager::uninstallPrinter(const string & printer) {
-    return uninstallPrinterW(toWstring(printer));
+    return uninstallPrinterW(toWstring(printer), true);
 }
 
 
 #else
+void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) {
+}
+
+
 bool PrintManager::installPrinter(const string & printer, const string & ppd) {
     return false;
 }

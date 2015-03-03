@@ -17,17 +17,20 @@ class PrintManager : public FlexVDIComponent<PrintManager
 ,FlexVDIPrintJobDataMsg
 ,FlexVDISharePrinterMsg
 ,FlexVDIUnsharePrinterMsg
+,FlexVDIResetMsg
 > {
 public:
     typedef MessagePtr<FlexVDIPrintJobMsg> PrintJobMsgPtr;
     typedef MessagePtr<FlexVDIPrintJobDataMsg> PrintJobDataMsgPtr;
     typedef MessagePtr<FlexVDISharePrinterMsg> SharePrinterMsgPtr;
     typedef MessagePtr<FlexVDIUnsharePrinterMsg> UnsharePrinterMsgPtr;
+    typedef MessagePtr<FlexVDIResetMsg> ResetMsgPtr;
 
     void handle(const Connection::Ptr & src, const PrintJobMsgPtr & msg);
     void handle(const Connection::Ptr & src, const PrintJobDataMsgPtr & msg);
     void handle(const Connection::Ptr & src, const SharePrinterMsgPtr & msg);
     void handle(const Connection::Ptr & src, const UnsharePrinterMsgPtr & msg);
+    void handle(const Connection::Ptr & src, const ResetMsgPtr & msg);
 
 private:
     struct Job {
