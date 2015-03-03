@@ -21,10 +21,17 @@ void flexvdiSpiceInit(FlexVDISpiceCallbacks * callbacks) {
 }
 
 
+void flexvdiLog(FlexVDILogLevel level, const char * format, ...) {
+    va_list args;
+    va_start(args, format);
+    cb->log(level, format, args);
+    va_end(args);
+}
+
 static const size_t HEADER_SIZE = sizeof(FlexVDIMessageHeader);
 
 static uint8_t * getMsgBuffer(size_t size) {
-    uint8_t * buf = (uint8_t *)cb->getBuffer(size + HEADER_SIZE);
+    uint8_t * buf = (uint8_t *)g_malloc(size + HEADER_SIZE);
     if (buf) {
         ((FlexVDIMessageHeader *)buf)->size = size;
         return buf + HEADER_SIZE;

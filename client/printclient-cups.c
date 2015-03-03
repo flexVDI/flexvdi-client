@@ -3,6 +3,7 @@
 #include <cups/cups.h>
 #include "printclient.h"
 #include "PPDGenerator.h"
+#include "flexvdi-spice.h"
 
 
 static void openWithApp(const char * file) {
@@ -22,7 +23,7 @@ int flexvdiSpiceGetPrinterList(GSList ** printerList) {
     for (i = numDests, dest = dests; i > 0; --i, ++dest) {
         char * name;
         if (dest->instance) {
-            g_snprintf(instance, 256, "%s/%s\n", dest->name, dest->instance);
+            snprintf(instance, 256, "%s/%s\n", dest->name, dest->instance);
             *printerList = g_slist_prepend(*printerList, g_strdup(instance));
         } else {
             *printerList = g_slist_prepend(*printerList, g_strdup(dest->name));
@@ -293,7 +294,7 @@ static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
     g_free(resolution);
     g_free(copies);
     g_free(color);
-    fprintf(stderr, "%d options\n", numOptions);
+    flexvdiLog(L_DEBUG, "%d options\n", numOptions);
     return numOptions;
 }
 

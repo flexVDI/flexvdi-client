@@ -6,12 +6,22 @@
 #define _FLEXVDI_SPICE_H_
 
 #include <stddef.h>
+#include <stdarg.h>
 #include <glib.h>
 
+typedef enum {
+    L_DEBUG,
+    L_INFO,
+    L_WARN,
+    L_ERROR
+} FlexVDILogLevel;
+
 typedef struct FlexVDISpiceCallbacks {
-    void * (* getBuffer)(size_t size);
     void (* sendMessage)(void * buffer, size_t size);
+    void (* log)(FlexVDILogLevel level, const char * format, va_list args);
 } FlexVDISpiceCallbacks;
+
+void flexvdiLog(FlexVDILogLevel level, const char * format, ...);
 
 void flexvdiSpiceInit(FlexVDISpiceCallbacks * callbacks);
 
