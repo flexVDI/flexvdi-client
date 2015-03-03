@@ -270,7 +270,7 @@ static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
                             cups_option_t ** options) {
     char * sides = getJobOption(jobOptions, "sides"),
          * copies = getJobOption(jobOptions, "copies"),
-         * collate = getJobOption(jobOptions, "Collate"),
+         * nocollate = getJobOption(jobOptions, "noCollate"),
          * resolution = getJobOption(jobOptions, "Resolution"),
          * color = getJobOption(jobOptions, "gray");
 
@@ -282,13 +282,14 @@ static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
     numOptions = getMediaSourceOption(cups, jobOptions, numOptions, options);
     numOptions = getMediaTypeOption(cups, jobOptions, numOptions, options);
     if (sides) numOptions = cupsAddOption("sides", sides, numOptions, options);
-    if (collate) numOptions = cupsAddOption("Collate", "True", numOptions, options);
+    if (nocollate) numOptions = cupsAddOption("Collate", "False", numOptions, options);
+    else numOptions = cupsAddOption("Collate", "True", numOptions, options);
     if (resolution) numOptions = cupsAddOption("Resolution", resolution, numOptions, options);
     if (copies) numOptions = cupsAddOption("copies", copies, numOptions, options);
 //     if (color) numOptions = cupsAddOption(..., numOptions, options);
 
     g_free(sides);
-    g_free(collate);
+    g_free(nocollate);
     g_free(resolution);
     g_free(copies);
     g_free(color);
