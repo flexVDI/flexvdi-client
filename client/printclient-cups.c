@@ -300,5 +300,23 @@ static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
 
 
 void printJob(PrintJob * job) {
-    openWithApp(job->name);
+    char * printer = getJobOption(job->options, "printer");
+    char * title = getJobOption(job->options, "title");
+
+    if (printer) {
+        CupsConnection * cups = openCups(printer);
+        if (cups->dinfo) {
+            cups_option_t * options;
+            int numOptions = jobOptionsToCups(cups, job->options, &options), i;
+            cupsPrintFile2(cups->http, printer, job->name, title ? title : "",
+                           numOptions, options);
+            for (i = 0; i < numOptions; ++i) {
+                flexvdiLog(L_DEBUG, "%s = %s\n", options[i].name, options[i].value);
+            }
+        } else openWithApp(job->name);
+        closeCups(cups);
+    } else openWithApp(job->name);
+
+    g_free(printer);
+    g_free(title);
 }
