@@ -39,6 +39,7 @@ enum {
     FLEXVDI_PRINTJOBDATA,
     FLEXVDI_SHAREPRINTER,
     FLEXVDI_UNSHAREPRINTER,
+    FLEXVDI_RESET,
     FLEXVDI_MAX_MESSAGE_TYPE // Must be the last one
 };
 
@@ -61,7 +62,7 @@ static inline const char * getCredentialsDomain(const FlexVDICredentialsMsg * ms
 }
 
 
-typedef struct FlexVDIEmptyMsg {
+typedef struct FlexVDIAskCredentialsMsg {
 } FlexVDIAskCredentialsMsg;
 
 
@@ -98,6 +99,11 @@ typedef struct FlexVDIUnsharePrinterMsg {
     char printerName[0]; // printerName + '\0'
 } FlexVDIUnsharePrinterMsg;
 
+
+typedef struct FlexVDIResetMsg {
+} FlexVDIResetMsg;
+
+
 #ifdef FLEXVDI_PROTO_IMPL
 
 typedef int (*MarshallingFunction)(uint8_t *, size_t);
@@ -115,6 +121,7 @@ PROTO_SIZE_FUNC(FlexVDIPrintJobMsg, msg->optionsLength)
 PROTO_SIZE_FUNC(FlexVDIPrintJobDataMsg, msg->dataLength)
 PROTO_SIZE_FUNC(FlexVDISharePrinterMsg, msg->printerNameLength + msg->ppdLength + 1)
 PROTO_SIZE_FUNC(FlexVDIUnsharePrinterMsg, msg->printerNameLength + 1)
+PROTO_SIZE_FUNC(FlexVDIResetMsg, 0)
 
 static SizeFunction sizeFunctions[FLEXVDI_MAX_MESSAGE_TYPE] = {
     [FLEXVDI_CREDENTIALS] = getFlexVDICredentialsMsgSize,
@@ -123,6 +130,7 @@ static SizeFunction sizeFunctions[FLEXVDI_MAX_MESSAGE_TYPE] = {
     [FLEXVDI_PRINTJOBDATA] = getFlexVDIPrintJobDataMsgSize,
     [FLEXVDI_SHAREPRINTER] = getFlexVDISharePrinterMsgSize,
     [FLEXVDI_UNSHAREPRINTER] = getFlexVDIUnsharePrinterMsgSize,
+    [FLEXVDI_RESET] = getFlexVDIResetMsgSize,
 };
 
 size_t messageSize(uint32_t type, const uint8_t * data) {
@@ -174,6 +182,7 @@ static MarshallingFunction marshallers[FLEXVDI_MAX_MESSAGE_TYPE] = {
     [FLEXVDI_PRINTJOBDATA] = marshallFlexVDIPrintJobDataMsg,
     [FLEXVDI_SHAREPRINTER] = marshallFlexVDISharePrinterMsg,
     [FLEXVDI_UNSHAREPRINTER] = marshallFlexVDIUnsharePrinterMsg,
+    [FLEXVDI_RESET] = marshallEmptyMsg,
 };
 
 int marshallMessage(uint32_t type, uint8_t * data, size_t bytes) {
