@@ -517,7 +517,6 @@ BOOL redmon_start_doc_port(REDATA * prd, LPTSTR pPrinterName,
     int j, pathsep;
     LPTSTR s;
     BOOL flag;
-    HANDLE hPrinter;
 
     if (prd == (REDATA *)NULL) {
         SetLastError(ERROR_INVALID_HANDLE);
@@ -1383,7 +1382,6 @@ BOOL make_env(REDATA * prd) {
     LPTSTR env_strings = NULL;
     LPTSTR env = NULL;
     LPTSTR extra_env;
-    BOOL destroy_env = FALSE;
     HGLOBAL h_extra_env;
     /* Add some environment variables */
     /* It would be simpler to use SetEnvironmentVariable()

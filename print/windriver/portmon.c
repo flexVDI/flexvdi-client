@@ -715,7 +715,6 @@ BOOL WINAPI rcDeletePortUI(PCWSTR pszServer, HWND hWnd, PCWSTR pszPortName) {
     TCHAR pszServerName[MAXSTR];
     HANDLE hXcv = NULL;
     DWORD dwStatus = ERROR_SUCCESS;
-    DWORD dwError = ERROR_SUCCESS;
     DWORD dwOutput = 0;
     DWORD dwNeeded = 0;
     PRINTER_DEFAULTS pd;
@@ -1068,7 +1067,7 @@ BOOL WINAPI rWritePort(HANDLE  hPort, LPBYTE  pBuffer,
 #ifdef DEBUG_REDMON
     syslog(TEXT("rWritePort returns TRUE\r\n"));
 #endif
-    return TRUE;    /* returning FALSE crashes Win95 spooler */
+    return flag;
 }
 
 /* ReadPort can be called within a Start/EndDocPort pair,
@@ -1126,7 +1125,7 @@ BOOL WINAPI rEndDocPort(HANDLE hPort) {
 #ifdef DEBUG_REDMON
     syslog(TEXT("rEndDocPort returns TRUE\r\n"));
 #endif
-    return TRUE;
+    return flag;
 }
 
 

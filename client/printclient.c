@@ -23,7 +23,7 @@ static gboolean removeTempFiles(gpointer user_data) {
         GStatBuf fileStat;
         time_t now = time(NULL);
         GRegex * regex = g_regex_new("fpj......\\.pdf$", 0, 0, NULL);
-        while (basename = g_dir_read_name(tmpDir)) {
+        while ((basename = g_dir_read_name(tmpDir))) {
             snprintf(file, 1024, "%s/%s", tmpDirName, basename);
             g_stat(file, &fileStat);
             time_t elapsed = now - fileStat.st_mtime;

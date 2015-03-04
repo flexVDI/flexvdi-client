@@ -148,12 +148,12 @@ int flexvdiSpiceSharePrinter(const char * printer) {
     int result = 0;
     nameLength = strnlen(printer, 1024);
     if (!g_stat(ppdName, &statbuf)) {
-        uint8_t * buf;
         ppdLength = statbuf.st_size;
         bufSize = sizeof(FlexVDISharePrinterMsg) + nameLength + 1 + ppdLength;
-        if (buf = getMsgBuffer(bufSize)) {
-            FILE * ppd;
-            if (ppd = g_fopen(ppdName, "r")) {
+        uint8_t * buf = getMsgBuffer(bufSize);
+        if (buf) {
+            FILE * ppd = g_fopen(ppdName, "r");
+            if (ppd) {
                 FlexVDISharePrinterMsg * msg = (FlexVDISharePrinterMsg *)buf;
                 msg->printerNameLength = nameLength;
                 msg->ppdLength = ppdLength;
@@ -171,11 +171,10 @@ int flexvdiSpiceSharePrinter(const char * printer) {
 
 
 int flexvdiSpiceUnsharePrinter(const char * printer) {
-    size_t bufSize, nameLength;
-    nameLength = strnlen(printer, 1024);
-    uint8_t * buf;
-    bufSize = sizeof(FlexVDIUnsharePrinterMsg) + nameLength + 1;
-    if (buf = getMsgBuffer(bufSize)) {
+    size_t nameLength = strnlen(printer, 1024);
+    size_t bufSize = sizeof(FlexVDIUnsharePrinterMsg) + nameLength + 1;
+    uint8_t * buf = getMsgBuffer(bufSize);
+    if (buf) {
         FlexVDIUnsharePrinterMsg * msg = (FlexVDIUnsharePrinterMsg *)buf;
         msg->printerNameLength = nameLength;
         strncpy(msg->printerName, printer, nameLength + 1);

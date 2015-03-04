@@ -321,7 +321,7 @@ static void generatePaperSizes(PPDGenerator * ppd) {
 }
 
 
-static generateResolutions(PPDGenerator * ppd) {
+static void generateResolutions(PPDGenerator * ppd) {
     GSList * i;
     if (ppd->defaultResolution == 0) {
         ppd->defaultResolution = 300;
@@ -346,7 +346,6 @@ static generateResolutions(PPDGenerator * ppd) {
 
 
 static void generateDuplex(PPDGenerator * ppd) {
-    GSList * i;
     if (ppd->duplex) {
         fprintf(ppd->file,
                 "*%% == Duplex\n"
