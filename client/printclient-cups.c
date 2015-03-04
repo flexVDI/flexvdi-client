@@ -273,7 +273,7 @@ static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
          * copies = getJobOption(jobOptions, "copies"),
          * nocollate = getJobOption(jobOptions, "noCollate"),
          * resolution = getJobOption(jobOptions, "Resolution"),
-         * color = getJobOption(jobOptions, "gray");
+         * color = getJobOption(jobOptions, "color");
 
     *options = NULL;
     int numOptions = 0;
@@ -287,7 +287,8 @@ static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
     else numOptions = cupsAddOption("Collate", "True", numOptions, options);
     if (resolution) numOptions = cupsAddOption("Resolution", resolution, numOptions, options);
     if (copies) numOptions = cupsAddOption("copies", copies, numOptions, options);
-//     if (color) numOptions = cupsAddOption(..., numOptions, options);
+    if (color) numOptions = cupsAddOption(CUPS_PRINT_COLOR_MODE, "color", numOptions, options);
+    else numOptions = cupsAddOption(CUPS_PRINT_COLOR_MODE, "monochrome", numOptions, options);
 
     g_free(sides);
     g_free(nocollate);
