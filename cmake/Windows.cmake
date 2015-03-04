@@ -2,7 +2,7 @@
 # It is based on Fedoras's mingw-w64.
 
 # this one is important
-SET(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_NAME Windows)
 if (NOT WIN_ARCH)
     set(WIN_ARCH i686)
 endif (NOT WIN_ARCH)
@@ -13,12 +13,12 @@ else()
 endif()
 
 # specify the cross compiler
-SET(CMAKE_C_COMPILER   /usr/bin/${WIN_ARCH}-w64-mingw32-gcc)
-SET(CMAKE_CXX_COMPILER /usr/bin/${WIN_ARCH}-w64-mingw32-g++)
-SET(CMAKE_RC_COMPILER  /usr/bin/${WIN_ARCH}-w64-mingw32-windres)
+set(CMAKE_C_COMPILER   /usr/bin/${WIN_ARCH}-w64-mingw32-gcc)
+set(CMAKE_CXX_COMPILER /usr/bin/${WIN_ARCH}-w64-mingw32-g++)
+set(CMAKE_RC_COMPILER  /usr/bin/${WIN_ARCH}-w64-mingw32-windres)
 
 # here is the target environment located
-SET(CMAKE_FIND_ROOT_PATH /usr/${WIN_ARCH}-w64-mingw32/sys-root/mingw)
+set(CMAKE_FIND_ROOT_PATH /usr/${WIN_ARCH}-w64-mingw32/sys-root/mingw)
 
 # adjust the default behaviour of the FIND_XXX() commands:
 # search headers and libraries in the target environment, search
@@ -26,3 +26,6 @@ SET(CMAKE_FIND_ROOT_PATH /usr/${WIN_ARCH}-w64-mingw32/sys-root/mingw)
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+# adjust paths for pkg-config
+set(ENV{PKG_CONFIG_LIBDIR} ${CMAKE_FIND_ROOT_PATH}/lib/pkgconfig:${CMAKE_FIND_ROOT_PATH}/share/pkgconfig)
