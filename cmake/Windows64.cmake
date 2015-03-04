@@ -1,16 +1,10 @@
-# Toolchain file to cross-compile for Windows 32-bit targets.
+# Toolchain file to cross-compile for Windows 64-bit targets.
 # It is based on Fedoras's mingw-w64.
 
 # this one is important
 set(CMAKE_SYSTEM_NAME Windows)
-if (NOT WIN_ARCH)
-    set(WIN_ARCH i686)
-endif (NOT WIN_ARCH)
-if (WIN_ARCH STREQUAL i686)
-    set(WIN_BITS 32)
-else()
-    set(WIN_BITS 64)
-endif()
+set(WIN_ARCH x86_64)
+set(WIN_BITS 64)
 
 # specify the cross compiler
 set(CMAKE_C_COMPILER   /usr/bin/${WIN_ARCH}-w64-mingw32-gcc)
