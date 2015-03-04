@@ -21,7 +21,6 @@ int flexvdiSpiceGetPrinterList(GSList ** printerList) {
     char instance[256];
     *printerList = NULL;
     for (i = numDests, dest = dests; i > 0; --i, ++dest) {
-        char * name;
         if (dest->instance) {
             snprintf(instance, 256, "%s/%s\n", dest->name, dest->instance);
             *printerList = g_slist_prepend(*printerList, g_strdup(instance));
@@ -93,14 +92,14 @@ static int ippHasOtherThan(CupsConnection * cups, const char * attrName, const c
 
 
 static void getResolutions(PPDGenerator * ppd, CupsConnection * cups) {
-    ipp_attribute_t * attr;
-    if (attr = ippIsSupported(cups, "printer-resolution")) {
+    ipp_attribute_t * attr = ippIsSupported(cups, "printer-resolution");
+    if (attr) {
         int i = ippGetCount(attr) - 1, yres;
         ipp_res_t units;
         while (i >= 0) {
             ppdAddResolution(ppd, ippGetResolution(attr, i--, &yres, &units));
         }
-        if (attr = ippGetDefault(cups, "printer-resolution")) {
+        if ((attr = ippGetDefault(cups, "printer-resolution"))) {
             ppdSetDefaultResolution(ppd, ippGetResolution(attr, 0, &yres, &units));
         }
     }
@@ -142,7 +141,7 @@ static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
             ppdAddPaperSize(ppd, size->ppd ? size->ppd : getPrettyName(size->pwg),
                             size->width * 72 / 2540, size->length * 72 / 2540);
         }
-        if (attr = ippGetDefault(cups, "media")) {
+        if ((attr = ippGetDefault(cups, "media"))) {
             pwg_media_t * size = pwgMediaForPWG(ippGetString(attr, 0, NULL));
             ppdSetDefaultPaperSize(ppd, size->ppd ? size->ppd : getPrettyName(size->pwg));
         }
@@ -166,7 +165,7 @@ static void getMediaSources(PPDGenerator * ppd, CupsConnection * cups) {
         for (i = 0; i < count; ++i) {
             ppdAddTray(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
         }
-        if (attr = ippGetDefault(cups, CUPS_MEDIA_SOURCE)) {
+        if ((attr = ippGetDefault(cups, CUPS_MEDIA_SOURCE))) {
             ppdSetDefaultTray(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
         }
     }
@@ -180,7 +179,7 @@ static void getMediaTypes(PPDGenerator * ppd, CupsConnection * cups) {
         for (i = 0; i < count; ++i) {
             ppdAddMediaType(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
         }
-        if (attr = ippGetDefault(cups, CUPS_MEDIA_TYPE)) {
+        if ((attr = ippGetDefault(cups, CUPS_MEDIA_TYPE))) {
             ppdSetDefaultMediaType(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
         }
     }
@@ -189,7 +188,6 @@ static void getMediaTypes(PPDGenerator * ppd, CupsConnection * cups) {
 
 char * getPPDFile(const char * printer) {
     char * result = NULL;
-    int i;
     PPDGenerator * ppd = newPPDGenerator(printer);
     CupsConnection * cups = openCups(printer);
 
