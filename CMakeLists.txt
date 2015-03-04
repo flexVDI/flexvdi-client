@@ -21,6 +21,14 @@ include_directories("${spice_protocol_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}" "${
 include(TestBigEndian)
 test_big_endian(BIG_ENDIAN)
 set(SELINUX_MAKEFILE /usr/share/selinux/devel/Makefile)
+if (WIN32)
+    pkg_search_module(CAIRO REQUIRED cairo)
+    pkg_search_module(POPPLER REQUIRED poppler-glib)
+    include_directories("${CAIRO_INCLUDE_DIRS}" "${POPPLER_INCLUDE_DIRS}")
+else ()
+    find_package(Cups REQUIRED)
+    include_directories("${CUPS_INCLUDE_DIR}")
+endif ()
 
 # Build options
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
