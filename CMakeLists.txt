@@ -40,7 +40,6 @@ set (FLEXVDI_LIBRARIES "${Boost_THREAD_LIBRARY}" "${Boost_SYSTEM_LIBRARY}" pthre
 if (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
     set (FLEXVDI_LIBRARIES "${FLEXVDI_LIBRARIES}" wsock32)
     add_definitions(-DWIN32 -DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0600 -DWIN32_LEAN_AND_MEAN)
     string(REPLACE "." "," FLEXVDI_VERSION_COMA "${FLEXVDI_VERSION}")
@@ -65,6 +64,7 @@ if (WIN32)
     add_executable(flexvdi-guest-agent WindowsService.cpp
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc"
                    $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
+    set_target_properties(flexvdi-guest-agent PROPERTIES LINK_FLAGS "-static")
     target_link_libraries(flexvdi-guest-agent "${FLEXVDI_LIBRARIES}")
     configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
                    "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)

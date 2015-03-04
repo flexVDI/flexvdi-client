@@ -16,5 +16,6 @@ set_target_properties(printer-setup PROPERTIES
     LINK_FLAGS "-static"
     PREFIX "")
 add_executable(filter WIN32 filter.cpp ../send-job.cpp $<TARGET_OBJECTS:util_o>)
+set_target_properties(filter PROPERTIES LINK_FLAGS "-static")
 target_link_libraries(filter ${FLEXVDI_LIBRARIES} gsdll32)
 endif (WIN_BITS EQUAL 32)

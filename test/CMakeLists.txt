@@ -1,3 +1,4 @@
+add_definitions(-DBOOST_TEST_DYN_LINK)
 add_executable(unit-tests unit-main.cpp
                unit-MessageBuffer.cpp
                unit-Connection.cpp
@@ -19,7 +20,6 @@ if (WIN32)
                    ../client/printclient.c ../client/PPDGenerator.c ../client/printclient-win32.c)
     target_link_libraries(get_printer_ppds "${GLIB_LIBRARIES}" winmm intl wsock32 ws2_32)
 else (WIN32)
-    add_definitions(-DBOOST_TEST_DYN_LINK)
     add_executable(get_printer_ppds get_printer_ppds.c ../client/flexvdi-spice.c
                    ../client/printclient.c ../client/PPDGenerator.c ../client/printclient-cups.c)
     target_link_libraries(get_printer_ppds cups "${GLIB_LIBRARIES}")
