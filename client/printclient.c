@@ -67,19 +67,22 @@ void handlePrintJobData(FlexVDIPrintJobDataMsg * msg) {
 
 
 char * getJobOption(char * options, const char * opName) {
+    gunichar equalSign = g_utf8_get_char("="),
+             space = g_utf8_get_char(" "),
+             quotes = g_utf8_get_char("\"");
     int opLen = strlen(opName);
     char * opPos = strstr(options, opName);
     if (!opPos) return NULL;
     opPos += opLen;
     int valueLen = 0;
-    if (*opPos == '=') {
-        ++opPos;
-        char delimiter = ' ';
-        if (*opPos == '"') {
-            ++opPos;
-            delimiter = '"';
+    if (g_utf8_get_char(opPos) == equalSign) {
+        opPos = g_utf8_next_char(opPos);
+        gunichar delimiter = space;
+        if (g_utf8_get_char(opPos) == quotes) {
+            opPos = g_utf8_next_char(opPos);
+            delimiter = quotes;
         }
-        char * end = strchr(opPos, delimiter);
+        char * end = g_utf8_strchr(opPos, -1, delimiter);
         if (!end) end = options + strlen(options);
         valueLen = end - opPos;
     }

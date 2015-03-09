@@ -18,12 +18,11 @@ int flexvdiSpiceGetPrinterList(GSList ** printerList) {
     int i;
     cups_dest_t * dests, * dest;
     int numDests = cupsGetDests(&dests);
-    char instance[256];
     *printerList = NULL;
     for (i = numDests, dest = dests; i > 0; --i, ++dest) {
         if (dest->instance) {
-            snprintf(instance, 256, "%s/%s\n", dest->name, dest->instance);
-            *printerList = g_slist_prepend(*printerList, g_strdup(instance));
+            char * fullInstance = g_strconcat(dest->name, "/", dest->instance, NULL);
+            *printerList = g_slist_prepend(*printerList, fullInstance);
         } else {
             *printerList = g_slist_prepend(*printerList, g_strdup(dest->name));
         }
@@ -83,8 +82,14 @@ static ipp_attribute_t * ippGetDefault(CupsConnection * cups, const char * attrN
 static int ippHasOtherThan(CupsConnection * cups, const char * attrName, const char * value) {
     ipp_attribute_t * attr = ippIsSupported(cups, attrName);
     if (attr) {
-        int i = ippGetCount(attr) - 1;
-        while (i >= 0 && !g_ascii_strcasecmp(ippGetString(attr, i, NULL), value)) --i;
+        int i = ippGetCount(attr) - 1, isEqual = 1;
+        char * ivalue = g_utf8_casefold(value, -1);
+        for (; i >= 0 && isEqual; --i) {
+            char * cmpString = g_utf8_casefold(ippGetString(attr, i, NULL), -1);
+            isEqual = !strcmp(cmpString, ivalue);
+            g_free(cmpString);
+        }
+        g_free(ivalue);
         return i >= 0;
     }
     return FALSE;
@@ -107,27 +112,49 @@ static void getResolutions(PPDGenerator * ppd, CupsConnection * cups) {
 
 
 static char * getPrettyName(const char * pwg) {
-    static char name[1024];
+    gunichar dash = g_utf8_get_char("_");
+    const char * start, * end;
+    char * name, * prettyName, * i, * j;
+    int len, capitalize;
+
     // Get middle component
-    const char * start = strchr(pwg, '_');
-    if (start) {
-        const char * end = strchr(++start, '_');
-        g_strlcpy(name, start, end ? end - start + 1 : 1024);
-    } else {
-        g_strlcpy(name, pwg, 1024);
-    }
+    start = g_utf8_strchr(pwg, -1, dash);
+    if (!start) start = pwg;
+    end = g_utf8_strchr(++start, -1, dash);
+    len = (end ? end - start : strlen(start)) + 1;
+    name = (char *)g_malloc(len);
+    g_strlcpy(name, start, len);
     // Turn _ into spaces
-    g_strdelimit(name, "_", ' ');
+    i = name;
+    while((i = g_utf8_strchr(i, -1, dash))) *i++ = ' ';
     // For each '-', remove it and capitalize next letter
-    int capitalize = TRUE;
-    char * i, * j;
-    for (i = name, j = i; *i != '\0'; ++i) {
-        if (*i != '-')
-            *j++ = capitalize ? g_ascii_toupper(*i) : *i;
+    // First compute length
+    len = 0;
+    capitalize = TRUE;
+    for (i = name; *i != '\0'; i = g_utf8_next_char(i)) {
+        if (*i != '-') {
+            if (capitalize)
+                len += g_unichar_to_utf8(g_unichar_toupper(g_utf8_get_char(i)), NULL);
+            else
+                len += g_unichar_to_utf8(g_utf8_get_char(i), NULL);
+        }
+        capitalize = *i == '-';
+    }
+    ++len;
+    // Now write the name
+    prettyName = (char *)g_malloc(len);
+    capitalize = TRUE;
+    for (i = name, j = prettyName; *i != '\0'; i = g_utf8_next_char(i)) {
+        if (*i != '-') {
+            if (capitalize)
+                j += g_unichar_to_utf8(g_unichar_toupper(g_utf8_get_char(i)), j);
+            else
+                j += g_unichar_to_utf8(g_utf8_get_char(i), j);
+        }
         capitalize = *i == '-';
     }
     *j = '\0';
-    return name;
+    return prettyName;
 }
 
 
@@ -138,23 +165,23 @@ static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
         while (i >= 0) {
             pwg_media_t * size = pwgMediaForPWG(ippGetString(attr, i--, NULL));
             if (g_str_has_prefix(size->pwg, "custom")) continue;
-            ppdAddPaperSize(ppd, size->ppd ? size->ppd : getPrettyName(size->pwg),
+            ppdAddPaperSize(ppd, size->ppd ? g_strdup(size->ppd) : getPrettyName(size->pwg),
                             size->width * 72 / 2540, size->length * 72 / 2540);
         }
         if ((attr = ippGetDefault(cups, "media"))) {
             pwg_media_t * size = pwgMediaForPWG(ippGetString(attr, 0, NULL));
-            ppdSetDefaultPaperSize(ppd, size->ppd ? size->ppd : getPrettyName(size->pwg));
+            ppdSetDefaultPaperSize(ppd,
+                size->ppd ? g_strdup(size->ppd) : getPrettyName(size->pwg));
         }
     }
     // TODO: get media margins
 }
 
 
-const char * capitalizeFirst(const char * str) {
-    static char buffer[100];
-    g_strlcpy(buffer, str, 100);
-    buffer[0] = g_ascii_toupper(buffer[0]);
-    return buffer;
+char * capitalizeFirst(const char * str) {
+    char tmp[7];
+    g_unichar_to_utf8(g_unichar_toupper(g_utf8_get_char(str)), tmp);
+    return g_strconcat(tmp, g_utf8_next_char(str), NULL);
 }
 
 
