@@ -70,27 +70,23 @@ private:
     }
 
     void readEnv() {
-        std::unique_ptr<char[]> buffer;
+        std::unique_ptr<wchar_t[]> wbuffer;
         int size;
 
-        size = GetEnvironmentVariableA("REDMON_PRINTER", NULL, 0);
-        buffer.reset(new char[size]);
-        GetEnvironmentVariableA("REDMON_PRINTER", buffer.get(), size);
-        printerName = buffer.get();
+        size = GetEnvironmentVariableW(L"REDMON_JOB", NULL, 0);
+        wbuffer.reset(new wchar_t[size]);
+        GetEnvironmentVariableW(L"REDMON_JOB", wbuffer.get(), size);
+        jobId = stoi(wbuffer.get());
 
-        size = GetEnvironmentVariableA("REDMON_JOB", NULL, 0);
-        buffer.reset(new char[size]);
-        GetEnvironmentVariableA("REDMON_JOB", buffer.get(), size);
-        jobId = stoi(buffer.get());
+        size = GetEnvironmentVariableW(L"REDMON_PRINTER", NULL, 0);
+        wbuffer.reset(new wchar_t[size]);
+        GetEnvironmentVariableW(L"REDMON_PRINTER", wbuffer.get(), size);
+        printerName = toString(wbuffer.get());
 
         size = GetEnvironmentVariableW(L"REDMON_DOCNAME", NULL, 0);
-        std::unique_ptr<wchar_t[]> wbuffer(new wchar_t[size]);
+        wbuffer.reset(new wchar_t[size]);
         GetEnvironmentVariableW(L"REDMON_DOCNAME", wbuffer.get(), size);
-        // We need a UTF-8 version of this string
-        size = WideCharToMultiByte(CP_UTF8, 0, wbuffer.get(), -1, NULL, 0, NULL, NULL);
-        buffer.reset(new char[size]);
-        WideCharToMultiByte(CP_UTF8, 0, wbuffer.get(), -1, buffer.get(), size, NULL, NULL);
-        docName = buffer.get();
+        docName = toString(wbuffer.get());
     }
 
     void getJobInfo();
