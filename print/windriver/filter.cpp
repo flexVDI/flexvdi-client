@@ -280,11 +280,15 @@ int GSFilter::runGhostscript() {
     cmdLine.push_back("-dBATCH");
     cmdLine.push_back("-dSAFER");
     cmdLine.push_back("-sDEVICE=pdfwrite");
+    cmdLine.push_back("-dPDFSETTINGS=/printer");
+    cmdLine.push_back("-dCompressFonts=true");
+    cmdLine.push_back("-dSubsetFonts=true");
+    cmdLine.push_back("-dEmbedAllFonts=true");
     // TODO: Add include paths for fonts and lib: "-Ipath\\urwfonts;path\\lib"
     if (!extraOptions.empty()) cmdLine.push_back(extraOptions.c_str());
     cmdLine.push_back(outFileOption.c_str());
     cmdLine.push_back("-c");
-    cmdLine.push_back(".setpdfwrite");
+    cmdLine.push_back(".setpdfwrite <</NeverEmbed [ ]>> setdistillerparams");
     cmdLine.push_back(inFileOption.c_str());
 
     void * gsInstance;
