@@ -17,9 +17,9 @@ typedef struct PaperDescription {
 } PaperDescription;
 
 
-PaperDescription * newPaperDescription(const char * name, int width, int length) {
+PaperDescription * newPaperDescription(char * name, int width, int length) {
     PaperDescription * result = (PaperDescription *)g_malloc(sizeof(PaperDescription));
-    result->name = g_strdup(name);
+    result->name = name;
     result->width = width;
     result->length = length;
     return result;
@@ -98,9 +98,9 @@ static gint comparePaper(gconstpointer a, gconstpointer b) {
 }
 
 
-void ppdAddPaperSize(PPDGenerator * ppd, const char * name, int width, int length) {
+void ppdAddPaperSize(PPDGenerator * ppd, char * name, int width, int length) {
     PaperDescription tmp;
-    tmp.name = (char *)name;
+    tmp.name = name;
     if (!g_slist_find_custom(ppd->paperSizes, &tmp, comparePaper)) {
         ppd->paperSizes = g_slist_prepend(ppd->paperSizes,
                                           newPaperDescription(name, width, length));
@@ -108,9 +108,9 @@ void ppdAddPaperSize(PPDGenerator * ppd, const char * name, int width, int lengt
 }
 
 
-void ppdSetDefaultPaperSize(PPDGenerator * ppd, const char * name) {
+void ppdSetDefaultPaperSize(PPDGenerator * ppd, char * name) {
     g_free(ppd->defaultPaperSize);
-    ppd->defaultPaperSize = g_strdup(name);
+    ppd->defaultPaperSize = name;
 }
 
 
@@ -139,29 +139,29 @@ static gint compareString(gconstpointer a, gconstpointer b) {
 }
 
 
-void ppdAddMediaType(PPDGenerator * ppd, const gchar * media) {
+void ppdAddMediaType(PPDGenerator * ppd, char * media) {
     if (!g_slist_find_custom(ppd->mediaTypes, media, compareString)) {
-        ppd->mediaTypes = g_slist_prepend(ppd->mediaTypes, g_strdup(media));
+        ppd->mediaTypes = g_slist_prepend(ppd->mediaTypes, media);
     }
 }
 
 
-void ppdSetDefaultMediaType(PPDGenerator * ppd, const char * media) {
+void ppdSetDefaultMediaType(PPDGenerator * ppd, char * media) {
     g_free(ppd->defaultType);
-    ppd->defaultType = g_strdup(media);
+    ppd->defaultType = media;
 }
 
 
-void ppdAddTray(PPDGenerator * ppd, const gchar * tray) {
+void ppdAddTray(PPDGenerator * ppd, char * tray) {
     if (!g_slist_find_custom(ppd->trays, tray, compareString)) {
-        ppd->trays = g_slist_prepend(ppd->trays, g_strdup(tray));
+        ppd->trays = g_slist_prepend(ppd->trays, tray);
     }
 }
 
 
-void ppdSetDefaultTray(PPDGenerator * ppd, const char * tray) {
+void ppdSetDefaultTray(PPDGenerator * ppd, char * tray) {
     g_free(ppd->defaultTray);
-    ppd->defaultTray = g_strdup(tray);
+    ppd->defaultTray = tray;
 }
 
 
