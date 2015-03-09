@@ -3,6 +3,7 @@
  **/
 
 #include <fstream>
+#include <unistd.h>
 #ifdef WIN32
 #include <windows.h>
 #include <winspool.h>
@@ -65,6 +66,7 @@ void PrintManager::handle(const Connection::Ptr & src, const SharePrinterMsgPtr 
     std::ofstream ppdFile(fileName.c_str());
     ppdFile.write(ppdText, msg->ppdLength);
     installPrinter(printer, fileName);
+    unlink(fileName.c_str());
 }
 
 
