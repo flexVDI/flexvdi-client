@@ -51,6 +51,15 @@ public:
         throw_if(portFd < 0, name);
 #endif
         stream.assign(portFd);
+        registerErrorHandler([this](const Ptr &, const error_code & error) {
+            if (error == asio::error::eof) {
+                Log(L_DEBUG) << "Virtio Port closed, retrying";
+                // Send a reset message, the virtio port will block on write until the host
+                // connects back; then, start reading again
+                send(MessageBuffer(FLEXVDI_RESET, 0),
+                     std::bind(&VirtioConnection::readNextMessage, this));
+            }
+        });
         readNextMessage();
     }
 };
