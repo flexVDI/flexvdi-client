@@ -8,6 +8,8 @@
 #include <windows.h>
 #include <winspool.h>
 #else
+#include <cups/cups.h>
+#include <boost/locale/utf.hpp>
 #endif
 #include "PrintManager.hpp"
 #include "FlexVDIGuestAgent.hpp"
@@ -65,7 +67,8 @@ void PrintManager::handle(const Connection::Ptr & src, const SharePrinterMsgPtr 
     if (fileName.empty()) fileName = getTempFileName("fv") + ".ppd";
     std::ofstream ppdFile(fileName.c_str());
     ppdFile.write(ppdText, msg->ppdLength);
-    installPrinter(printer, fileName);
+    Log(L_DEBUG) << "Installing printer " << printer
+                 << (installPrinter(printer, fileName) ? " succeeded" : " failed");
     unlink(fileName.c_str());
 }
 
@@ -102,6 +105,7 @@ static bool uninstallPrinterW(const wstring & printer, bool cannotFail) {
     HANDLE hPrinter;
     PRINTER_DEFAULTSW pd{ NULL, NULL, PRINTER_ALL_ACCESS };
     if (OpenPrinterW((wchar_t *)printer.c_str(), &hPrinter, &pd)) {
+        SetPrinter(hPrinter, 0, NULL, PRINTER_CONTROL_PURGE);
         DeletePrinter(hPrinter);
         ClosePrinter(hPrinter);
         Log(L_DEBUG) << "Uninstalled printer " << printer;
@@ -219,19 +223,96 @@ bool PrintManager::uninstallPrinter(const string & printer) {
     return uninstallPrinterW(toWstring(printer), true);
 }
 
-
 #else
+
 void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) {
+    cups_dest_t * dests;
+    int numDests = cupsGetDests(&dests);
+    for (int i = 0; i < numDests; ++i) {
+        if (cupsGetOption("flexvdi-shared-printer", dests[i].num_options, dests[i].options)) {
+            uninstallPrinter(dests[i].name);
+        }
+    }
+    cupsFreeDests(numDests, dests);
+}
+
+
+static http_t * cupsConnection() {
+    return httpConnect2(cupsServer(), ippPort(), NULL, AF_UNSPEC,
+                        cupsEncryption(), 1, 30000, NULL);
+}
+
+
+static string getPrinterURI(const string & printer) {
+    char uri[HTTP_MAX_URI];
+    httpAssembleURIf(HTTP_URI_CODING_ALL, uri, HTTP_MAX_URI, "ipp", NULL, "localhost",
+                     ippPort(), "/printers/%s", printer.c_str());
+    Log(L_DEBUG) << "URI: " << uri;
+    return string(uri);
+}
+
+
+static ipp_t * newRequest(ipp_op_t op, const string & printer) {
+    ipp_t * request = ippNewRequest(op);
+    ippAddString(request, IPP_TAG_OPERATION, IPP_TAG_URI,
+                 "printer-uri", NULL, getPrinterURI(printer).c_str());
+    ippAddString(request, IPP_TAG_OPERATION, IPP_TAG_NAME,
+                 "requesting-user-name", NULL, cupsUser());
+    return request;
 }
 
 
 bool PrintManager::installPrinter(const string & printer, const string & ppd) {
-    return false;
+    Log(L_DEBUG) << "Installing printer " << printer << " from " << ppd;
+
+    int numOptions = 0;
+    cups_option_t * options = NULL;
+    numOptions = cupsAddOption("device-uri", "flexvdiprint:", numOptions, &options);
+    numOptions = cupsAddOption("printer-info", "flexVDI Shared Printer", numOptions, &options);
+    numOptions = cupsAddOption("printer-location", "flexVDI Client", numOptions, &options);
+
+    ipp_t * request = newRequest(IPP_OP_CUPS_ADD_MODIFY_PRINTER, printer);
+    ippAddInteger(request, IPP_TAG_PRINTER, IPP_TAG_ENUM, "printer-state", IPP_PSTATE_IDLE);
+    ippAddBoolean(request, IPP_TAG_PRINTER, "printer-is-accepting-jobs", 1);
+    cupsEncodeOptions2(request, numOptions, options, IPP_TAG_OPERATION);
+    cupsEncodeOptions2(request, numOptions, options, IPP_TAG_PRINTER);
+    cupsFreeOptions(numOptions, options);
+
+    http_t * http = cupsConnection();
+    ippDelete(cupsDoFileRequest(http, request, "/admin/", ppd.c_str()));
+    if (cupsLastError() > IPP_STATUS_OK_CONFLICTING) {
+        Log(L_ERROR) << "Failed to install printer: " << cupsLastErrorString();
+        httpClose(http);
+        return false;
+    }
+
+    cups_dest_t * dest, * dests;
+    int numDests = cupsGetDests(&dests);
+    dest = cupsGetDest(printer.c_str(), NULL, numDests, dests);
+    if (!dest) {
+        Log(L_ERROR) << "Failed to install printer";
+        return false;
+    }
+    dest->num_options = cupsAddOption("flexvdi-shared-printer", "true",
+                                      dest->num_options, &dest->options);
+    cupsSetDests(numDests, dests);
+    cupsFreeDests(numDests, dests);
+    httpClose(http);
+    return true;
 }
 
 
 bool PrintManager::uninstallPrinter(const string & printer) {
-    return false;
+    bool result = true;
+    ipp_t * request = newRequest(IPP_OP_CUPS_DELETE_PRINTER, printer);
+    http_t * http = cupsConnection();
+    ippDelete(cupsDoRequest(http, request, "/admin/"));
+    if (cupsLastError() > IPP_STATUS_OK_CONFLICTING) {
+        Log(L_ERROR) << "Failed to uninstall printer: " << cupsLastErrorString();
+        result = false;
+    }
+    httpClose(http);
+    return result;
 }
 
 #endif

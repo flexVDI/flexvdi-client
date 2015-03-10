@@ -45,7 +45,9 @@ if (WIN32)
     set (FLEXVDI_LIBRARIES "${FLEXVDI_LIBRARIES}" wsock32)
     add_definitions(-DWIN32 -DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0600 -DWIN32_LEAN_AND_MEAN)
     string(REPLACE "." "," FLEXVDI_VERSION_COMA "${FLEXVDI_VERSION}")
-endif (WIN32)
+else ()
+    set (FLEXVDI_LIBRARIES "${FLEXVDI_LIBRARIES}" "${CUPS_LIBRARIES}")
+endif ()
 
 # Sources and objects
 configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config.h")
