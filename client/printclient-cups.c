@@ -180,7 +180,7 @@ static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
 
 char * capitalizeFirst(const char * str) {
     char tmp[7];
-    g_unichar_to_utf8(g_unichar_toupper(g_utf8_get_char(str)), tmp);
+    tmp[g_unichar_to_utf8(g_unichar_toupper(g_utf8_get_char(str)), tmp)] = '\0';
     return g_strconcat(tmp, g_utf8_next_char(str), NULL);
 }
 
