@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #endif
+#include <boost/locale.hpp>
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
@@ -42,43 +43,13 @@ void Log::logDate() {
 }
 
 
-#ifdef WIN32
-static inline int utf8ToUtf16(const char * in, size_t length, wchar_t * out, size_t size) {
-    return MultiByteToWideChar(CP_UTF8, 0, in, length, out, size);
-}
-
-
-static inline int utf16ToUtf8(const wchar_t * in, size_t length, char * out, size_t size) {
-    return WideCharToMultiByte(CP_UTF8, 0, in, length, out, size, NULL, NULL);
-}
-
-#else
-
-// TODO: Force UTF-8 locale
-static inline int utf8ToUtf16(const char * in, size_t length, wchar_t * out, size_t size) {
-    return mbstowcs(out, in, size);
-}
-
-
-static inline int utf16ToUtf8(const wchar_t * in, size_t length, char * out, size_t size) {
-    return wcstombs(out, in, size);
-}
-#endif
-
-
 std::string flexvm::toString(const std::wstring & str) {
-    size_t size = str.length()*4 + 1; // The maximum size of an UTF8 encoding of str
-    std::unique_ptr<char[]> buffer(new char[size]);
-    int length = utf16ToUtf8(str.c_str(), str.length(), buffer.get(), size);
-    return std::string(buffer.get(), length);
+    return boost::locale::conv::utf_to_utf<char>(str);
 }
 
 
 std::wstring flexvm::toWstring(const std::string & str) {
-    size_t size = str.length() + 1;
-    std::unique_ptr<wchar_t[]> buffer(new wchar_t[size]);
-    int length = utf8ToUtf16(str.c_str(), str.length(), buffer.get(), size);
-    return std::wstring(buffer.get(), length);
+    return boost::locale::conv::utf_to_utf<wchar_t>(str);
 }
 
 
