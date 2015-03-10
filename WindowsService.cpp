@@ -21,7 +21,6 @@ public:
     static int install();
     static int uninstall();
     static int run();
-    static const char * getLogPath();
 
     static WindowsService & singleton() {
         static WindowsService instance;
@@ -53,7 +52,9 @@ int main(int argc, char * argv[]) {
     } else if (argc == 2 && string("uninstall") == argv[1]) {
         return WindowsService::uninstall();
     } else {
-        std::ofstream logFile(WindowsService::getLogPath(), std::ios_base::app);
+        std::ofstream logFile;
+        logFile.open(Log::getDefaultLogPath() + string("\\flexvdi_service.log"),
+                     std::ios_base::app);
         logFile << std::endl << std::endl;
         Log::setLogOstream(&logFile);
         return WindowsService::singleton().run();
@@ -114,15 +115,6 @@ int WindowsService::uninstall() {
     }
     Log(L_WARNING) << "Service is still running";
     return 1;
-}
-
-
-const char * WindowsService::getLogPath() {
-    static char logPath[MAX_PATH] = "c:\\flexvdi_service.log";
-    if (sprintf_s(logPath, MAX_PATH, "%s\\flexvdi_service.log", Log::getDefaultLogPath()) != -1)
-        return logPath;
-    else
-        return "c:\\flexvdi_service.log";
 }
 
 
