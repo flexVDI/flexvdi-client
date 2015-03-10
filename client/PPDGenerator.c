@@ -175,15 +175,16 @@ void ppdSetHWMargins(PPDGenerator * ppd, int top, int down, int left, int right)
 
 static char * sanitize(const char * str) {
     static char buffer[100];
-    char * result = g_strdup(str); //g_str_to_ascii(str, "C");
-    int i = 0, j = 0;
-    while (i < 99 && result[j] != '\0') {
-        char c = result[j++];
-        if (c >= 33 && c <= 126 && c != '/' && c != ':' && c != '.' && c != ',' && c != '(' && c != ')')
-            buffer[i++] = g_ascii_tolower(c);
+    const char * j = str;
+    int i = 0;
+    while (i < 99 && *j != '\0') {
+        gunichar c = g_utf8_get_char(j);
+        if (c >= 33 && c <= 126 && c != '/' && c != ':' && c != '.' && c != ',' && c != '(' && c != ')') {
+            g_unichar_to_utf8(g_unichar_tolower(c), &buffer[i++]);
+        }
+        j = g_utf8_next_char(j);
     }
     buffer[i] = '\0';
-    g_free(result);
     return buffer;
 }
 
