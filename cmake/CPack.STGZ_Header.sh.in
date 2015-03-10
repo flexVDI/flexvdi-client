@@ -26,8 +26,8 @@ cpack_echo_exit()
 # Display version
 cpack_version()
 {
-  _echo "@CPACK_PACKAGE_NAME@ Installer Version: @CPACK_PACKAGE_VERSION@" \
-    ", Copyright (c) @CPACK_PACKAGE_VENDOR@"
+  _echo "flexVDI Guest Tools v@CPACK_PACKAGE_VERSION@"
+  _echo "Copyright (c) @CPACK_PACKAGE_VENDOR@ 2015"
 }
 
 # Helper function to fix windows paths.
@@ -137,7 +137,7 @@ ____cpack__here_doc____
         ln -s ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint /usr/lib/cups/backend
         ln -s ${toplevel}/libexec/flexvdi-guest-agent/pdftopdf-nocopies /usr/lib/cups/filter
         lpadmin -p flexvdiprinter -D "flexVDI PDF Printer" -E -v flexvdiprint: \
-            -P ${toplevel}/share/flexvdi-guest-agent/flexvdips.ppd
+            -L "flexVDI Client" -P ${toplevel}/share/flexvdi-guest-agent/flexvdips.ppd
         lpadmin -d flexvdiprinter
     fi
 
