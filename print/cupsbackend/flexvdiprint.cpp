@@ -89,6 +89,7 @@ string parseOptions(char * argv[6]) {
         return string();
     }
 
+    size_t pos;
     jobOptions += string(" printer=\"") + conn.getSharedPrinterName() + "\"";
     jobOptions += string(" title=\"") + jobTitle + "\"";
     jobOptions += string(" copies=") + jobCopies;
@@ -104,6 +105,12 @@ string parseOptions(char * argv[6]) {
     }
     if (jobOptions.find("Resolution=") == string::npos) {
         jobOptions += " Resolution=" + conn.getDefault("Resolution", "300dpi");
+    }
+    if ((pos = jobOptions.find("ColorModel=")) != string::npos
+        && jobOptions.length() > pos + 11 && jobOptions[pos + 11] == 'G') {
+        jobOptions += " gray";
+    } else {
+        jobOptions += " color";
     }
 
     Log(L_DEBUG) << "Printing with options: " << jobOptions;
