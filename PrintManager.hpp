@@ -32,6 +32,9 @@ public:
     void handle(const Connection::Ptr & src, const UnsharePrinterMsgPtr & msg);
     void handle(const Connection::Ptr & src, const ResetMsgPtr & msg);
 
+    static const char * sharedPrinterDescription;
+    static const char * sharedPrinterLocation;
+
 private:
     struct Job {
         Connection::Ptr src;

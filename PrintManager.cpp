@@ -100,6 +100,10 @@ void PrintManager::closed(const Connection::Ptr & src,
 }
 
 
+const char * PrintManager::sharedPrinterDescription = "flexVDI Shared Printer";
+const char * PrintManager::sharedPrinterLocation = "flexVDI Client";
+
+
 #ifdef WIN32
 static bool uninstallPrinter(const wstring & printer, bool cannotFail) {
     HANDLE hPrinter;
@@ -191,7 +195,13 @@ static bool installPrinter(const wstring & printer, const wstring & ppd) {
     uninstallPrinter(printer, false);
 
     if (!installPrinterDriver(printer, ppd)) return false;
+
     DWORD needed = 0, returned = 0;
+    GetDefaultPrinter(NULL, &needed);
+    std::unique_ptr<wchar_t[]> defaultPrinter(new wchar_t[needed]);
+    bool resetDefault = needed && GetDefaultPrinter(defaultPrinter.get(), &needed);
+
+    needed = 0;
     DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
     EnumPrinters(flags, NULL, 2, NULL, 0, &needed, &returned);
     std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
@@ -200,8 +210,17 @@ static bool installPrinter(const wstring & printer, const wstring & ppd) {
         for (unsigned int i = 0; i < returned; i++) {
             if (pri2[i].pDriverName == wstring(L"flexVDI Printer")) {
                 pri2[i].pDriverName = pri2[i].pPrinterName = (wchar_t *)printer.c_str();
+                wstring comment(toWstring(PrintManager::sharedPrinterDescription));
+                wstring location(toWstring(PrintManager::sharedPrinterLocation));
+                pri2[i].pComment = (wchar_t *)comment.c_str();
+                pri2[i].pLocation = (wchar_t *)location.c_str();
+                pri2[i].Attributes &= ~PRINTER_ATTRIBUTE_SHARED;
                 if (AddPrinter(NULL, 2, (LPBYTE)&pri2[i])) {
                     Log(L_DEBUG) << "Printer " << printer << " added successfully";
+                    if (resetDefault) {
+                        Log(L_DEBUG) << "Reseting default printer to " << defaultPrinter.get();
+                        SetDefaultPrinter(defaultPrinter.get());
+                    }
                     return true;
                 } else break;
             }
@@ -268,8 +287,10 @@ bool PrintManager::installPrinter(const string & printer, const string & ppd) {
     int numOptions = 0;
     cups_option_t * options = NULL;
     numOptions = cupsAddOption("device-uri", "flexvdiprint:", numOptions, &options);
-    numOptions = cupsAddOption("printer-info", "flexVDI Shared Printer", numOptions, &options);
-    numOptions = cupsAddOption("printer-location", "flexVDI Client", numOptions, &options);
+    numOptions = cupsAddOption("printer-info", sharedPrinterDescription,
+                               numOptions, &options);
+    numOptions = cupsAddOption("printer-location", sharedPrinterLocation,
+                               numOptions, &options);
 
     ipp_t * request = newRequest(IPP_OP_CUPS_ADD_MODIFY_PRINTER, printer);
     ippAddInteger(request, IPP_TAG_PRINTER, IPP_TAG_ENUM, "printer-state", IPP_PSTATE_IDLE);
