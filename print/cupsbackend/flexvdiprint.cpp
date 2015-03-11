@@ -63,6 +63,12 @@ public:
         ipp_attribute_t * attr = cupsFindDestDefault(http, dest, dinfo, option.c_str());
         return attr ? string(ippGetString(attr, 0, NULL)) : fallback;
     }
+    string getDefaultResolution(const string & fallback) {
+        ipp_attribute_t * attr = cupsFindDestDefault(http, dest, dinfo, "printer-resolution");
+        ipp_res_t units;
+        int yres, xres = attr ? ippGetResolution(attr, 0, &yres, &units) : 0;
+        return attr ? (to_string(xres) + "dpi") : fallback;
+    }
     string getSharedPrinterName() {
         const char * name = cupsGetOption("flexvdi-shared-printer",
                                           dest->num_options, dest->options);
@@ -104,7 +110,7 @@ string parseOptions(char * argv[6]) {
         jobOptions += " sides=" + conn.getDefault("sides", "one-sided");
     }
     if (jobOptions.find("Resolution=") == string::npos) {
-        jobOptions += " Resolution=" + conn.getDefault("Resolution", "300dpi");
+        jobOptions += " Resolution=" + conn.getDefaultResolution("300dpi");
     }
     if ((pos = jobOptions.find("ColorModel=")) != string::npos
         && jobOptions.length() > pos + 11 && jobOptions[pos + 11] == 'G') {
