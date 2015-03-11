@@ -63,6 +63,11 @@ public:
         ipp_attribute_t * attr = cupsFindDestDefault(http, dest, dinfo, option.c_str());
         return attr ? string(ippGetString(attr, 0, NULL)) : fallback;
     }
+    string getSharedPrinterName() {
+        const char * name = cupsGetOption("flexvdi-shared-printer",
+                                          dest->num_options, dest->options);
+        return name ? name : "";
+    }
 
 private:
     cups_dest_t * dests, * dest;
@@ -84,7 +89,7 @@ string parseOptions(char * argv[6]) {
         return string();
     }
 
-    jobOptions += string(" printer=\"") + printer + "\"";
+    jobOptions += string(" printer=\"") + conn.getSharedPrinterName() + "\"";
     jobOptions += string(" title=\"") + jobTitle + "\"";
     jobOptions += string(" copies=") + jobCopies;
     if (jobOptions.find("noCollate") == string::npos

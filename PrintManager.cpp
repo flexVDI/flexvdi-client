@@ -281,6 +281,19 @@ static ipp_t * newRequest(ipp_op_t op, const string & printer) {
 }
 
 
+static string normalizeName(const string & printer) {
+    string result;
+    typedef boost::locale::utf::utf_traits<char> utf8;
+    for (auto i = printer.begin(); i != printer.end() && result.length() < 127;) {
+        auto cp = utf8::decode(i, printer.end());
+        if (cp > ' ' && cp != '@' && cp != 127 && cp != '/' && cp != '#')
+            result += (char)cp;
+        else result += '_';
+    }
+    return result;
+}
+
+
 bool PrintManager::installPrinter(const string & printer, const string & ppd) {
     Log(L_DEBUG) << "Installing printer " << printer << " from " << ppd;
 
@@ -292,7 +305,8 @@ bool PrintManager::installPrinter(const string & printer, const string & ppd) {
     numOptions = cupsAddOption("printer-location", sharedPrinterLocation,
                                numOptions, &options);
 
-    ipp_t * request = newRequest(IPP_OP_CUPS_ADD_MODIFY_PRINTER, printer);
+    string normPrinter = normalizeName(printer);
+    ipp_t * request = newRequest(IPP_OP_CUPS_ADD_MODIFY_PRINTER, normPrinter);
     ippAddInteger(request, IPP_TAG_PRINTER, IPP_TAG_ENUM, "printer-state", IPP_PSTATE_IDLE);
     ippAddBoolean(request, IPP_TAG_PRINTER, "printer-is-accepting-jobs", 1);
     cupsEncodeOptions2(request, numOptions, options, IPP_TAG_OPERATION);
@@ -309,12 +323,12 @@ bool PrintManager::installPrinter(const string & printer, const string & ppd) {
 
     cups_dest_t * dest, * dests;
     int numDests = cupsGetDests(&dests);
-    dest = cupsGetDest(printer.c_str(), NULL, numDests, dests);
+    dest = cupsGetDest(normPrinter.c_str(), NULL, numDests, dests);
     if (!dest) {
         Log(L_ERROR) << "Failed to install printer";
         return false;
     }
-    dest->num_options = cupsAddOption("flexvdi-shared-printer", "true",
+    dest->num_options = cupsAddOption("flexvdi-shared-printer", printer.c_str(),
                                       dest->num_options, &dest->options);
     cupsSetDests(numDests, dests);
     cupsFreeDests(numDests, dests);
@@ -325,7 +339,7 @@ bool PrintManager::installPrinter(const string & printer, const string & ppd) {
 
 bool PrintManager::uninstallPrinter(const string & printer) {
     bool result = true;
-    ipp_t * request = newRequest(IPP_OP_CUPS_DELETE_PRINTER, printer);
+    ipp_t * request = newRequest(IPP_OP_CUPS_DELETE_PRINTER, normalizeName(printer));
     http_t * http = cupsConnection();
     ippDelete(cupsDoRequest(http, request, "/admin/"));
     if (cupsLastError() > IPP_STATUS_OK_CONFLICTING) {
