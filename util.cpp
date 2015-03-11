@@ -69,14 +69,23 @@ std::string flexvm::getTempFileName(const char * prefix) {
 
 #ifdef WIN32
 const char * Log::getDefaultLogPath() {
-    static char logPath[MAX_PATH + 9] = "c:";
-    SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA, NULL, 0, logPath);
-    size_t length = strlen(logPath);
-    std::copy_n("\\flexVDI", 9, &logPath[length]);
-    if (SHCreateDirectoryExA(NULL, logPath, NULL) || GetLastError() == ERROR_ALREADY_EXISTS)
-        return logPath;
-    else
-        return "c:";
+    static std::unique_ptr<char[]> logPath;
+    if (!logPath.get()) {
+        wchar_t appDataPath[MAX_PATH + 1];
+        SHGetFolderPath(NULL, CSIDL_COMMON_APPDATA, NULL, 0, appDataPath);
+        std::wstring logPathWide = std::wstring(appDataPath) + L"\\flexVDI";
+        if (SHCreateDirectoryEx(NULL, logPathWide.c_str(), NULL)
+            || GetLastError() == ERROR_ALREADY_EXISTS) {
+            std::string logPathUtf8 = toString(logPathWide);
+            size_t length = logPathUtf8.length();
+            logPath.reset(new char[length + 1]);
+            std::copy_n(logPathUtf8.c_str(), length + 1, logPath.get());
+        } else {
+            logPath.reset(new char[3]);
+            std::copy_n("c:", 3, logPath.get());
+        }
+    }
+    return logPath.get();
 }
 
 
@@ -86,9 +95,9 @@ std::system_error flexvm::lastSystemError(const std::string & msg) {
 
 
 std::string flexvm::getTempDirName() {
-    char tempPath[MAX_PATH] = ".\\";
-    GetTempPathA(MAX_PATH, tempPath);
-    return std::string(tempPath);
+    wchar_t tempPath[MAX_PATH] = L".\\";
+    GetTempPath(MAX_PATH, tempPath);
+    return toString(tempPath);
 }
 
 

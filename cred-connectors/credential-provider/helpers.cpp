@@ -283,7 +283,7 @@ static HRESULT _LsaInitString(
     PSTRING pszDestinationString,
     PCSTR pszSourceString
 ) {
-    size_t cchLength = lstrlenA(pszSourceString);
+    size_t cchLength = strlen(pszSourceString);
     USHORT usLength;
     HRESULT hr = SizeTToUShort(cchLength, &usLength);
     if (SUCCEEDED(hr)) {
@@ -335,7 +335,7 @@ static HRESULT _ProtectAndCopyString(
     // pwzToProtect is const, but CredProtect takes a non-const string.
     // So, ake a copy that we know isn't const.
     PWSTR pwzToProtectCopy;
-    HRESULT hr = SHStrDupW(pwzToProtect, &pwzToProtectCopy);
+    HRESULT hr = SHStrDup(pwzToProtect, &pwzToProtectCopy);
     if (SUCCEEDED(hr)) {
         // The first call to CredProtect determines the length of the encrypted string.
         // Because we pass a NULL output buffer, we expect the call to fail.
@@ -343,7 +343,7 @@ static HRESULT _ProtectAndCopyString(
         // Note that the third parameter to CredProtect, the number of characters of pwzToProtectCopy
         // to encrypt, must include the NULL terminator!
         DWORD cchProtected = 0;
-        if (!CredProtectW(FALSE, pwzToProtectCopy, (DWORD)wcslen(pwzToProtectCopy) + 1, NULL, &cchProtected, NULL)) {
+        if (!CredProtect(FALSE, pwzToProtectCopy, (DWORD)wcslen(pwzToProtectCopy) + 1, NULL, &cchProtected, NULL)) {
             DWORD dwErr = GetLastError();
 
             if ((ERROR_INSUFFICIENT_BUFFER == dwErr) && (0 < cchProtected)) {
@@ -351,7 +351,7 @@ static HRESULT _ProtectAndCopyString(
                 PWSTR pwzProtected = (PWSTR)CoTaskMemAlloc(cchProtected * sizeof(WCHAR));
                 if (pwzProtected) {
                     // The second call to CredProtect actually encrypts the string.
-                    if (CredProtectW(FALSE, pwzToProtectCopy, (DWORD)wcslen(pwzToProtectCopy) + 1, pwzProtected, &cchProtected, NULL)) {
+                    if (CredProtect(FALSE, pwzToProtectCopy, (DWORD)wcslen(pwzToProtectCopy) + 1, pwzProtected, &cchProtected, NULL)) {
                         *ppwzProtected = pwzProtected;
                         hr = S_OK;
                     } else {
@@ -394,7 +394,7 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
         // pwzPassword is const, but CredIsProtected takes a non-const string.
         // So, ake a copy that we know isn't const.
         PWSTR pwzPasswordCopy;
-        hr = SHStrDupW(pwzPassword, &pwzPasswordCopy);
+        hr = SHStrDup(pwzPassword, &pwzPasswordCopy);
         if (SUCCEEDED(hr)) {
             bool bCredAlreadyEncrypted = false;
             CRED_PROTECTION_TYPE protectionType;
@@ -402,7 +402,7 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
             // If the password is already encrypted, we should not encrypt it again.
             // An encrypted password may be received through SetSerialization in the
             // CPUS_LOGON scenario during a Terminal Services connection, for instance.
-            if (CredIsProtectedW(pwzPasswordCopy, &protectionType)) {
+            if (CredIsProtected(pwzPasswordCopy, &protectionType)) {
                 if (CredUnprotected != protectionType) {
                     bCredAlreadyEncrypted = true;
                 }
@@ -411,7 +411,7 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
             // Passwords should not be encrypted in the CPUS_CREDUI scenario.  We
             // cannot know if our caller expects or can handle an encryped password.
             if (CPUS_CREDUI == cpus || bCredAlreadyEncrypted) {
-                hr = SHStrDupW(pwzPasswordCopy, ppwzProtectedPassword);
+                hr = SHStrDup(pwzPasswordCopy, ppwzProtectedPassword);
             } else {
                 hr = _ProtectAndCopyString(pwzPasswordCopy, ppwzProtectedPassword);
             }
@@ -419,7 +419,7 @@ HRESULT ProtectIfNecessaryAndCopyPassword(
             CoTaskMemFree(pwzPasswordCopy);
         }
     } else {
-        hr = SHStrDupW(L"", ppwzProtectedPassword);
+        hr = SHStrDup(L"", ppwzProtectedPassword);
     }
 
     return hr;

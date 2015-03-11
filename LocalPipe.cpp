@@ -40,8 +40,8 @@ struct LocalPipe::Listener {
         secAttr.lpSecurityDescriptor = NULL;
         uint32_t mode = PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED;
         uint32_t type = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT;
-        HANDLE pipeFd = ::CreateNamedPipeA(pipeName.c_str(), mode, type,
-                                           PIPE_UNLIMITED_INSTANCES, 1024, 1024, 0, &secAttr);
+        HANDLE pipeFd = ::CreateNamedPipe(toWstring(pipeName).c_str(), mode, type,
+                                          PIPE_UNLIMITED_INSTANCES, 1024, 1024, 0, &secAttr);
         throw_if(pipeFd == INVALID_HANDLE_VALUE, pipeName);
         stream.assign(pipeFd);
         asio::windows::overlapped_ptr overlappedPtr;

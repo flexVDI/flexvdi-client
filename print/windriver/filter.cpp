@@ -41,10 +41,10 @@ private:
     string outBuffer, errBuffer;
     vector<string> tmpFiles;
     string inFileName, outFileName, extraOptions;
-    string printerName, docName;
+    wstring printerName, docName;
     int jobId;
-    shared_ptr<JOB_INFO_2A> jobInfo;
-    shared_ptr<PRINTER_INFO_2A> printerInfo;
+    shared_ptr<JOB_INFO_2> jobInfo;
+    shared_ptr<PRINTER_INFO_2> printerInfo;
 
     GSFilter();
 
@@ -73,25 +73,25 @@ private:
         std::unique_ptr<wchar_t[]> wbuffer;
         int size;
 
-        size = GetEnvironmentVariableW(L"REDMON_JOB", NULL, 0);
+        size = GetEnvironmentVariable(L"REDMON_JOB", NULL, 0);
         wbuffer.reset(new wchar_t[size]);
-        GetEnvironmentVariableW(L"REDMON_JOB", wbuffer.get(), size);
+        GetEnvironmentVariable(L"REDMON_JOB", wbuffer.get(), size);
         jobId = stoi(wbuffer.get());
 
-        size = GetEnvironmentVariableW(L"REDMON_PRINTER", NULL, 0);
+        size = GetEnvironmentVariable(L"REDMON_PRINTER", NULL, 0);
         wbuffer.reset(new wchar_t[size]);
-        GetEnvironmentVariableW(L"REDMON_PRINTER", wbuffer.get(), size);
-        printerName = toString(wbuffer.get());
+        GetEnvironmentVariable(L"REDMON_PRINTER", wbuffer.get(), size);
+        printerName = wbuffer.get();
 
-        size = GetEnvironmentVariableW(L"REDMON_DOCNAME", NULL, 0);
+        size = GetEnvironmentVariable(L"REDMON_DOCNAME", NULL, 0);
         wbuffer.reset(new wchar_t[size]);
-        GetEnvironmentVariableW(L"REDMON_DOCNAME", wbuffer.get(), size);
-        docName = toString(wbuffer.get());
+        GetEnvironmentVariable(L"REDMON_DOCNAME", wbuffer.get(), size);
+        docName = wbuffer.get();
     }
 
     void getJobInfo();
     void getPrinterInfo();
-    int getPrinterCap(WORD cap, char * buffer);
+    int getPrinterCap(WORD cap, wchar_t * buffer);
     string getMedia();
     int getMediaType();
     int getMediaSource();
@@ -148,7 +148,7 @@ int GSFilter::runFilter() {
     }
 
     for (auto & f : tmpFiles)
-        DeleteFileA(f.c_str());
+        DeleteFile(toWstring(f).c_str());
 
     return result;
 }
@@ -156,13 +156,13 @@ int GSFilter::runFilter() {
 
 void GSFilter::getJobInfo() {
     HANDLE printer;
-    if (OpenPrinterA((char *)printerName.c_str(), &printer, NULL)) {
+    if (OpenPrinter((wchar_t *)printerName.c_str(), &printer, NULL)) {
         DWORD needed;
-        GetJobA(printer, jobId, 2, NULL, 0, &needed);
+        GetJob(printer, jobId, 2, NULL, 0, &needed);
         if (needed > 0) {
             std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
-            if(GetJobA(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed)) {
-                jobInfo = shared_ptr<JOB_INFO_2A>(buffer, (JOB_INFO_2A *)buffer.get());
+            if(GetJob(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed)) {
+                jobInfo = shared_ptr<JOB_INFO_2>(buffer, (JOB_INFO_2 *)buffer.get());
             }
         }
         ClosePrinter(printer);
@@ -172,13 +172,13 @@ void GSFilter::getJobInfo() {
 
 void GSFilter::getPrinterInfo() {
     HANDLE printer;
-    if (OpenPrinterA((char *)printerName.c_str(), &printer, NULL)) {
+    if (OpenPrinter((wchar_t *)printerName.c_str(), &printer, NULL)) {
         DWORD needed;
-        GetPrinterA(printer, 2, NULL, 0, &needed);
+        GetPrinter(printer, 2, NULL, 0, &needed);
         if (needed > 0) {
             std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
-            if (GetPrinterA(printer, 2, (LPBYTE)buffer.get(), needed, &needed)) {
-                printerInfo = shared_ptr<PRINTER_INFO_2A>(buffer, (PRINTER_INFO_2A *)buffer.get());
+            if (GetPrinter(printer, 2, (LPBYTE)buffer.get(), needed, &needed)) {
+                printerInfo = shared_ptr<PRINTER_INFO_2>(buffer, (PRINTER_INFO_2 *)buffer.get());
             }
         }
         ClosePrinter(printer);
@@ -186,14 +186,14 @@ void GSFilter::getPrinterInfo() {
 }
 
 
-int GSFilter::getPrinterCap(WORD cap, char * buffer) {
-    return DeviceCapabilitiesA(printerInfo->pPrinterName, printerInfo->pPortName,
-                               cap, buffer, printerInfo->pDevMode);
+int GSFilter::getPrinterCap(WORD cap, wchar_t * buffer) {
+    return DeviceCapabilities(printerInfo->pPrinterName, printerInfo->pPortName,
+                              cap, buffer, printerInfo->pDevMode);
 }
 
 
 string GSFilter::getMedia() {
-    DEVMODEA * devMode = jobInfo->pDevMode;
+    DEVMODE * devMode = jobInfo->pDevMode;
     switch (devMode->dmPaperSize) {
         case DMPAPER_TABLOID: return "Tabloid";
         case DMPAPER_LEDGER: return "Ledger";
@@ -231,7 +231,7 @@ string GSFilter::getMedia() {
 
 
 int GSFilter::getMediaSource() {
-    DEVMODEA * devMode = jobInfo->pDevMode;
+    DEVMODE * devMode = jobInfo->pDevMode;
     int source = devMode->dmDefaultSource - DMBIN_USER;
     int numSources = getPrinterCap(DC_BINNAMES, NULL);
     // FIXME: Windows introduces "Automatic selection" as first source
@@ -240,7 +240,7 @@ int GSFilter::getMediaSource() {
 
 
 int GSFilter::getMediaType() {
-    DEVMODEA * devMode = jobInfo->pDevMode;
+    DEVMODE * devMode = jobInfo->pDevMode;
     int mediaType = devMode->dmMediaType - DMMEDIA_USER;
     int numMediaTypes = getPrinterCap(DC_MEDIATYPENAMES, NULL);
     return mediaType >= 0 && mediaType < numMediaTypes ? mediaType : 0;
@@ -248,10 +248,10 @@ int GSFilter::getMediaType() {
 
 
 string GSFilter::getJobOptions() {
-    DEVMODEA * devMode = jobInfo->pDevMode;
+    DEVMODE * devMode = jobInfo->pDevMode;
     ostringstream oss;
-    oss << "printer=\"" << printerName << "\"";
-    oss << " title=\"" << docName << "\"";
+    oss << "printer=\"" << toString(printerName) << "\"";
+    oss << " title=\"" << toString(docName) << "\"";
     oss << " media=" << getMedia();
     oss << " media-source=" << getMediaSource();
     oss << " media-type=" << getMediaType();

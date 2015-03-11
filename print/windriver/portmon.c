@@ -62,8 +62,8 @@ void syslog(LPCTSTR buf) {
     if (buf == NULL)
         buf = TEXT("(null)");
 
-    if ((hfile = CreateFileA("c:\\temp\\redmon.log", GENERIC_WRITE,
-                             0 /* no file sharing */, NULL, OPEN_ALWAYS, 0, NULL))
+    if ((hfile = CreateFile(L"c:\\temp\\redmon.log", GENERIC_WRITE,
+                            0 /* no file sharing */, NULL, OPEN_ALWAYS, 0, NULL))
             != INVALID_HANDLE_VALUE) {
         SetFilePointer(hfile, 0, NULL, FILE_END);
         while (lstrlen(buf)) {

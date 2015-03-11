@@ -61,8 +61,8 @@ bool flexvm::sendJob(istream & pdfFile, const string & options) {
     boost::system::error_code error;
 #ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
     HANDLE h;
-    h = ::CreateFileA("\\\\.\\pipe\\flexvdi_pipe", GENERIC_READ | GENERIC_WRITE,
-                      0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+    h = ::CreateFile(L"\\\\.\\pipe\\flexvdi_pipe", GENERIC_READ | GENERIC_WRITE,
+                     0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     return_if(h == INVALID_HANDLE_VALUE, "Failed opening pipe", false);
     asio::windows::stream_handle pipe(io, h);
 #else

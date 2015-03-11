@@ -181,21 +181,6 @@ VOID WINAPI WlxDisplaySASNotice(PVOID pWlxContext) {
 }
 
 
-// #define WINLOGON_REGISTRY_SUBKEY L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\WinLogon\\"
-// int setRegistryValue(const char * key, const std::string & value) {
-//     Log(L_DEBUG) << "Set registry value " << key << " = " << value;
-//
-//     HKEY hkey;
-//     LONG status = RegOpenKey(HKEY_LOCAL_MACHINE, WINLOGON_REGISTRY_SUBKEY, &hkey);
-//     return_code_if(status, status, "Failed to open winlogon registry key.", false);
-//
-//     status = RegSetValueExA(hkey, key, 0, REG_SZ, (LPBYTE)value.c_str(), value.length() + 1);
-//     RegCloseKey(hkey);
-//     return_code_if(status, status, "Failed to write registry key.", false);
-//     return true;
-// }
-
-
 /*
 http://msdn.microsoft.com/en-us/library/windows/desktop/aa380571%28v=vs.85%29.aspx
 */

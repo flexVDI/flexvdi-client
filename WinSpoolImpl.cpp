@@ -10,7 +10,7 @@
 class WindowsLibrary {
 public:
     WindowsLibrary(const wchar_t * name) {
-        libHandle = LoadLibraryW(name);
+        libHandle = LoadLibrary(name);
     }
     ~WindowsLibrary() {
         if (libHandle)

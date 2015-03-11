@@ -105,9 +105,9 @@ BOOL GinaDialogHooks::LogonDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARA
 
     if (uMsg == WM_USER + 5) {
         EnterCriticalSection(&mutex);
-        SetDlgItemTextA(hwndDlg, usernameIDC, username.c_str());
-        SetDlgItemTextA(hwndDlg, passwordIDC, password.c_str());
-        SetDlgItemTextA(hwndDlg, domainIDC, domain.c_str());
+        SetDlgItemText(hwndDlg, usernameIDC, toWstring(username).c_str());
+        SetDlgItemText(hwndDlg, passwordIDC, toWstring(password).c_str());
+        SetDlgItemText(hwndDlg, domainIDC, toWstring(domain).c_str());
         clearCredentials();
         LeaveCriticalSection(&mutex);
         uMsg = WM_COMMAND;
@@ -126,7 +126,7 @@ void GinaDialogHooks::findCredentialControls(HWND hwndDlg) {
     passwordIDC = usernameIDC = domainIDC = 0;
     for (int i = 0; i < 2; ++i) {
         WINDOWINFO info;
-        hwnd = FindWindowExA(hwndDlg, hwnd, "EDIT", NULL);
+        hwnd = FindWindowEx(hwndDlg, hwnd, L"EDIT", NULL);
         if (hwnd && GetWindowInfo(hwnd, &info) && (info.dwStyle & ES_PASSWORD)) {
             passwordIDC = GetDlgCtrlID(hwnd);
             Log(L_DEBUG) << "This is the password control: " << passwordIDC;
@@ -134,7 +134,7 @@ void GinaDialogHooks::findCredentialControls(HWND hwndDlg) {
             usernameIDC = GetDlgCtrlID(hwnd);
         }
     }
-    hwnd = FindWindowExA(hwndDlg, NULL, "COMBOBOX", NULL);
+    hwnd = FindWindowEx(hwndDlg, NULL, L"COMBOBOX", NULL);
     if (hwnd) {
         domainIDC = GetDlgCtrlID(hwnd);
     }

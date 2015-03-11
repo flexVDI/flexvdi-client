@@ -41,8 +41,8 @@ public:
 #ifdef WIN32
         if (name[0] != '\\')
             name = "\\\\.\\Global\\" + name;
-        HANDLE portFd = ::CreateFileA(name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL,
-                                      OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+        HANDLE portFd = ::CreateFile(toWstring(name).c_str(), GENERIC_READ | GENERIC_WRITE,
+                                     0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
         throw_if(portFd == INVALID_HANDLE_VALUE, name);
 #else
         if (name[0] != '/')

@@ -18,9 +18,9 @@ namespace sys = boost::system;
 bool CredentialsThread::openPipe() {
 #ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
     // TODO: configurable
-    const char * pipeName = "\\\\.\\pipe\\flexvdi_pipe";
-    HANDLE h = CreateFileA(pipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL,
-                           OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+    const wchar_t * pipeName = L"\\\\.\\pipe\\flexvdi_pipe";
+    HANDLE h = CreateFile(pipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                          OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     return_if(h == INVALID_HANDLE_VALUE, "Error opening pipe", false);
     pipe.assign(h);
 #else

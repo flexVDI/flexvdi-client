@@ -62,7 +62,7 @@ bool PortInstaller::installMonitor(const wchar_t * dll) {
         mi2.pName = monitorName;
         mi2.pDLLName = monitorDll;
         mi2.pEnvironment = NULL;
-        if (!AddMonitorW(NULL, 2, (LPBYTE)&mi2)) {
+        if (!AddMonitor(NULL, 2, (LPBYTE)&mi2)) {
             reportError(L"AddMonitorW failed");
             return false;
         }
@@ -73,11 +73,11 @@ bool PortInstaller::installMonitor(const wchar_t * dll) {
 
 bool PortInstaller::isInstalled() {
     DWORD needed = 0, returned = 0;
-    EnumMonitorsW(NULL, 1, NULL, 0, &needed, &returned);
+    EnumMonitors(NULL, 1, NULL, 0, &needed, &returned);
     if (needed > 0) {
         std::unique_ptr<uint8_t[]> buffer(new uint8_t[needed]);
         MONITOR_INFO_1W * mi = (MONITOR_INFO_1W *)buffer.get();
-        if (EnumMonitorsW(NULL, 1, (LPBYTE)mi, needed, &needed, &returned)) {
+        if (EnumMonitors(NULL, 1, (LPBYTE)mi, needed, &needed, &returned)) {
             for (DWORD i = 0; i < returned; i++) {
                 if (monitorName.isEqualTo(mi[i].pName)) {
                     return true;
@@ -96,14 +96,14 @@ bool PortInstaller::addPort(const wchar_t * portName) {
     monitorString += monitorName;
     DWORD xcvSize = (std::wcslen(portName) + 1) * sizeof(wchar_t);
 
-    if (!OpenPrinterW(monitorString, &hPrinter, &pdef)) {
+    if (!OpenPrinter(monitorString, &hPrinter, &pdef)) {
         reportError(L"OpenPrinterW failed");
         return false;
     }
 
     bool result = false;
     DWORD status, needed;
-    if (!XcvDataW(hPrinter, L"AddPort", (BYTE *)portName, xcvSize, NULL, 0, &needed, &status)) {
+    if (!XcvData(hPrinter, L"AddPort", (BYTE *)portName, xcvSize, NULL, 0, &needed, &status)) {
         reportError(L"XcvDataWProc failed");
     } else if (status != NO_ERROR && status != ERROR_ALREADY_EXISTS) {
         reportError(L"XcvDataWProc failed");
@@ -121,11 +121,11 @@ bool PortInstaller::uninstallMonitor() {
     DWORD needed = 0, returned = 0;
     PORT_INFO_2W * pi;
     /* Check if monitor is still in use */
-    EnumPortsW(NULL, 2, NULL, 0, &needed, &returned);
+    EnumPorts(NULL, 2, NULL, 0, &needed, &returned);
     if (needed > 0) {
         buffer.reset(new uint8_t[needed]);
         pi = (PORT_INFO_2W *)buffer.get();
-        if (EnumPortsW(NULL, 2, (LPBYTE)pi, needed, &needed, &returned)) {
+        if (EnumPorts(NULL, 2, (LPBYTE)pi, needed, &needed, &returned)) {
             for (DWORD i = 0; i < returned; i++) {
                 if (monitorName.isEqualTo(pi[i].pMonitorName)) {
                     deletePort(pi[i].pPortName);
@@ -141,7 +141,7 @@ bool PortInstaller::uninstallMonitor() {
     }
 
     /* Try again, hoping that we succeeded in deleting all ports */
-    if (EnumPortsW(NULL, 2, (LPBYTE)pi, needed, &needed, &returned)) {
+    if (EnumPorts(NULL, 2, (LPBYTE)pi, needed, &needed, &returned)) {
         for (unsigned int i = 0; i < returned; i++) {
             if (monitorName.isEqualTo(pi[i].pMonitorName)) {
                 reportError(L"Monitor still in use");
@@ -166,11 +166,11 @@ bool PortInstaller::uninstallMonitor() {
 bool PortInstaller::deletePort(const wchar_t * portName) {
     DWORD needed = 0, returned = 0;
     DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
-    EnumPrintersW(flags, NULL, 2, NULL, 0, &needed, &returned);
+    EnumPrinters(flags, NULL, 2, NULL, 0, &needed, &returned);
     if (needed > 0) {
         std::unique_ptr<uint8_t[]> enumbuf(new uint8_t[needed]);
         PRINTER_INFO_2W * pri2 = (PRINTER_INFO_2W *)enumbuf.get();
-        if (EnumPrintersW(flags, NULL, 2, (LPBYTE)pri2, needed, &needed, &returned)) {
+        if (EnumPrinters(flags, NULL, 2, (LPBYTE)pri2, needed, &needed, &returned)) {
             for (unsigned int i = 0; i < returned; i++) {
                 if (lstrcmp(pri2[i].pPortName, portName) == 0) {
                     PRINTER_DEFAULTSW pd;
@@ -178,7 +178,7 @@ bool PortInstaller::deletePort(const wchar_t * portName) {
                     pd.pDevMode = NULL;
                     pd.DesiredAccess = PRINTER_ALL_ACCESS;
                     HANDLE hPrinter;
-                    if (OpenPrinterW(pri2[i].pPrinterName, &hPrinter, &pd)) {
+                    if (OpenPrinter(pri2[i].pPrinterName, &hPrinter, &pd)) {
                         DeletePrinter(hPrinter);
                         ClosePrinter(hPrinter);
                     }
@@ -188,7 +188,7 @@ bool PortInstaller::deletePort(const wchar_t * portName) {
     } else reportError(L"EnumPrinters failed");
 
     /* This may not be silent, but probably is */
-    DeletePortW(NULL, HWND_DESKTOP, (wchar_t *)portName);
+    DeletePort(NULL, HWND_DESKTOP, (wchar_t *)portName);
     return true;
 }
 
@@ -218,16 +218,16 @@ extern "C" DWORD renamePrinter(const wchar_t * oldName, const wchar_t * newName,
     PRINTER_DEFAULTSW pd{ NULL, NULL, PRINTER_ALL_ACCESS };
     wsbuffer printerName = oldName;
     HANDLE hPrinter;
-    if (OpenPrinterW(printerName, &hPrinter, &pd)) {
+    if (OpenPrinter(printerName, &hPrinter, &pd)) {
         DWORD needed = 0;
-        GetPrinterW(hPrinter, 2, NULL, 0, &needed);
+        GetPrinter(hPrinter, 2, NULL, 0, &needed);
         if (needed > 0) {
             std::unique_ptr<uint8_t[]> pbuf(new uint8_t[needed]);
             PRINTER_INFO_2W * pi = (PRINTER_INFO_2W *)pbuf.get();
-            if (GetPrinterW(hPrinter, 2, (LPBYTE)pi, needed, &needed)) {
+            if (GetPrinter(hPrinter, 2, (LPBYTE)pi, needed, &needed)) {
                 printerName = newName;
                 pi->pPrinterName = printerName;
-                SetPrinterW(hPrinter, 2, (LPBYTE)pi, 0);
+                SetPrinter(hPrinter, 2, (LPBYTE)pi, 0);
             } else std::wcscpy(error, L"GetPrinter failed");
         } else std::wcscpy(error, L"GetPrinter failed");
         ClosePrinter(hPrinter);

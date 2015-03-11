@@ -160,18 +160,18 @@ HRESULT FlexCredential::Initialize(CREDENTIAL_PROVIDER_USAGE_SCENARIO scenario) 
     Lock lock(mutex);
     HRESULT hr = S_OK;
     // Initialize the String value of all the fields.
-    hr = SHStrDupW(L"flexVDI SSO", &fieldContent[SFI_GREETING]);
+    hr = SHStrDup(L"flexVDI SSO", &fieldContent[SFI_GREETING]);
     if (SUCCEEDED(hr)) {
-        hr = SHStrDupW(username, &fieldContent[SFI_USERNAME]);
+        hr = SHStrDup(username, &fieldContent[SFI_USERNAME]);
     }
     if (SUCCEEDED(hr)) {
-        hr = SHStrDupW(L"", &fieldContent[SFI_PASSWORD]);
+        hr = SHStrDup(L"", &fieldContent[SFI_PASSWORD]);
     }
     if (SUCCEEDED(hr)) {
-        hr = SHStrDupW(domain, &fieldContent[SFI_DOMAIN]);
+        hr = SHStrDup(domain, &fieldContent[SFI_DOMAIN]);
     }
     if (SUCCEEDED(hr)) {
-        hr = SHStrDupW(L"Submit", &fieldContent[SFI_SUBMIT_BUTTON]);
+        hr = SHStrDup(L"Submit", &fieldContent[SFI_SUBMIT_BUTTON]);
     }
     return hr;
 }
@@ -222,7 +222,7 @@ HRESULT FlexCredential::SetDeselected() {
     Lock lock(mutex);
     if (fieldContent[SFI_PASSWORD]) {
         clearPassword();
-        hr = SHStrDupW(L"", &fieldContent[SFI_PASSWORD]);
+        hr = SHStrDup(L"", &fieldContent[SFI_PASSWORD]);
         if (SUCCEEDED(hr) && events) {
             events->SetFieldString(this, SFI_PASSWORD, fieldContent[SFI_PASSWORD]);
         }
@@ -251,7 +251,7 @@ HRESULT FlexCredential::GetStringValue(DWORD dwFieldID, PWSTR * ppwsz) {
     LogCall cl(__FUNCTION__);
     if (dwFieldID < SFI_NUM_FIELDS) {
         Lock lock(mutex);
-        return SHStrDupW(fieldContent[dwFieldID], ppwsz);
+        return SHStrDup(fieldContent[dwFieldID], ppwsz);
     } else {
         return E_INVALIDARG;
     }
@@ -293,7 +293,7 @@ HRESULT FlexCredential::SetStringValue(DWORD dwFieldID, PCWSTR pwz) {
         fieldDescriptors[dwFieldID].cpft == CPFT_PASSWORD_TEXT)) {
         Lock lock(mutex);
         CoTaskMemFree(fieldContent[dwFieldID]);
-        return SHStrDupW(pwz, &fieldContent[dwFieldID]);
+        return SHStrDup(pwz, &fieldContent[dwFieldID]);
     } else {
         return E_INVALIDARG;
     }
@@ -324,7 +324,7 @@ void FlexCredential::setCredentials(const char * u, const char * p, const char *
 // (logon/unlock is what's demonstrated in this sample).  LogonUI then passes these credentials
 // back to the system to log on.
 // Los valores que se serializan para pasar a windows son flexUser, flexPassword, flexDomain.
-// 2014-04: Ahora también usa el dominio.
+// 2014-04: Ahora tambiï¿½n usa el dominio.
 // El parametro de salida "importante" es el pcpcs que contiene username, pass, domain, ... "empaquetados"
 HRESULT FlexCredential::GetSerialization(
     CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE * pcpgsr,
@@ -340,14 +340,14 @@ HRESULT FlexCredential::GetSerialization(
     HRESULT hr = S_OK; //
     Lock lock(mutex);
 
-    WCHAR effectiveDomain[MAX_CRED_SIZE]; // Variable que contendrá el nombre de dominio usado para autenticar. En el original se llamaba wsz ¿?
+    WCHAR effectiveDomain[MAX_CRED_SIZE]; // Variable que contendrï¿½ el nombre de dominio usado para autenticar. En el original se llamaba wsz ï¿½?
     DWORD domainLength = MAX_CRED_SIZE;
 
     // Si han especificado domain, lo usamos. Si no, usamos getComputerName()
     if (wcslen(fieldContent[SFI_DOMAIN]) > 0) {
         wcscpy_s(effectiveDomain, MAX_CRED_SIZE, fieldContent[SFI_DOMAIN]);
     } else {
-        hr = GetComputerNameW(effectiveDomain, &domainLength);
+        hr = GetComputerName(effectiveDomain, &domainLength);
         return_if(FAILED(hr), "GetComputerNameW failed", HRESULT_FROM_WIN32(GetLastError()));
     }
     Log(L_DEBUG) << "-> KIUL: usu: " << fieldContent[SFI_USERNAME]
@@ -424,7 +424,7 @@ HRESULT FlexCredential::ReportResult(
     }
 
     if ((DWORD) - 1 != dwStatusInfo) {
-        if (SUCCEEDED(SHStrDupW(s_rgLogonStatusInfo[dwStatusInfo].pwzMessage, ppwszOptionalStatusText))) {
+        if (SUCCEEDED(SHStrDup(s_rgLogonStatusInfo[dwStatusInfo].pwzMessage, ppwszOptionalStatusText))) {
             *pcpsiOptionalStatusIcon = s_rgLogonStatusInfo[dwStatusInfo].cpsi;
         }
     }

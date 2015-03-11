@@ -178,7 +178,7 @@ static HRESULT FieldDescriptorCoAllocCopy(
         pcpfd->dwFieldID = rcpfd.dwFieldID;
         pcpfd->cpft = rcpfd.cpft;
         if (rcpfd.pszLabel) {
-            hr = SHStrDupW(rcpfd.pszLabel, &pcpfd->pszLabel);
+            hr = SHStrDup(rcpfd.pszLabel, &pcpfd->pszLabel);
             if (FAILED(hr)) {
                 CoTaskMemFree(pcpfd);
                 pcpfd = NULL;
