@@ -361,6 +361,20 @@ static void generateDuplex(PPDGenerator * ppd) {
 }
 
 
+static void generateColor(PPDGenerator * ppd) {
+    if (ppd->color) {
+        fprintf(ppd->file,
+                "*%% == Color\n"
+                "*OpenUI *ColorModel/Color Mode: PickOne\n"
+                "*OrderDependency: 30 AnySetup *ColorModel\n"
+                "*DefaultColorModel: RGB\n"
+                "*ColorModel Gray/Grayscale: \"\"\n"
+                "*ColorModel RGB/Color: \"\"\n"
+                "*CloseUI: *ColorModel\n\n");
+    }
+}
+
+
 static void generateTrays(PPDGenerator * ppd) {
     GSList * i;
     int j;
@@ -470,6 +484,7 @@ gchar * generatePPD(PPDGenerator * ppd) {
     generatePaperSizes(ppd);
     generateResolutions(ppd);
     generateDuplex(ppd);
+    generateColor(ppd);
     generateTrays(ppd);
     generateMediaTypes(ppd);
     // TODO: UI constraints
