@@ -33,7 +33,9 @@ string getPrinterName(int jobId) {
 
 class CupsConnection {
 public:
-    CupsConnection(const string & printer) {
+    CupsConnection(const string & printer, const char * jobOptions) {
+        options = NULL;
+        numOptions = cupsParseOptions(jobOptions, 0, &options);
         string name = printer;
         size_t slashPos = name.find_first_of('/');
         numDests = cupsGetDests(&dests);
@@ -74,12 +76,48 @@ public:
                                           dest->num_options, dest->options);
         return name ? name : "";
     }
+    string getOption(const char * name) {
+        const char * option = cupsGetOption(name, numOptions, options);
+        return option ? option : "";
+    }
+    int getOptionIndex(const char * name) {
+        string option = getOption(name);
+        int result = 0, nameLen = strlen(name);
+        const char * ppdPath = cupsGetPPD(dest->name);
+        if (ppdPath) {
+            ifstream ppdFile(ppdPath);
+            string line;
+            int optionNumber = 0;
+            while (ppdFile) {
+                getline(ppdFile, line);
+                if (line.empty()) continue;
+                if (option.empty()) {
+                    if (line.substr(1, nameLen + 7) == string("Default") + name) {
+                        option = line.substr(nameLen + 10);
+                        Log(L_DEBUG) << "Default value for " << name << " is " << option;
+                    }
+                } else {
+                    if (line.substr(1, nameLen) == name) {
+                        if (line.substr(nameLen + 2, option.length()) == option) {
+                            result = optionNumber;
+                            break;
+                        }
+                        ++optionNumber;
+                    }
+                }
+            }
+            unlink(ppdPath);
+        }
+        return result;
+    }
 
 private:
     cups_dest_t * dests, * dest;
     int numDests;
     cups_dinfo_t * dinfo;
     http_t * http;
+    cups_option_t * options;
+    int numOptions;
 };
 
 
@@ -89,35 +127,34 @@ string parseOptions(char * argv[6]) {
     string printer = getPrinterName(jobId), defaultVal;
     string cupsUser(argv[2]), jobTitle(argv[3]), jobOptions(argv[5]);
 
-    CupsConnection conn(printer);
+    CupsConnection conn(printer, argv[5]);
     if (!conn.isOpen()) {
         Log(L_ERROR) << "Could not open printer " << printer << ": " << cupsLastErrorString();
         return string();
     }
 
-    size_t pos;
     jobOptions += string(" printer=\"") + conn.getSharedPrinterName() + "\"";
     jobOptions += string(" title=\"") + jobTitle + "\"";
     jobOptions += string(" copies=") + jobCopies;
-    if (jobOptions.find("noCollate") == string::npos
-        && jobOptions.find("Collate") == string::npos) {
+    if (conn.getOption("Collate").empty()) {
         jobOptions += " noCollate";
     }
-    if (jobOptions.find("media=") == string::npos) {
+    if (conn.getOption("media").empty()) {
         jobOptions += " media=" + conn.getDefault("media", "a4");
     }
-    if (jobOptions.find("sides=") == string::npos) {
+    if (conn.getOption("sides").empty()) {
         jobOptions += " sides=" + conn.getDefault("sides", "one-sided");
     }
-    if (jobOptions.find("Resolution=") == string::npos) {
+    if (conn.getOption("Resolution").empty()) {
         jobOptions += " Resolution=" + conn.getDefaultResolution("300dpi");
     }
-    if ((pos = jobOptions.find("ColorModel=")) != string::npos
-        && jobOptions.length() > pos + 11 && jobOptions[pos + 11] == 'G') {
+    if (conn.getOption("ColorModel") == string("Gray")) {
         jobOptions += " gray";
     } else {
         jobOptions += " color";
     }
+    jobOptions += " media-type=" + to_string(conn.getOptionIndex("MediaType"));
+    jobOptions += " media-source=" + to_string(conn.getOptionIndex("InputSlot"));
 
     Log(L_DEBUG) << "Printing with options: " << jobOptions;
     return jobOptions;
