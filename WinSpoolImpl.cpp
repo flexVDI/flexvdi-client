@@ -47,6 +47,21 @@ extern "C" WINBOOL WINAPI XcvDataW(HANDLE hXcv, PCWSTR pszDataName, PBYTE pInput
 }
 
 
+// And SetDefaultPrinterW seems missing, but only for 32-bit ???
+extern "C" WINBOOL WINAPI SetDefaultPrinterW(LPCWSTR pszPrinter) {
+    typedef decltype(&SetDefaultPrinterW) Proc;
+    WindowsLibrary spool(L"Winspool.drv");
+    if (spool.isOpen()) {
+        Proc fp = (Proc)spool.getProcAddress("SetDefaultPrinterW");
+        if (!fp) {
+            return FALSE;
+        } else
+            return fp(pszPrinter);
+    }
+    return FALSE;
+}
+
+
 extern "C" WINBOOL WINAPI DeletePrinterDriverExW(LPWSTR pName, LPWSTR pEnvironment,
                                                  LPWSTR pDriverName, DWORD dwDeleteFlag,
                                                  DWORD dwVersionFlag) {
