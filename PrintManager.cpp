@@ -105,17 +105,23 @@ const char * PrintManager::sharedPrinterLocation = "flexVDI Client";
 
 
 #ifdef WIN32
-static bool uninstallPrinter(const wstring & printer, bool cannotFail) {
-    HANDLE hPrinter;
-    PRINTER_DEFAULTSW pd{ NULL, NULL, PRINTER_ALL_ACCESS };
-    if (OpenPrinter((wchar_t *)printer.c_str(), &hPrinter, &pd)) {
-        SetPrinter(hPrinter, 0, NULL, PRINTER_CONTROL_PURGE);
-        DeletePrinter(hPrinter);
-        ClosePrinter(hPrinter);
-        Log(L_DEBUG) << "Uninstalled printer " << printer;
+std::shared_ptr<PRINTER_INFO_2> getPrinters(DWORD & numPrinters) {
+    DWORD needed = 0;
+    DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
+    EnumPrinters(flags, NULL, 2, NULL, 0, &needed, &numPrinters);
+    std::shared_ptr<BYTE> buffer(new BYTE[needed], std::default_delete<BYTE[]>());
+    if (needed && EnumPrinters(flags, NULL, 2, buffer.get(), needed, &needed, &numPrinters)) {
+        return std::shared_ptr<PRINTER_INFO_2>(buffer, (PRINTER_INFO_2 *)buffer.get());
+    } else {
+        LogError() << "EnumPrinters failed";
+        numPrinters = 0;
+        return std::shared_ptr<PRINTER_INFO_2>();
     }
-    if (!DeletePrinterDriverEx(NULL, NULL, (wchar_t *)printer.c_str(),
-                                DPD_DELETE_UNUSED_FILES, 0) && cannotFail) {
+}
+
+
+static bool uninstallPrinterDriver(wchar_t * printer, bool cannotFail) {
+    if (!DeletePrinterDriverEx(NULL, NULL, printer, DPD_DELETE_UNUSED_FILES, 0) && cannotFail) {
         LogError() << "DeletePrinterDriverEx failed";
         return false;
     }
@@ -123,20 +129,29 @@ static bool uninstallPrinter(const wstring & printer, bool cannotFail) {
 }
 
 
+static bool uninstallPrinter(PRINTER_INFO_2 * pinfo) {
+    HANDLE hPrinter;
+    PRINTER_DEFAULTS pd{ NULL, NULL, PRINTER_ALL_ACCESS };
+    if (OpenPrinter(pinfo->pPrinterName, &hPrinter, &pd)) {
+        SetPrinter(hPrinter, 0, NULL, PRINTER_CONTROL_PURGE);
+        DeletePrinter(hPrinter);
+        ClosePrinter(hPrinter);
+        Log(L_DEBUG) << "Uninstalled printer " << pinfo->pPrinterName;
+    }
+    return uninstallPrinterDriver(pinfo->pDriverName, true);
+}
+
+
 void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) {
-    DWORD needed = 0, returned = 0;
-    DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
-    EnumPrinters(flags, NULL, 2, NULL, 0, &needed, &returned);
-    std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
-    PRINTER_INFO_2W * pri2 = (PRINTER_INFO_2W *)buffer.get();
-    if (needed && EnumPrinters(flags, NULL, 2, buffer.get(), needed, &needed, &returned)) {
-        for (unsigned int i = 0; i < returned; i++) {
-            if (pri2[i].pPortName == wstring(L"flexVDIprint") &&
-                pri2[i].pDriverName != wstring(L"flexVDI Printer")) {
-                ::uninstallPrinter(pri2[i].pPrinterName, true);
-            }
+    DWORD numPrinters;
+    std::shared_ptr<PRINTER_INFO_2> printers = getPrinters(numPrinters);
+    PRINTER_INFO_2 * pinfo = printers.get();
+    for (unsigned int i = 0; i < numPrinters; i++) {
+        if (pinfo[i].pPortName == wstring(L"flexVDIprint") &&
+            pinfo[i].pDriverName != wstring(L"flexVDI Printer")) {
+            ::uninstallPrinter(&pinfo[i]);
         }
-    } else LogError() << "EnumPrinters failed";
+    }
 }
 
 
@@ -158,7 +173,7 @@ static bool installPrinterDriver(const wstring & printer, const wstring & ppd) {
                 GetPrinterDriverDirectory(NULL, NULL, 1, NULL, 0, &needed);
                 std::unique_ptr<BYTE[]> bufferDir(new BYTE[needed]);
                 if (!needed || !GetPrinterDriverDirectory(NULL, NULL, 1, bufferDir.get(),
-                                                           needed, &needed)) {
+                                                          needed, &needed)) {
                     LogError() << "Failed to get Printer Driver Directory";
                     return false;
                 }
@@ -188,58 +203,86 @@ static bool installPrinterDriver(const wstring & printer, const wstring & ppd) {
 }
 
 
+static bool clonePrinter(const wstring & printer, PRINTER_INFO_2 * pinfo) {
+    pinfo->pDriverName = pinfo->pPrinterName = (wchar_t *)printer.c_str();
+    wstring comment(toWstring(PrintManager::sharedPrinterDescription));
+    wstring location(toWstring(PrintManager::sharedPrinterLocation));
+    pinfo->pComment = (wchar_t *)comment.c_str();
+    pinfo->pLocation = (wchar_t *)location.c_str();
+    pinfo->Attributes &= ~PRINTER_ATTRIBUTE_SHARED;
+    HANDLE hprinter = AddPrinter(NULL, 2, (LPBYTE)pinfo);
+    if (hprinter) {
+        Log(L_DEBUG) << "Printer " << printer << " added successfully";
+        SetPrinterData(hprinter, (wchar_t *)L"flexVDI shared printer", REG_SZ,
+                       (LPBYTE)printer.c_str(), (printer.length() + 1) * sizeof(wchar_t));
+        ClosePrinter(hprinter);
+        return true;
+    } else return false;
+}
+
+
 static bool installPrinter(const wstring & printer, const wstring & ppd) {
     Log(L_DEBUG) << "Installing printer " << printer << " from " << ppd;
 
-    // Just in case...
-    uninstallPrinter(printer, false);
-
     if (!installPrinterDriver(printer, ppd)) return false;
 
-    DWORD needed = 0, returned = 0;
+    DWORD needed = 0;
     GetDefaultPrinter(NULL, &needed);
     std::unique_ptr<wchar_t[]> defaultPrinter(new wchar_t[needed]);
     bool resetDefault = needed && GetDefaultPrinter(defaultPrinter.get(), &needed);
 
-    needed = 0;
-    DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
-    EnumPrinters(flags, NULL, 2, NULL, 0, &needed, &returned);
-    std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
-    PRINTER_INFO_2W * pri2 = (PRINTER_INFO_2W *)buffer.get();
-    if (needed && EnumPrinters(flags, NULL, 2, buffer.get(), needed, &needed, &returned)) {
-        for (unsigned int i = 0; i < returned; i++) {
-            if (pri2[i].pDriverName == wstring(L"flexVDI Printer")) {
-                pri2[i].pDriverName = pri2[i].pPrinterName = (wchar_t *)printer.c_str();
-                wstring comment(toWstring(PrintManager::sharedPrinterDescription));
-                wstring location(toWstring(PrintManager::sharedPrinterLocation));
-                pri2[i].pComment = (wchar_t *)comment.c_str();
-                pri2[i].pLocation = (wchar_t *)location.c_str();
-                pri2[i].Attributes &= ~PRINTER_ATTRIBUTE_SHARED;
-                if (AddPrinter(NULL, 2, (LPBYTE)&pri2[i])) {
-                    Log(L_DEBUG) << "Printer " << printer << " added successfully";
-                    if (resetDefault) {
-                        Log(L_DEBUG) << "Reseting default printer to " << defaultPrinter.get();
-                        SetDefaultPrinter(defaultPrinter.get());
-                    }
-                    return true;
-                } else break;
-            }
-        }
+    DWORD numPrinters;
+    std::shared_ptr<PRINTER_INFO_2> printers = getPrinters(numPrinters);
+    PRINTER_INFO_2 * pinfo = printers.get();
+    bool found = false;
+    for (unsigned int i = 0; i < numPrinters && !found; ++i, ++pinfo) {
+        found = pinfo->pDriverName == wstring(L"flexVDI Printer");
+    }
+    if (!found) {
         LogError() << "No flexVDI printer found";
-    } else LogError() << "EnumPrinters failed";
-    LogError() << "Failed to install printer " << printer;
-    uninstallPrinter(printer, false);
+    } else if (clonePrinter(printer, --pinfo)) {
+        if (resetDefault) {
+            Log(L_DEBUG) << "Reseting default printer to " << defaultPrinter.get();
+            SetDefaultPrinter(defaultPrinter.get());
+        }
+        return true;
+    } else {
+        LogError() << "Failed to install new printer";
+    }
+    uninstallPrinterDriver((wchar_t *)printer.c_str(), false);
     return false;
 }
 
 
 bool PrintManager::installPrinter(const string & printer, const string & ppd) {
+    // Just in case...
+    uninstallPrinter(printer);
     return ::installPrinter(toWstring(printer), toWstring(ppd));
 }
 
 
 bool PrintManager::uninstallPrinter(const string & printer) {
-    return ::uninstallPrinter(toWstring(printer), true);
+    wstring wPrinter = toWstring(printer);
+    DWORD numPrinters;
+    std::shared_ptr<PRINTER_INFO_2> printers = getPrinters(numPrinters);
+    PRINTER_INFO_2 * pinfo = printers.get();
+    for (unsigned int i = 0; i < numPrinters; ++i, ++pinfo) {
+        HANDLE hprinter;
+        if (OpenPrinter(pinfo->pPrinterName, &hprinter, NULL)) {
+            DWORD needed = 0, type;
+            GetPrinterData(hprinter, (wchar_t *)L"flexVDI shared printer",
+                           &type, NULL, 0, &needed);
+            std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
+            wchar_t * name = (wchar_t *)buffer.get();
+            DWORD result = GetPrinterData(hprinter, (wchar_t *)L"flexVDI shared printer",
+                                          &type, buffer.get(), needed, &needed);
+            ClosePrinter(hprinter);
+            if (needed && result == ERROR_SUCCESS && type == REG_SZ && wPrinter == name)
+                return ::uninstallPrinter(pinfo);
+        }
+    }
+    Log(L_INFO) << "Printer " << printer << " not found";
+    return true;
 }
 
 #else
