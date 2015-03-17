@@ -110,6 +110,13 @@ public:
         }
         return result;
     }
+    bool isGrayscale() const {
+        ipp_attribute_t * attr = cupsFindDestSupported(http, dest, dinfo,
+                                                       CUPS_PRINT_COLOR_MODE);
+        return attr &&
+                ippGetCount(attr) == 1 &&
+                !strcmp(ippGetString(attr, 0, NULL), "monochrome");
+    }
 
 private:
     cups_dest_t * dests, * dest;
@@ -139,16 +146,23 @@ string parseOptions(char * argv[6]) {
     if (conn.getOption("Collate").empty()) {
         jobOptions += " noCollate";
     }
-    if (conn.getOption("media").empty()) {
+    if (!conn.getOption("PageSize").empty()) {
+        jobOptions += " media=" + conn.getOption("PageSize");
+    } else if (conn.getOption("media").empty()) {
         jobOptions += " media=" + conn.getDefault("media", "a4");
     }
-    if (conn.getOption("sides").empty()) {
+    if (!conn.getOption("Duplex").empty()) {
+        string duplex = conn.getOption("Duplex");
+        if (duplex == "DuplexTumble") jobOptions += " sides=two-sided-short-edge";
+        else if (duplex == "DuplexNoTumble") jobOptions += " sides=two-sided-long-edge";
+        else  jobOptions += " sides=one-sided";
+    } else if (conn.getOption("sides").empty()) {
         jobOptions += " sides=" + conn.getDefault("sides", "one-sided");
     }
     if (conn.getOption("Resolution").empty()) {
         jobOptions += " Resolution=" + conn.getDefaultResolution("300dpi");
     }
-    if (conn.getOption("ColorModel") == string("Gray")) {
+    if (conn.isGrayscale() || conn.getOption("ColorModel") == string("Gray")) {
         jobOptions += " gray";
     } else {
         jobOptions += " color";
