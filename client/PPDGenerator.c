@@ -198,6 +198,8 @@ static void generateHeader(PPDGenerator * ppd) {
 #endif
                                ) + 1;
     char * modelName = g_strdup(ppd->printerName);
+    const char * colorDevice = ppd->color ? "True" : "False";
+    const char * defaultCS = ppd->color ? "RGB" : "Gray";
     g_strdelimit(modelName, "_", ' ');
     fprintf(ppd->file,
             "*PPD-Adobe: \"4.3\"\n"
@@ -214,8 +216,8 @@ static void generateHeader(PPDGenerator * ppd) {
             "*PSVersion: \"(3010) 815\"\n"
             "*Copyright: \"2014-2015 Flexible Software Solutions S.L.\"\n"
             "*LanguageLevel: \"3\"\n"
-            "*ColorDevice: True\n"
-            "*DefaultColorSpace: RGB\n"
+            "*ColorDevice: %s\n"
+            "*DefaultColorSpace: %s\n"
             "*FileSystem: True\n"
             "*Extensions: CMYK FileSystem Composite\n"
             "*TTRasterizer: Type42\n"
@@ -225,7 +227,7 @@ static void generateHeader(PPDGenerator * ppd) {
             "*cupsFilter: \"application/pdf  0  pdftopdf-nocopies\"\n"
             "*cupsLanguages: \"en\"\n"
             "\n"
-            , modelName, modelName, modelName, baseName, modelName);
+            , modelName, modelName, modelName, baseName, modelName, colorDevice, defaultCS);
     g_free(modelName);
 }
 
