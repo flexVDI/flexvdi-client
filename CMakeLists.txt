@@ -99,12 +99,10 @@ add_subdirectory(test)
 
 # CPack commands
 set(CPACK_PACKAGE_FILE_NAME "flexvdi-guest-tools-${FLEXVDI_VERSION}")
-set(CPACK_SOURCE_GENERATOR "TBZ2")
-execute_process(COMMAND git status -unormal --porcelain --ignored
-                COMMAND awk "/^[?!][?!]/ {printf \";/%s\", substr($0, 4)}"
-                WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-                OUTPUT_VARIABLE GIT_UNTRACKED)
-set(CPACK_SOURCE_IGNORE_FILES "/.git/;.*swp;.*~;/.gitignore${GIT_UNTRACKED}")
+add_custom_target(dist
+                  COMMAND git archive --prefix=${CPACK_PACKAGE_FILE_NAME}/
+                          -o "${PROJECT_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.tar.bz2" HEAD
+                  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 set(CPACK_PACKAGE_VENDOR "Flexible Software Solutions")
 # set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_VERSION_MAJOR ${FLEXVDI_VERSION_MAJOR})
