@@ -51,7 +51,7 @@ static void sendMessage(uint32_t type, uint8_t * buffer) {
 
 
 void flexvdiSpiceConnected() {
-    flexvdiLog(L_INFO, "flexVDI guest agent connected\n");
+    flexvdiLog(L_INFO, "flexVDI guest agent connected");
     uint8_t * buf = getMsgBuffer(0);
     if (buf) {
         sendMessage(FLEXVDI_RESET, buf);

@@ -320,7 +320,7 @@ static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
     g_free(resolution);
     g_free(copies);
     g_free(color);
-    flexvdiLog(L_DEBUG, "%d options\n", numOptions);
+    flexvdiLog(L_DEBUG, "%d options", numOptions);
     return numOptions;
 }
 
@@ -337,7 +337,7 @@ void printJob(PrintJob * job) {
             cupsPrintFile2(cups->http, printer, job->name, title ? title : "",
                            numOptions, options);
             for (i = 0; i < numOptions; ++i) {
-                flexvdiLog(L_DEBUG, "%s = %s\n", options[i].name, options[i].value);
+                flexvdiLog(L_DEBUG, "%s = %s", options[i].name, options[i].value);
             }
         } else openWithApp(job->name);
         closeCups(cups);

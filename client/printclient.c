@@ -44,7 +44,7 @@ void handlePrintJob(FlexVDIPrintJobMsg * msg) {
     PrintJob * job = g_malloc(sizeof(PrintJob));
     job->fileHandle = g_file_open_tmp("fpjXXXXXX.pdf", &job->name, NULL);
     job->options = g_strndup(msg->options, msg->optionsLength);
-    flexvdiLog(L_DEBUG, "Job %s, Options: %.*s\n", job->name, msg->optionsLength, msg->options);
+    flexvdiLog(L_DEBUG, "Job %s, Options: %.*s", job->name, msg->optionsLength, msg->options);
     g_hash_table_insert(printJobs, GINT_TO_POINTER(msg->id), job);
 }
 
@@ -61,7 +61,7 @@ void handlePrintJobData(FlexVDIPrintJobDataMsg * msg) {
             write(job->fileHandle, msg->data, msg->dataLength);
         }
     } else {
-        flexvdiLog(L_INFO, "Job %d not found\n", msg->id);
+        flexvdiLog(L_INFO, "Job %d not found", msg->id);
     }
 }
 
