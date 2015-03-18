@@ -373,6 +373,14 @@ static void generateColor(PPDGenerator * ppd) {
                 "*ColorModel Gray/Grayscale: \"\"\n"
                 "*ColorModel RGB/Color: \"\"\n"
                 "*CloseUI: *ColorModel\n\n");
+    } else {
+        fprintf(ppd->file,
+                "*%% == Color\n"
+                "*OpenUI *ColorModel/Color Mode: PickOne\n"
+                "*OrderDependency: 30 AnySetup *ColorModel\n"
+                "*DefaultColorModel: Gray\n"
+                "*ColorModel Gray/Grayscale: \"\"\n"
+                "*CloseUI: *ColorModel\n\n");
     }
 }
 
