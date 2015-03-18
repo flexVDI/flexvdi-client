@@ -71,11 +71,17 @@ char * getJobOption(char * options, const char * opName) {
              space = g_utf8_get_char(" "),
              quotes = g_utf8_get_char("\"");
     int opLen = strlen(opName);
-    char * opPos = strstr(options, opName);
-    if (!opPos) return NULL;
-    opPos += opLen;
+    gunichar nextChar;
+    char * opPos = options, * opEnd = options + strlen(options);
+    do {
+        opPos = strstr(opPos, opName);
+        if (!opPos) return NULL;
+        opPos += opLen;
+        nextChar = g_utf8_get_char(opPos);
+    } while ((opPos > options + opLen && g_utf8_get_char(opPos - opLen - 1) != space) ||
+             (opPos < opEnd && nextChar != equalSign && nextChar != space));
     int valueLen = 0;
-    if (g_utf8_get_char(opPos) == equalSign) {
+    if (nextChar == equalSign) {
         opPos = g_utf8_next_char(opPos);
         gunichar delimiter = space;
         if (g_utf8_get_char(opPos) == quotes) {
@@ -83,7 +89,7 @@ char * getJobOption(char * options, const char * opName) {
             delimiter = quotes;
         }
         char * end = g_utf8_strchr(opPos, -1, delimiter);
-        if (!end) end = options + strlen(options);
+        if (!end) end = opEnd;
         valueLen = end - opPos;
     }
     char * result = g_malloc(valueLen + 1);
