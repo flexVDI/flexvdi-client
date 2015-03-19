@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
 # Project information
-project(flexvdi-guest-agent)
+project(flexvdi-guest-tools)
 set(FLEXVDI_VERSION_MAJOR 2)
 set(FLEXVDI_VERSION_MINOR 0)
 set(FLEXVDI_VERSION_PATCH 1)
@@ -9,7 +9,7 @@ set(FLEXVDI_VERSION ${FLEXVDI_VERSION_MAJOR}.${FLEXVDI_VERSION_MINOR}.${FLEXVDI_
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
-message("flexvdi-guest-agent v${FLEXVDI_VERSION} ${CMAKE_BUILD_TYPE} build")
+message("${CMAKE_PROJECT_NAME} v${FLEXVDI_VERSION} ${CMAKE_BUILD_TYPE} build")
 
 # Find required packages
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${PROJECT_SOURCE_DIR}/cmake")
@@ -98,7 +98,7 @@ add_subdirectory(client)
 add_subdirectory(test)
 
 # CPack commands
-set(CPACK_PACKAGE_FILE_NAME "flexvdi-guest-tools-${FLEXVDI_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${FLEXVDI_VERSION}")
 add_custom_target(dist
                   COMMAND git archive --prefix=${CPACK_PACKAGE_FILE_NAME}/
                           -o "${PROJECT_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.tar.bz2" HEAD
