@@ -15,9 +15,13 @@ message("${CMAKE_PROJECT_NAME} v${FLEXVDI_VERSION} ${CMAKE_BUILD_TYPE} build")
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${PROJECT_SOURCE_DIR}/cmake")
 include(FindPkgConfig)
 pkg_search_module(spice_protocol REQUIRED spice-protocol)
+pkg_search_module(spice_glib REQUIRED spice-client-glib-2.0)
+pkg_search_module(spice_gtk REQUIRED spice-client-gtk-3.0)
 find_package(Boost 1.50.0 REQUIRED COMPONENTS system thread locale unit_test_framework)
-pkg_search_module(GLIB REQUIRED glib-2.0)
-include_directories("${spice_protocol_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}" "${GLIB_INCLUDE_DIRS}")
+include_directories("${spice_protocol_INCLUDE_DIRS}"
+                    "${spice_glib_INCLUDE_DIRS}"
+                    "${spice_gtk_INCLUDE_DIRS}"
+                    "${Boost_INCLUDE_DIRS}")
 include(TestBigEndian)
 test_big_endian(BIG_ENDIAN)
 set(SELINUX_MAKEFILE /usr/share/selinux/devel/Makefile)
