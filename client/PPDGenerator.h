@@ -16,5 +16,5 @@ void ppdAddMediaType(PPDGenerator * ppd, char * media);
 void ppdSetDefaultMediaType(PPDGenerator * ppd, char * media);
 void ppdAddTray(PPDGenerator * ppd, char * tray);
 void ppdSetDefaultTray(PPDGenerator * ppd, char * tray);
-void ppdSetHWMargins(PPDGenerator * ppd, int top, int down, int left, int right);
+void ppdSetHWMargins(PPDGenerator * ppd, int left, int down, int right, int top);
 char * generatePPD(PPDGenerator * ppd);

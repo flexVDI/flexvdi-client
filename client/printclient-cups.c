@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <glib.h>
+#include <math.h>
 #include <cups/cups.h>
 #include "printclient.h"
 #include "PPDGenerator.h"
@@ -165,7 +167,8 @@ static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
             pwg_media_t * size = pwgMediaForPWG(ippGetString(attr, i--, NULL));
             if (g_str_has_prefix(size->pwg, "custom")) continue;
             ppdAddPaperSize(ppd, size->ppd ? g_strdup(size->ppd) : getPrettyName(size->pwg),
-                            size->width * 72 / 2540, size->length * 72 / 2540);
+                            round(PWG_TO_POINTS(size->width)),
+                            round(PWG_TO_POINTS(size->length)));
         }
         if ((attr = ippGetDefault(cups, "media"))) {
             pwg_media_t * size = pwgMediaForPWG(ippGetString(attr, 0, NULL));
@@ -173,11 +176,42 @@ static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
                 size->ppd ? g_strdup(size->ppd) : getPrettyName(size->pwg));
         }
     }
-    // TODO: get media margins
 }
 
 
-char * capitalizeFirst(const char * str) {
+static void getMargins(PPDGenerator * ppd, CupsConnection * cups, const char * printer) {
+    const char * ppdFileName = cupsGetPPD(printer);
+    char * ppdContents = NULL;
+    int left = 0, down = 0;
+    if (g_file_get_contents(ppdFileName, &ppdContents, NULL, NULL)) {
+        printf("Got PPD contents\n%s", ppdContents);
+        GRegex * regex = g_regex_new("\\*ImageableArea[^:]*:\\s*\""
+                                     "([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)",
+                                     0, 0, NULL);
+        GMatchInfo *match_info;
+        g_regex_match(regex, ppdContents, 0, &match_info);
+        while (g_match_info_matches(match_info)) {
+            gchar * word;
+            word = g_match_info_fetch(match_info, 1);
+            int thisLeft = ceil(strtod(word, NULL));
+            g_free(word);
+            word = g_match_info_fetch(match_info, 2);
+            int thisDown = ceil(strtod(word, NULL));
+            g_free(word);
+            if (thisLeft > left) left = thisLeft;
+            if (thisDown > down) down = thisDown;
+            g_match_info_next (match_info, NULL);
+        }
+        g_match_info_free(match_info);
+        g_regex_unref(regex);
+        // TODO: Assume rigth = left & top = down
+        ppdSetHWMargins(ppd, left, down, left, down);
+    }
+    unlink(ppdFileName);
+}
+
+
+static char * capitalizeFirst(const char * str) {
     char tmp[7];
     tmp[g_unichar_to_utf8(g_unichar_toupper(g_utf8_get_char(str)), tmp)] = '\0';
     return g_strconcat(tmp, g_utf8_next_char(str), NULL);
@@ -222,6 +256,7 @@ char * getPPDFile(const char * printer) {
         ppdSetDuplex(ppd, ippHasOtherThan(cups, CUPS_SIDES, "one-sided"));
         getResolutions(ppd, cups);
         getPapers(ppd, cups);
+        getMargins(ppd, cups, printer);
         getMediaSources(ppd, cups);
         getMediaTypes(ppd, cups);
         result = g_strdup(generatePPD(ppd));

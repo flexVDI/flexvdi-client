@@ -165,7 +165,7 @@ void ppdSetDefaultTray(PPDGenerator * ppd, char * tray) {
 }
 
 
-void ppdSetHWMargins(PPDGenerator * ppd, int top, int down, int left, int right) {
+void ppdSetHWMargins(PPDGenerator * ppd, int left, int down, int right, int top) {
     ppd->margins[0] = left; // In PPD order
     ppd->margins[1] = down;
     ppd->margins[2] = right;
