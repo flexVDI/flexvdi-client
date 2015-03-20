@@ -6,5 +6,4 @@ else ()
 endif ()
 
 add_library(flexvdi-spice-client SHARED ${sources})
-target_link_libraries(flexvdi-spice-client ${spice_glib_LIBRARIES} ${spice_gtk_LIBRARIES}
-                      ${PRINT_LIBRARIES})
+target_link_libraries(flexvdi-spice-client ${CLIENT_LIBRARIES})

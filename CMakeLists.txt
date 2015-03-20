@@ -29,11 +29,12 @@ if (WIN32)
     pkg_search_module(CAIRO REQUIRED cairo)
     pkg_search_module(POPPLER REQUIRED poppler-glib)
     include_directories("${CAIRO_INCLUDE_DIRS}" "${POPPLER_INCLUDE_DIRS}")
-    set(PRINT_LIBRARIES "${CAIRO_LIBRARIES}" "${POPPLER_LIBRARIES}")
+    set(CLIENT_LIBRARIES ${spice_glib_LIBRARIES} ${spice_gtk_LIBRARIES}
+                         ${CAIRO_LIBRARIES} ${POPPLER_LIBRARIES})
 else ()
     find_package(Cups REQUIRED)
     include_directories("${CUPS_INCLUDE_DIR}")
-    set(PRINT_LIBRARIES "${CUPS_LIBRARIES}")
+    set(CLIENT_LIBRARIES ${spice_glib_LIBRARIES} ${spice_gtk_LIBRARIES} ${CUPS_LIBRARIES})
 endif ()
 
 # Build options

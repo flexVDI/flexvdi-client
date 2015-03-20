@@ -22,4 +22,4 @@ else (WIN32)
     add_executable(get_printer_ppds get_printer_ppds.c ../client/flexvdi-spice.c
                    ../client/printclient.c ../client/PPDGenerator.c ../client/printclient-cups.c)
 endif (WIN32)
-target_link_libraries(get_printer_ppds ${GLIB_LIBRARIES} ${PRINT_LIBRARIES})
+target_link_libraries(get_printer_ppds ${CLIENT_LIBRARIES} m)
