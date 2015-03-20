@@ -54,8 +54,8 @@ static int getPrinterCap(PRINTER_INFO_2 * pinfo, WORD cap, wchar_t * buffer) {
 }
 
 
-int flexvdiSpiceGetPrinterList(GSList ** printerList) {
-    int result = 0, i;
+void flexvdiSpiceGetPrinterList(GSList ** printerList) {
+    int i;
     DWORD needed = 0, returned = 0;
     DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
     *printerList = NULL;
@@ -67,9 +67,8 @@ int flexvdiSpiceGetPrinterList(GSList ** printerList) {
             *printerList = g_slist_prepend(*printerList,
                 g_utf16_to_utf8(pinfo[i].pPrinterName, -1, NULL, NULL, NULL));
         }
-    } else result = 1;
+    }
     g_free(buffer);
-    return result;
 }
 
 

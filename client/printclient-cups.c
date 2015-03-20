@@ -14,7 +14,7 @@ static void openWithApp(const char * file) {
 }
 
 
-int flexvdiSpiceGetPrinterList(GSList ** printerList) {
+void flexvdiSpiceGetPrinterList(GSList ** printerList) {
     int i;
     cups_dest_t * dests, * dest;
     int numDests = cupsGetDests(&dests);
@@ -28,7 +28,6 @@ int flexvdiSpiceGetPrinterList(GSList ** printerList) {
         }
     }
     cupsFreeDests(numDests, dests);
-    return 0;
 }
 
 

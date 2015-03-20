@@ -8,29 +8,39 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include "flexvdi-spice.h"
+#include "spice-client.h"
 #define FLEXVDI_PROTO_IMPL
 #include "FlexVDIProto.h"
 #include "printclient.h"
 
 
-static FlexVDISpiceCallbacks * cb;
+typedef struct flexvdi_port {
+    SpicePortChannel * channel;
+    GCancellable * cancellable;
+} flexvdi_port;
 
-void flexvdiSpiceInit(FlexVDISpiceCallbacks * callbacks) {
-    cb = callbacks;
-    initPrintClient();
-}
+
+static flexvdi_port port;
 
 
 void flexvdiLog(FlexVDILogLevel level, const char * format, ...) {
     va_list args;
     va_start(args, format);
-    cb->log(level, format, args);
+    GLogLevelFlags map[] = {
+        G_LOG_LEVEL_DEBUG,
+        G_LOG_LEVEL_INFO,
+        G_LOG_LEVEL_WARNING,
+        G_LOG_LEVEL_ERROR,
+        G_LOG_LEVEL_CRITICAL
+    };
+    g_logv("flexvdi", map[level], format, args);
     va_end(args);
 }
 
+
 static const size_t HEADER_SIZE = sizeof(FlexVDIMessageHeader);
 
-static uint8_t * getMsgBuffer(size_t size) {
+uint8_t * getMsgBuffer(size_t size) {
     uint8_t * buf = (uint8_t *)g_malloc(size + HEADER_SIZE);
     if (buf) {
         ((FlexVDIMessageHeader *)buf)->size = size;
@@ -40,38 +50,59 @@ static uint8_t * getMsgBuffer(size_t size) {
 }
 
 
-static void sendMessage(uint32_t type, uint8_t * buffer) {
+static void port_write_cb(GObject *source_object, GAsyncResult *res, gpointer user_data) {
+    GError *error = NULL;
+    if (!g_cancellable_is_cancelled(port.cancellable)) {
+        spice_port_write_finish(port.channel, res, &error);
+        if (error != NULL)
+            g_warning("%s", error->message);
+        g_clear_error(&error);
+    }
+    g_free(user_data);
+}
+
+
+void sendMessage(uint32_t type, uint8_t * buffer) {
     FlexVDIMessageHeader * head = (FlexVDIMessageHeader *)(buffer - HEADER_SIZE);
     size_t size = head->size + HEADER_SIZE;
     head->type = type;
     marshallMessage(type, buffer, head->size);
     marshallHeader(head);
-    cb->sendMessage(head, size);
+    spice_port_write_async(port.channel, head, size, port.cancellable, port_write_cb, head);
 }
 
 
-void flexvdiSpiceConnected() {
-    flexvdiLog(L_INFO, "flexVDI guest agent connected");
-    uint8_t * buf = getMsgBuffer(0);
-    if (buf) {
-        sendMessage(FLEXVDI_RESET, buf);
+static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
+    gchar *name = NULL;
+    gboolean opened = FALSE;
+    g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
+    if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0 && opened) {
+        flexvdiLog(L_INFO, "flexVDI guest agent connected");
+        port.channel = SPICE_PORT_CHANNEL(channel);
+        port.cancellable = g_cancellable_new();
+        uint8_t * buf = getMsgBuffer(0);
+        if (buf) {
+            sendMessage(FLEXVDI_RESET, buf);
+        }
     }
 }
 
 
 static void handleMessage(uint32_t type, uint8_t * msg) {
     switch(type) {
-        case FLEXVDI_PRINTJOB:
-            handlePrintJob((FlexVDIPrintJobMsg *)msg);
-            break;
-        case FLEXVDI_PRINTJOBDATA:
-            handlePrintJobData((FlexVDIPrintJobDataMsg *)msg);
-            break;
+    case FLEXVDI_PRINTJOB:
+        handlePrintJob((FlexVDIPrintJobMsg *)msg);
+        break;
+    case FLEXVDI_PRINTJOBDATA:
+        handlePrintJobData((FlexVDIPrintJobDataMsg *)msg);
+        break;
     }
 }
 
 
-int flexvdiSpiceData(void * data, size_t size) {
+static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
+    if (pchannel != port.channel) return;
+
     static enum {
         WAIT_NEW_MESSAGE,
         WAIT_DATA,
@@ -82,39 +113,97 @@ int flexvdiSpiceData(void * data, size_t size) {
     void * end = data + size;
     while (data < end) {
         switch (state) {
-            case WAIT_NEW_MESSAGE:
-                // Assume headers arrive at once
-                curHeader = *((FlexVDIMessageHeader *)data);
-                marshallHeader(&curHeader);
-                data += sizeof(FlexVDIMessageHeader);
-                buffer = bufpos = (uint8_t *)malloc(curHeader.size);
-                bufend = bufpos + curHeader.size;
-                state = WAIT_DATA;
-                break;
-            case WAIT_DATA:
-                size = end - data;
-                if (bufend - bufpos < size) size = bufend - bufpos;
-                memcpy(bufpos, data, size);
-                bufpos += size;
-                data += size;
-                if (bufpos == bufend) {
-                    if (!marshallMessage(curHeader.type, buffer, curHeader.size)) {
-                        return 1;
-                    }
-                    handleMessage(curHeader.type, buffer);
-                    free(buffer);
-                    state = WAIT_NEW_MESSAGE;
+        case WAIT_NEW_MESSAGE:
+            // Assume headers arrive at once
+            curHeader = *((FlexVDIMessageHeader *)data);
+            marshallHeader(&curHeader);
+            data += sizeof(FlexVDIMessageHeader);
+            buffer = bufpos = (uint8_t *)malloc(curHeader.size);
+            bufend = bufpos + curHeader.size;
+            state = WAIT_DATA;
+            break;
+        case WAIT_DATA:
+            size = end - data;
+            if (bufend - bufpos < size) size = bufend - bufpos;
+            memcpy(bufpos, data, size);
+            bufpos += size;
+            data += size;
+            if (bufpos == bufend) {
+                if (!marshallMessage(curHeader.type, buffer, curHeader.size)) {
+                    g_warning("Wrong message size on reception");
+                    return;
                 }
-                break;
+                handleMessage(curHeader.type, buffer);
+                free(buffer);
+                state = WAIT_NEW_MESSAGE;
+            }
+            break;
         }
     }
-
-    return 0;
 }
 
 
-int flexvdiSpiceSendCredentials(const char * username, const char * password,
-                                const char * domain) {
+static void channel_new(SpiceSession * s, SpiceChannel * channel) {
+    if (SPICE_IS_PORT_CHANNEL(channel)) {
+        g_signal_connect(channel, "notify::port-opened",
+                         G_CALLBACK(port_opened), NULL);
+        g_signal_connect(channel, "port-data",
+                         G_CALLBACK(port_data), NULL);
+    }
+}
+
+
+static void channel_destroy(SpiceSession * s, SpiceChannel * channel) {
+    if (SPICE_IS_PORT_CHANNEL(channel)) {
+        if (SPICE_PORT_CHANNEL(channel) == port.channel) {
+            port.channel = NULL;
+            g_object_unref(port.cancellable);
+            port.cancellable = NULL;
+        }
+    }
+}
+
+
+void flexvdi_port_register_session(SpiceSession * session) {
+    g_signal_connect(session, "channel-new",
+                     G_CALLBACK(channel_new), NULL);
+    g_signal_connect(session, "channel-destroy",
+                     G_CALLBACK(channel_destroy), NULL);
+    //     g_signal_connect(session, "notify::migration-state",
+    //                      G_CALLBACK(migration_state), port);
+    initPrintClient();
+}
+
+
+void flexvdi_send_credentials(const gchar *username, const gchar *password,
+                              const gchar *domain) {
+    if (port.channel) {
+        flexvdiSpiceSendCredentials(username, password, domain);
+    }
+}
+
+
+void flexvdi_get_printer_list(GSList ** printer_list) {
+    flexvdiSpiceGetPrinterList(printer_list);
+}
+
+
+void flexvdi_share_printer(const char * printer) {
+    if (port.channel) {
+        flexvdiSpiceSharePrinter(printer);
+    }
+}
+
+
+void flexvdi_unshare_printer(const char * printer) {
+    if (port.channel) {
+        flexvdiSpiceUnsharePrinter(printer);
+    }
+}
+
+
+void flexvdiSpiceSendCredentials(const char * username, const char * password,
+                                 const char * domain) {
     uint8_t * buf;
     size_t bufSize, i;
     FlexVDICredentialsMsg msgTemp, * msg;
@@ -125,7 +214,8 @@ int flexvdiSpiceSendCredentials(const char * username, const char * password,
                 msgTemp.passLength + msgTemp.domainLength + 3;
     buf = getMsgBuffer(bufSize);
     if (!buf) {
-        return 1;
+        g_warning("Unable to reserve memory for credentials message");
+        return;
     }
     msg = (FlexVDICredentialsMsg *)buf;
     i = 0;
@@ -137,48 +227,4 @@ int flexvdiSpiceSendCredentials(const char * username, const char * password,
     memcpy(&msg->strings[++i], domain, msgTemp.domainLength);
     msg->strings[i += msgTemp.domainLength] = '\0';
     sendMessage(FLEXVDI_CREDENTIALS, buf);
-    return 0;
-}
-
-
-int flexvdiSpiceSharePrinter(const char * printer) {
-    size_t bufSize, nameLength, ppdLength;
-    GStatBuf statbuf;
-    char * ppdName = getPPDFile(printer);
-    int result = 0;
-    nameLength = strnlen(printer, 1024);
-    if (!g_stat(ppdName, &statbuf)) {
-        ppdLength = statbuf.st_size;
-        bufSize = sizeof(FlexVDISharePrinterMsg) + nameLength + 1 + ppdLength;
-        uint8_t * buf = getMsgBuffer(bufSize);
-        if (buf) {
-            FILE * ppd = g_fopen(ppdName, "r");
-            if (ppd) {
-                FlexVDISharePrinterMsg * msg = (FlexVDISharePrinterMsg *)buf;
-                msg->printerNameLength = nameLength;
-                msg->ppdLength = ppdLength;
-                strncpy(msg->data, printer, nameLength + 1);
-                fread(&msg->data[nameLength + 1], 1, ppdLength, ppd);
-                sendMessage(FLEXVDI_SHAREPRINTER, buf);
-            } else result = 1;
-            fclose(ppd);
-        } else result = 1;
-    } else result = 1;
-    g_unlink(ppdName);
-    g_free(ppdName);
-    return result;
-}
-
-
-int flexvdiSpiceUnsharePrinter(const char * printer) {
-    size_t nameLength = strnlen(printer, 1024);
-    size_t bufSize = sizeof(FlexVDIUnsharePrinterMsg) + nameLength + 1;
-    uint8_t * buf = getMsgBuffer(bufSize);
-    if (buf) {
-        FlexVDIUnsharePrinterMsg * msg = (FlexVDIUnsharePrinterMsg *)buf;
-        msg->printerNameLength = nameLength;
-        strncpy(msg->printerName, printer, nameLength + 1);
-        sendMessage(FLEXVDI_UNSHAREPRINTER, buf);
-    } else return 1;
-    return 0;
 }

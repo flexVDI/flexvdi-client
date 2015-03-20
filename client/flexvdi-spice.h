@@ -5,6 +5,7 @@
 #ifndef _FLEXVDI_SPICE_H_
 #define _FLEXVDI_SPICE_H_
 
+#include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <glib.h>
@@ -16,24 +17,17 @@ typedef enum {
     L_ERROR
 } FlexVDILogLevel;
 
-typedef struct FlexVDISpiceCallbacks {
-    void (* sendMessage)(void * buffer, size_t size);
-    void (* log)(FlexVDILogLevel level, const char * format, va_list args);
-} FlexVDISpiceCallbacks;
-
 void flexvdiLog(FlexVDILogLevel level, const char * format, ...);
-
-void flexvdiSpiceInit(FlexVDISpiceCallbacks * callbacks);
-void flexvdiSpiceConnected();
-int flexvdiSpiceData(void * data, size_t size);
+uint8_t * getMsgBuffer(size_t size);
+void sendMessage(uint32_t type, uint8_t * buffer);
 
 // SSO API
-int flexvdiSpiceSendCredentials(const char * username, const char * password,
-                                const char * domain);
+void flexvdiSpiceSendCredentials(const char * username, const char * password,
+                                 const char * domain);
 
 // Print Client API
-int flexvdiSpiceGetPrinterList(GSList ** printerList);
-int flexvdiSpiceSharePrinter(const char * printer);
-int flexvdiSpiceUnsharePrinter(const char * printer);
+void flexvdiSpiceGetPrinterList(GSList ** printerList);
+void flexvdiSpiceSharePrinter(const char * printer);
+void flexvdiSpiceUnsharePrinter(const char * printer);
 
 #endif /* _FLEXVDI_SPICE_H_ */
