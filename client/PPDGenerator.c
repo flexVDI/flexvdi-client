@@ -308,8 +308,10 @@ static void generatePaperSizes(PPDGenerator * ppd) {
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         fprintf(ppd->file,
-                "*ImageableArea %.34s/%s: \"0 0 %d %d\"\n"
-                , sanitize(desc->name), desc->name, desc->width, desc->length);
+                "*ImageableArea %.34s/%s: \"%d %d %d %d\"\n"
+                , sanitize(desc->name), desc->name
+                , ppd->margins[0], ppd->margins[1]
+                , desc->width - ppd->margins[2], desc->length - ppd->margins[3]);
     }
     fprintf(ppd->file,
             "\n*DefaultPaperDimension: %s\n"
