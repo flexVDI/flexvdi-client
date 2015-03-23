@@ -8,14 +8,6 @@
 #include "flexvdi-spice.h"
 
 
-static void openWithApp(const char * file) {
-    char command[1024];
-    snprintf(command, 1024, "xdg-open %s", file);
-    // TODO: on Mac OS X, the command is 'open'
-    system(command);
-}
-
-
 void flexvdiSpiceGetPrinterList(GSList ** printerList) {
     int i;
     cups_dest_t * dests, * dest;
@@ -112,100 +104,64 @@ static void getResolutions(PPDGenerator * ppd, CupsConnection * cups) {
 }
 
 
-static char * getPrettyName(const char * pwg) {
-    gunichar dash = g_utf8_get_char("_");
-    const char * start, * end;
-    char * name, * prettyName, * i, * j;
-    int len, capitalize;
-
-    // Get middle component
-    start = g_utf8_strchr(pwg, -1, dash);
-    if (!start) start = pwg;
-    end = g_utf8_strchr(++start, -1, dash);
-    len = (end ? end - start : strlen(start)) + 1;
-    name = (char *)g_malloc(len);
-    g_strlcpy(name, start, len);
-    // Turn _ into spaces
-    i = name;
-    while((i = g_utf8_strchr(i, -1, dash))) *i++ = ' ';
-    // For each '-', remove it and capitalize next letter
-    // First compute length
-    len = 0;
-    capitalize = TRUE;
-    for (i = name; *i != '\0'; i = g_utf8_next_char(i)) {
-        if (*i != '-') {
-            if (capitalize)
-                len += g_unichar_to_utf8(g_unichar_toupper(g_utf8_get_char(i)), NULL);
-            else
-                len += g_unichar_to_utf8(g_utf8_get_char(i), NULL);
-        }
-        capitalize = *i == '-';
-    }
-    ++len;
-    // Now write the name
-    prettyName = (char *)g_malloc(len);
-    capitalize = TRUE;
-    for (i = name, j = prettyName; *i != '\0'; i = g_utf8_next_char(i)) {
-        if (*i != '-') {
-            if (capitalize)
-                j += g_unichar_to_utf8(g_unichar_toupper(g_utf8_get_char(i)), j);
-            else
-                j += g_unichar_to_utf8(g_utf8_get_char(i), j);
-        }
-        capitalize = *i == '-';
-    }
-    *j = '\0';
-    return prettyName;
+static double g_match_info_fetch_double(GMatchInfo * matchInfo, int index) {
+    gchar * word = g_match_info_fetch(matchInfo, index);
+    double result = strtod(word, NULL);
+    g_free(word);
+    return result;
 }
 
 
-static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
-    ipp_attribute_t * attr = ippIsSupported(cups, "media");
-    if (attr) {
-        int i = ippGetCount(attr) - 1;
-        while (i >= 0) {
-            pwg_media_t * size = pwgMediaForPWG(ippGetString(attr, i--, NULL));
-            if (g_str_has_prefix(size->pwg, "custom")) continue;
-            ppdAddPaperSize(ppd, size->ppd ? g_strdup(size->ppd) : getPrettyName(size->pwg),
-                            round(PWG_TO_POINTS(size->width)),
-                            round(PWG_TO_POINTS(size->length)));
-        }
-        if ((attr = ippGetDefault(cups, "media"))) {
-            pwg_media_t * size = pwgMediaForPWG(ippGetString(attr, 0, NULL));
-            ppdSetDefaultPaperSize(ppd,
-                size->ppd ? g_strdup(size->ppd) : getPrettyName(size->pwg));
-        }
-    }
-}
-
-
-static void getMargins(PPDGenerator * ppd, CupsConnection * cups, const char * printer) {
+static void getPapers(PPDGenerator * ppd, const char * printer) {
     const char * ppdFileName = cupsGetPPD(printer);
     char * ppdContents = NULL;
-    int left = 0, down = 0;
     if (g_file_get_contents(ppdFileName, &ppdContents, NULL, NULL)) {
-        printf("Got PPD contents\n%s", ppdContents);
-        GRegex * regex = g_regex_new("\\*ImageableArea[^:]*:\\s*\""
-                                     "([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)",
-                                     0, 0, NULL);
-        GMatchInfo *match_info;
-        g_regex_match(regex, ppdContents, 0, &match_info);
-        while (g_match_info_matches(match_info)) {
-            gchar * word;
-            word = g_match_info_fetch(match_info, 1);
-            int thisLeft = ceil(strtod(word, NULL));
-            g_free(word);
-            word = g_match_info_fetch(match_info, 2);
-            int thisDown = ceil(strtod(word, NULL));
-            g_free(word);
-            if (thisLeft > left) left = thisLeft;
-            if (thisDown > down) down = thisDown;
-            g_match_info_next (match_info, NULL);
+        GRegex * pdRegex = g_regex_new("\\*PaperDimension\\s+([^:]+):\\s*\""
+                                       "([0-9.]+)\\s+([0-9.]+)",
+                                       0, 0, NULL);
+        GMatchInfo * pdMatchInfo;
+        g_regex_match(pdRegex, ppdContents, 0, &pdMatchInfo);
+        while (g_match_info_matches(pdMatchInfo)) {
+            gchar * paperName = g_match_info_fetch(pdMatchInfo, 1);
+            double width = g_match_info_fetch_double(pdMatchInfo, 2);
+            double length = g_match_info_fetch_double(pdMatchInfo, 3);
+            double left = 0.0, bottom = 0.0, right = width, top = length;
+
+            gchar * iaRegexStr = g_strconcat("\\*ImageableArea\\s+", paperName, ":\\s*\""
+                                             "([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)", NULL);
+            GRegex * iaRegex = g_regex_new(iaRegexStr, 0, 0, NULL);
+            GMatchInfo * iaMatchInfo;
+            g_regex_match(iaRegex, ppdContents, 0, &iaMatchInfo);
+            if (g_match_info_matches(iaMatchInfo)) {
+                left = g_match_info_fetch_double(iaMatchInfo, 1);
+                bottom = g_match_info_fetch_double(iaMatchInfo, 2);
+                right = g_match_info_fetch_double(iaMatchInfo, 3);
+                top = g_match_info_fetch_double(iaMatchInfo, 4);
+            }
+            g_match_info_free(iaMatchInfo);
+            g_regex_unref(iaRegex);
+            g_free(iaRegexStr);
+
+            char * delim = strchr(paperName, '/');
+            if (delim) {
+                delim = g_strdup(delim + 1);
+                g_free(paperName);
+                paperName = delim;
+            }
+            ppdAddPaperSize(ppd, paperName, width, length,
+                            left, bottom, right, top);
+            g_match_info_next(pdMatchInfo, NULL);
         }
-        g_match_info_free(match_info);
-        g_regex_unref(regex);
-        // TODO: Assume rigth = left & top = down
-        ppdSetHWMargins(ppd, left, down, left, down);
+        g_match_info_free(pdMatchInfo);
+        g_regex_unref(pdRegex);
+
+        pdRegex = g_regex_new("\\*DefaultPaperDimension:\\s+(\\S+)", 0, 0, NULL);
+        g_regex_match(pdRegex, ppdContents, 0, &pdMatchInfo);
+        if (g_match_info_matches(pdMatchInfo)) {
+            ppdSetDefaultPaperSize(ppd, g_match_info_fetch(pdMatchInfo, 1));
+        }
+        g_match_info_free(pdMatchInfo);
+        g_regex_unref(pdRegex);
     }
     unlink(ppdFileName);
 }
@@ -255,8 +211,7 @@ char * getPPDFile(const char * printer) {
         ppdSetColor(ppd, ippHasOtherThan(cups, CUPS_PRINT_COLOR_MODE, "monochrome"));
         ppdSetDuplex(ppd, ippHasOtherThan(cups, CUPS_SIDES, "one-sided"));
         getResolutions(ppd, cups);
-        getPapers(ppd, cups);
-        getMargins(ppd, cups, printer);
+        getPapers(ppd, printer);
         getMediaSources(ppd, cups);
         getMediaTypes(ppd, cups);
         result = g_strdup(generatePPD(ppd));
@@ -356,6 +311,14 @@ static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
     g_free(color);
     flexvdiLog(L_DEBUG, "%d options", numOptions);
     return numOptions;
+}
+
+
+static void openWithApp(const char * file) {
+    char command[1024];
+    snprintf(command, 1024, "xdg-open %s", file);
+    // TODO: on Mac OS X, the command is 'open'
+    system(command);
 }
 
 

@@ -3,6 +3,9 @@
  **/
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <locale.h>
+#include <math.h>
 #include <string.h>
 #include <glib.h>
 #ifdef WIN32
@@ -13,15 +16,21 @@
 
 typedef struct PaperDescription {
     char * name;
-    int width, length;
+    double width, length;
+    double left, bottom, right, top;
 } PaperDescription;
 
 
-PaperDescription * newPaperDescription(char * name, int width, int length) {
+PaperDescription * newPaperDescription(char * name, double width, double length,
+                                       double left, double bottom, double right, double top) {
     PaperDescription * result = (PaperDescription *)g_malloc(sizeof(PaperDescription));
     result->name = name;
     result->width = width;
     result->length = length;
+    result->left = left;
+    result->bottom = bottom;
+    result->right = right;
+    result->top = top;
     return result;
 }
 
@@ -46,13 +55,13 @@ struct PPDGenerator {
     char * defaultType;
     GSList * resolutions;
     int defaultResolution;
-    int margins[4];
+    double left, bottom, right, top;
 };
 
 
 static int isValid(PPDGenerator * ppd) {
     return ppd->printerName && ppd->file && ppd->paperSizes && ppd->defaultPaperSize;
-};
+}
 
 
 PPDGenerator * newPPDGenerator(const char * printerName) {
@@ -64,6 +73,7 @@ PPDGenerator * newPPDGenerator(const char * printerName) {
         deletePPDGenerator(result);
         return NULL;
     }
+    result->left = result->bottom = result->right = result->top = 0.0;
     return result;
 }
 
@@ -98,12 +108,18 @@ static gint comparePaper(gconstpointer a, gconstpointer b) {
 }
 
 
-void ppdAddPaperSize(PPDGenerator * ppd, char * name, int width, int length) {
+void ppdAddPaperSize(PPDGenerator * ppd, char * name, double width, double length,
+                     double left, double bottom, double right, double top) {
     PaperDescription tmp;
     tmp.name = name;
     if (!g_slist_find_custom(ppd->paperSizes, &tmp, comparePaper)) {
         ppd->paperSizes = g_slist_prepend(ppd->paperSizes,
-                                          newPaperDescription(name, width, length));
+                                          newPaperDescription(name, width, length,
+                                                              left, bottom, right, top));
+        if (ppd->left < left) ppd->left = left;
+        if (ppd->bottom < bottom) ppd->bottom = bottom;
+        if (ppd->right < width - right) ppd->right = width - right;
+        if (ppd->top < length - top) ppd->top = length - top;
     }
 }
 
@@ -162,14 +178,6 @@ void ppdAddTray(PPDGenerator * ppd, char * tray) {
 void ppdSetDefaultTray(PPDGenerator * ppd, char * tray) {
     g_free(ppd->defaultTray);
     ppd->defaultTray = tray;
-}
-
-
-void ppdSetHWMargins(PPDGenerator * ppd, int left, int down, int right, int top) {
-    ppd->margins[0] = left; // In PPD order
-    ppd->margins[1] = down;
-    ppd->margins[2] = right;
-    ppd->margins[3] = top;
 }
 
 
@@ -244,7 +252,8 @@ static void generatePaperSizes(PPDGenerator * ppd) {
     fprintf(ppd->file,
             "*%% == Paper stuff\n"
             "*HWMargins: %d %d %d %d\n"
-            , ppd->margins[0], ppd->margins[1], ppd->margins[2], ppd->margins[3]);
+            , (int)ceil(ppd->left), (int)ceil(ppd->bottom)
+            , (int)ceil(ppd->right), (int)ceil(ppd->top));
     fprintf(ppd->file,
             "*%% Ghostscript pdfwrite ignores Orientation, so set the\n"
             "*%% custom page width/length and then use an Install procedure\n"
@@ -284,7 +293,7 @@ static void generatePaperSizes(PPDGenerator * ppd) {
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         fprintf(ppd->file,
-                "*PageSize %.34s/%s: \"<< /PageSize [%d %d] /ImagingBBox null >> setpagedevice\"\n"
+                "*PageSize %.34s/%s: \"<< /PageSize [%.2f %.2f] /ImagingBBox null >> setpagedevice\"\n"
                 , sanitize(desc->name), desc->name, desc->width, desc->length);
     }
     fprintf(ppd->file,
@@ -297,7 +306,7 @@ static void generatePaperSizes(PPDGenerator * ppd) {
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         fprintf(ppd->file,
-                "*PageRegion %.34s/%s: \"<< /PageSize [%d %d] /ImagingBBox null >> setpagedevice\"\n"
+                "*PageRegion %.34s/%s: \"<< /PageSize [%.2f %.2f] /ImagingBBox null >> setpagedevice\"\n"
                 , sanitize(desc->name), desc->name, desc->width, desc->length);
     }
     fprintf(ppd->file,
@@ -308,10 +317,9 @@ static void generatePaperSizes(PPDGenerator * ppd) {
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         fprintf(ppd->file,
-                "*ImageableArea %.34s/%s: \"%d %d %d %d\"\n"
+                "*ImageableArea %.34s/%s: \"%.2f %.2f %.2f %.2f\"\n"
                 , sanitize(desc->name), desc->name
-                , ppd->margins[0], ppd->margins[1]
-                , desc->width - ppd->margins[2], desc->length - ppd->margins[3]);
+                , desc->left, desc->bottom, desc->right, desc->top);
     }
     fprintf(ppd->file,
             "\n*DefaultPaperDimension: %s\n"
@@ -319,7 +327,7 @@ static void generatePaperSizes(PPDGenerator * ppd) {
     for (i = ppd->paperSizes; i != NULL; i = g_slist_next(i)) {
         PaperDescription * desc = (PaperDescription *)i->data;
         fprintf(ppd->file,
-                "*PaperDimension %.34s/%s: \"%d %d\"\n"
+                "*PaperDimension %.34s/%s: \"%.2f %.2f\"\n"
                 , sanitize(desc->name), desc->name, desc->width, desc->length);
     }
     fprintf(ppd->file, "\n");
@@ -492,6 +500,8 @@ static void generateFonts(PPDGenerator * ppd) {
 
 gchar * generatePPD(PPDGenerator * ppd) {
     if (!isValid(ppd)) return NULL;
+    char * oldLocale = setlocale(LC_NUMERIC, "C");
+    setlocale(LC_NUMERIC, "C");
     generateHeader(ppd);
     generatePaperSizes(ppd);
     generateResolutions(ppd);
@@ -501,6 +511,7 @@ gchar * generatePPD(PPDGenerator * ppd) {
     generateMediaTypes(ppd);
     // TODO: UI constraints
     generateFonts(ppd);
+    setlocale(LC_NUMERIC, oldLocale);
 
     return ppd->fileName;
 }

@@ -13,47 +13,6 @@
 #include "flexvdi-spice.h"
 
 
-static void openWithApp(const char * file) {
-    char command[1024];
-    snprintf(command, 1024, "start %s", file);
-    system(command);
-}
-
-
-static PRINTER_INFO_2 * getPrinterHandleInfo(HANDLE printer) {
-    PRINTER_INFO_2 * pinfo = NULL;
-    DWORD needed = 0;
-    GetPrinter(printer, 2, NULL, 0, &needed);
-    if (needed > 0) {
-        pinfo = (PRINTER_INFO_2 *)g_malloc(needed);
-        if (!GetPrinter(printer, 2, (LPBYTE)pinfo, needed, &needed)) {
-            g_free(pinfo);
-            pinfo = NULL;
-        }
-    }
-    return pinfo;
-}
-
-
-static PRINTER_INFO_2 * getPrinterInfo(const char * printerUtf8) {
-    PRINTER_INFO_2 * pinfo = NULL;
-    HANDLE printerH;
-    wchar_t * printer = g_utf8_to_utf16(printerUtf8, -1, NULL, NULL, NULL);
-    if (OpenPrinter(printer, &printerH, NULL)) {
-        pinfo = getPrinterHandleInfo(printerH);
-        ClosePrinter(printerH);
-    }
-    g_free(printer);
-    return pinfo;
-}
-
-
-static int getPrinterCap(PRINTER_INFO_2 * pinfo, WORD cap, wchar_t * buffer) {
-    return DeviceCapabilities(pinfo->pPrinterName, pinfo->pPortName,
-                              cap, buffer, pinfo->pDevMode);
-}
-
-
 void flexvdiSpiceGetPrinterList(GSList ** printerList) {
     int i;
     DWORD needed = 0, returned = 0;
@@ -72,38 +31,137 @@ void flexvdiSpiceGetPrinterList(GSList ** printerList) {
 }
 
 
-static void getResolutions(PRINTER_INFO_2 * pinfo, PPDGenerator * ppd) {
-    DEVMODE * defaults = pinfo->pDevMode;
-    int i, numResolutions = getPrinterCap(pinfo, DC_ENUMRESOLUTIONS, NULL);
+static PRINTER_INFO_2 * getPrinterInfo(HANDLE printer) {
+    PRINTER_INFO_2 * pinfo = NULL;
+    DWORD needed = 0;
+    GetPrinter(printer, 2, NULL, 0, &needed);
+    if (needed > 0) {
+        pinfo = (PRINTER_INFO_2 *)g_malloc(needed);
+        if (!GetPrinter(printer, 2, (LPBYTE)pinfo, needed, &needed)) {
+            g_free(pinfo);
+            pinfo = NULL;
+        }
+    }
+    return pinfo;
+}
+
+
+typedef struct ClientPrinter {
+    wchar_t * name;
+    HANDLE handle;
+    PRINTER_INFO_2 * pinfo;
+} ClientPrinter;
+
+
+static void deleteClientPrinter(ClientPrinter * printer) {
+    g_free(printer->name);
+    ClosePrinter(printer->handle);
+    g_free(printer->pinfo);
+}
+
+
+static ClientPrinter * newClientPrinter(const char * nameUtf8) {
+    ClientPrinter * printer = g_malloc0(sizeof(ClientPrinter));
+    if (printer) {
+        printer->name = g_utf8_to_utf16(nameUtf8, -1, NULL, NULL, NULL);
+        if (OpenPrinter(printer->name, &printer->handle, NULL)) {
+            printer->pinfo = getPrinterInfo(printer->handle);
+            if (!printer->pinfo) {
+                deleteClientPrinter(printer);
+                printer = NULL;
+            }
+        } else {
+            deleteClientPrinter(printer);
+            printer = NULL;
+        }
+    }
+    return printer;
+}
+
+
+static int getPrinterCap(ClientPrinter * printer, WORD cap, wchar_t * buffer) {
+    return DeviceCapabilities(printer->name, printer->pinfo->pPortName,
+                              cap, buffer, printer->pinfo->pDevMode);
+}
+
+
+static DEVMODE * getDocumentProperties(ClientPrinter * printer) {
+    LONG size = DocumentProperties(NULL, printer->handle, printer->name, NULL, NULL, 0);
+    DEVMODE * options = (DEVMODE *)g_malloc(size);
+    if (DocumentProperties(NULL, printer->handle, printer->name,
+                           options, NULL, DM_OUT_BUFFER) < 0) {
+        g_free(options);
+        options = NULL;
+    }
+    return options;
+}
+
+
+static int getDefaultResolution(ClientPrinter * printer) {
+    int result = 0;
+    if (printer->pinfo->pDevMode->dmFields | DM_PRINTQUALITY)
+        result = printer->pinfo->pDevMode->dmPrintQuality;
+    if (result <= 0 && printer->pinfo->pDevMode->dmFields | DM_YRESOLUTION)
+        result = printer->pinfo->pDevMode->dmYResolution;
+    return result;
+}
+
+
+static void getResolutions(ClientPrinter * printer, PPDGenerator * ppd) {
+    int i, numResolutions = getPrinterCap(printer, DC_ENUMRESOLUTIONS, NULL);
     if (numResolutions > 0) {
         LONG resolutions[numResolutions * 2];
-        getPrinterCap(pinfo, DC_ENUMRESOLUTIONS, (wchar_t *)resolutions);
+        getPrinterCap(printer, DC_ENUMRESOLUTIONS, (wchar_t *)resolutions);
         for (i = 0; i < numResolutions; ++i) {
             ppdAddResolution(ppd, resolutions[i*2]);
         }
     }
-    int defaultResolution = 0;
-    if (defaults->dmFields | DM_PRINTQUALITY)
-        defaultResolution = defaults->dmPrintQuality;
-    if (defaultResolution <= 0 && defaults->dmFields | DM_YRESOLUTION)
-        defaultResolution = defaults->dmYResolution;
+    int defaultResolution = getDefaultResolution(printer);
     if (defaultResolution > 0)
         ppdSetDefaultResolution(ppd, defaultResolution);
 }
 
 
-static void getPaper(PRINTER_INFO_2 * pinfo, PPDGenerator * ppd) {
-    int i, numPaperSizes = getPrinterCap(pinfo, DC_PAPERNAMES, NULL);
+static void getPaperMargins(ClientPrinter * printer, int paper, double * left, double * down) {
+    DEVMODE * options = getDocumentProperties(printer);
+    if (options) {
+        options->dmFields |= DM_PAPERSIZE | DM_SCALE | DM_ORIENTATION |
+                             DM_PRINTQUALITY | DM_YRESOLUTION;
+        options->dmScale = 100;
+        options->dmOrientation = DMORIENT_PORTRAIT;
+        options->dmPaperSize = paper;
+        int defaultResolution = getDefaultResolution(printer);
+        if (defaultResolution <= 0) defaultResolution = 300;
+        options->dmPrintQuality = options->dmYResolution = defaultResolution;
+        HDC dc = CreateDC(NULL, printer->name, NULL, options);
+        if (dc) {
+            *left = GetDeviceCaps(dc, PHYSICALOFFSETX) * 72.0 / defaultResolution;
+            *down = GetDeviceCaps(dc, PHYSICALOFFSETY) * 72.0 / defaultResolution;
+        }
+        DeleteDC(dc);
+        g_free(options);
+    }
+}
+
+
+static void getPaper(ClientPrinter * printer, PPDGenerator * ppd) {
+    int i, numPaperSizes = getPrinterCap(printer, DC_PAPERNAMES, NULL);
     if (numPaperSizes > 0) {
         wchar_t paperNames[numPaperSizes * 64];
+        WORD paperIds[numPaperSizes];
         POINT paperSizes[numPaperSizes];
-        getPrinterCap(pinfo, DC_PAPERNAMES, paperNames);
-        getPrinterCap(pinfo, DC_PAPERSIZE, (wchar_t *)paperSizes);
+        getPrinterCap(printer, DC_PAPERNAMES, paperNames);
+        getPrinterCap(printer, DC_PAPERS, (wchar_t *)paperIds);
+        getPrinterCap(printer, DC_PAPERSIZE, (wchar_t *)paperSizes);
         for (i = 0; i < numPaperSizes; ++i) {
             char * paperNameUtf8 = g_utf16_to_utf8(&paperNames[i*64], 64, NULL, NULL, NULL);
             if (!strstr(paperNameUtf8, "Custom")) {
-                ppdAddPaperSize(ppd, paperNameUtf8,
-                                paperSizes[i].x * 72 / 254, paperSizes[i].y * 72 / 254);
+                double left = 0.0, bottom = 0.0;
+                double width = paperSizes[i].x * 72.0 / 254.0;
+                double length = paperSizes[i].y * 72.0 / 254.0;
+                getPaperMargins(printer, paperIds[i], &left, &bottom);
+                ppdAddPaperSize(ppd, paperNameUtf8, width, length,
+                                left, bottom, width - left, length - bottom);
             }
             else g_free(paperNameUtf8);
         }
@@ -112,18 +170,18 @@ static void getPaper(PRINTER_INFO_2 * pinfo, PPDGenerator * ppd) {
 }
 
 
-static void getMediaSources(PRINTER_INFO_2 * pinfo, PPDGenerator * ppd) {
-    DEVMODE * defaults = pinfo->pDevMode;
-    int i, numTrays = getPrinterCap(pinfo, DC_BINNAMES, NULL);
+static void getMediaSources(ClientPrinter * printer, PPDGenerator * ppd) {
+    int i, numTrays = getPrinterCap(printer, DC_BINNAMES, NULL);
     if (numTrays > 0) {
         wchar_t trayNames[numTrays * 24];
-        getPrinterCap(pinfo, DC_BINNAMES, trayNames);
+        getPrinterCap(printer, DC_BINNAMES, trayNames);
         for (i = 0; i < numTrays; ++i) {
             // TODO: Auto may be included more than once
             char * trayNameUtf8 = g_utf16_to_utf8(&trayNames[i*24], 24, NULL, NULL, NULL);
             ppdAddTray(ppd, trayNameUtf8);
         }
         int defaultTray = 0;
+        DEVMODE * defaults = printer->pinfo->pDevMode;
         if (defaults->dmFields | DM_DEFAULTSOURCE) {
             defaultTray = defaults->dmDefaultSource - DMBIN_USER;
             if (defaultTray < 0 || defaultTray >= numTrays)
@@ -136,25 +194,25 @@ static void getMediaSources(PRINTER_INFO_2 * pinfo, PPDGenerator * ppd) {
 }
 
 
-static void getMediaTypes(PRINTER_INFO_2 * pinfo, PPDGenerator * ppd) {
-    DEVMODE * defaults = pinfo->pDevMode;
-    int i, numMediaTypes = getPrinterCap(pinfo, DC_MEDIATYPENAMES, NULL);
+static void getMediaTypes(ClientPrinter * printer, PPDGenerator * ppd) {
+    int i, numMediaTypes = getPrinterCap(printer, DC_MEDIATYPENAMES, NULL);
     if (numMediaTypes > 0) {
         wchar_t mediaTypeNames[numMediaTypes * 64];
-        getPrinterCap(pinfo, DC_MEDIATYPENAMES, mediaTypeNames);
+        getPrinterCap(printer, DC_MEDIATYPENAMES, mediaTypeNames);
         for (i = 0; i < numMediaTypes; ++i) {
             char * mediaTypeNameUtf8 = g_utf16_to_utf8(&mediaTypeNames[i*64], 64,
                                                        NULL, NULL, NULL);
             ppdAddMediaType(ppd, mediaTypeNameUtf8);
         }
         int defaultType = 0;
+        DEVMODE * defaults = printer->pinfo->pDevMode;
         if (defaults->dmFields | DM_MEDIATYPE) {
-            defaultType = pinfo->pDevMode->dmMediaType - DMMEDIA_USER;
+            defaultType = defaults->dmMediaType - DMMEDIA_USER;
             if (defaultType < 0 || defaultType >= numMediaTypes)
                 defaultType = 0;
         }
         char * mediaTypeNameUtf8 = g_utf16_to_utf8(&mediaTypeNames[defaultType*64], 64,
-                                                    NULL, NULL, NULL);
+                                                   NULL, NULL, NULL);
         ppdSetDefaultMediaType(ppd, mediaTypeNameUtf8);
     }
 }
@@ -164,15 +222,15 @@ char * getPPDFile(const char * printer) {
     PPDGenerator * ppd = newPPDGenerator(printer);
     char * result = NULL;
 
-    PRINTER_INFO_2 * pinfo = getPrinterInfo(printer);
-    if (pinfo) {
-        ppdSetColor(ppd, getPrinterCap(pinfo, DC_COLORDEVICE, NULL));
-        ppdSetDuplex(ppd, getPrinterCap(pinfo, DC_DUPLEX, NULL));
-        getResolutions(pinfo, ppd);
-        getPaper(pinfo, ppd);
-        getMediaSources(pinfo, ppd);
-        getMediaTypes(pinfo, ppd);
-        g_free(pinfo);
+    ClientPrinter * cprinter = newClientPrinter(printer);
+    if (cprinter) {
+        ppdSetColor(ppd, getPrinterCap(cprinter, DC_COLORDEVICE, NULL));
+        ppdSetDuplex(ppd, getPrinterCap(cprinter, DC_DUPLEX, NULL));
+        getResolutions(cprinter, ppd);
+        getPaper(cprinter, ppd);
+        getMediaSources(cprinter, ppd);
+        getMediaTypes(cprinter, ppd);
+        deleteClientPrinter(cprinter);
         result = g_strdup(generatePPD(ppd));
     }
 
@@ -181,14 +239,14 @@ char * getPPDFile(const char * printer) {
 }
 
 
-static LONG findBestPaperMatch(PRINTER_INFO_2 * pinfo, double width, double length) {
-    int i, numPaperSizes = getPrinterCap(pinfo, DC_PAPERNAMES, NULL);
+static LONG findBestPaperMatch(ClientPrinter * printer, double width, double length) {
+    int i, numPaperSizes = getPrinterCap(printer, DC_PAPERNAMES, NULL);
     int bestMatch = 0;
     if (numPaperSizes > 0) {
         WORD paperIds[numPaperSizes];
         POINT paperSizes[numPaperSizes];
-        getPrinterCap(pinfo, DC_PAPERS, (wchar_t *)paperIds);
-        getPrinterCap(pinfo, DC_PAPERSIZE, (wchar_t *)paperSizes);
+        getPrinterCap(printer, DC_PAPERS, (wchar_t *)paperIds);
+        getPrinterCap(printer, DC_PAPERSIZE, (wchar_t *)paperSizes);
         double minError = -1;
         for (i = 0; i < numPaperSizes; ++i) {
             POINT p = paperSizes[i];
@@ -206,7 +264,7 @@ static LONG findBestPaperMatch(PRINTER_INFO_2 * pinfo, double width, double leng
 }
 
 
-static void getMediaSizeOptionFromFile(PRINTER_INFO_2 * pinfo, const char * pdf,
+static void getMediaSizeOptionFromFile(ClientPrinter * printer, const char * pdf,
                                        DEVMODE * options) {
     PopplerDocument * document = NULL;
     GError *error = NULL;
@@ -226,7 +284,7 @@ static void getMediaSizeOptionFromFile(PRINTER_INFO_2 * pinfo, const char * pdf,
             options->dmFields |= DM_PAPERSIZE | DM_SCALE | DM_ORIENTATION;
             options->dmScale = 100;
             options->dmOrientation = DMORIENT_PORTRAIT;
-            options->dmPaperSize = findBestPaperMatch(pinfo, width, length);
+            options->dmPaperSize = findBestPaperMatch(printer, width, length);
             if (!options->dmPaperSize) {
                 options->dmFields |= DM_PAPERLENGTH | DM_PAPERWIDTH;
                 options->dmPaperWidth = width;
@@ -241,7 +299,7 @@ static void getMediaSizeOptionFromFile(PRINTER_INFO_2 * pinfo, const char * pdf,
 }
 
 
-static void getMediaSourceOption(PRINTER_INFO_2 * pinfo, char * jobOptions,
+static void getMediaSourceOption(ClientPrinter * printer, char * jobOptions,
                                  DEVMODE * options) {
     char * media_source = getJobOption(jobOptions, "media-source");
     int value = 0;
@@ -249,14 +307,14 @@ static void getMediaSourceOption(PRINTER_INFO_2 * pinfo, char * jobOptions,
         value = atoi(media_source);
         g_free(media_source);
     }
-    int numTrays = getPrinterCap(pinfo, DC_BINNAMES, NULL);
+    int numTrays = getPrinterCap(printer, DC_BINNAMES, NULL);
     if (value < 0 || value >= numTrays) value = 0;
     options->dmFields |= DM_DEFAULTSOURCE;
     options->dmDefaultSource = DMBIN_USER + value;
 }
 
 
-static void getMediaTypeOption(PRINTER_INFO_2 * pinfo, char * jobOptions,
+static void getMediaTypeOption(ClientPrinter * printer, char * jobOptions,
                                DEVMODE * options) {
     char * media_type = getJobOption(jobOptions, "media-type");
     int value = 0;
@@ -264,7 +322,7 @@ static void getMediaTypeOption(PRINTER_INFO_2 * pinfo, char * jobOptions,
         value = atoi(media_type);
         g_free(media_type);
     }
-    int numMediaTypes = getPrinterCap(pinfo, DC_MEDIATYPENAMES, NULL);
+    int numMediaTypes = getPrinterCap(printer, DC_MEDIATYPENAMES, NULL);
     if (value < 0 || value >= numMediaTypes) value = 0;
     options->dmFields |= DM_MEDIATYPE;
     options->dmMediaType = DMMEDIA_USER + value;
@@ -313,20 +371,15 @@ static void getResolutionOption(char * jobOptions, DEVMODE * options) {
 }
 
 
-static DEVMODE * jobOptionsToWindows(HANDLE printer, const char * pdf, char * jobOptions) {
+static DEVMODE * jobOptionsToWindows(ClientPrinter * printer, const char * pdf,
+                                     char * jobOptions) {
     char * copies = getJobOption(jobOptions, "copies"),
          * color = getJobOption(jobOptions, "color");
-    PRINTER_INFO_2 * pinfo = getPrinterHandleInfo(printer);
-    LONG size = DocumentProperties(NULL, printer, pinfo->pPrinterName, NULL, NULL, 0);
-    DEVMODE * options = (DEVMODE *)g_malloc(size);
-    if (DocumentProperties(NULL, printer, pinfo->pPrinterName,
-                           options, NULL, DM_OUT_BUFFER) < 0) {
-        g_free(options);
-        options = NULL;
-    } else {
-        getMediaSizeOptionFromFile(pinfo, pdf, options);
-        getMediaSourceOption(pinfo, jobOptions, options);
-        getMediaTypeOption(pinfo, jobOptions, options);
+    DEVMODE * options = getDocumentProperties(printer);
+    if (options) {
+        getMediaSizeOptionFromFile(printer, pdf, options);
+        getMediaSourceOption(printer, jobOptions, options);
+        getMediaTypeOption(printer, jobOptions, options);
         getDuplexOption(jobOptions, options);
         getCollateOption(jobOptions, options);
         getResolutionOption(jobOptions, options);
@@ -337,12 +390,11 @@ static DEVMODE * jobOptionsToWindows(HANDLE printer, const char * pdf, char * jo
     }
     g_free(color);
     g_free(copies);
-    g_free(pinfo);
     return options;
 }
 
 
-static int printFile(const wchar_t * printer, const char * pdf,
+static int printFile(ClientPrinter * printer, const char * pdf,
                      const wchar_t * title, DEVMODE * options) {
     // TODO: get media size from pdf file
     PopplerDocument * document = NULL;
@@ -359,11 +411,12 @@ static int printFile(const wchar_t * printer, const char * pdf,
         return FALSE;
     }
 
-    HDC dc = CreateDC(NULL, printer, NULL, options);
+    HDC dc = CreateDC(NULL, printer->name, NULL, options);
     if (!dc) {
         flexvdiLog(L_ERROR, "Could not create DC\n");
         return FALSE;
     }
+
 
     cairo_status_t status;
     cairo_surface_t * surface = cairo_win32_printing_surface_create(dc);
@@ -378,7 +431,11 @@ static int printFile(const wchar_t * printer, const char * pdf,
     } else {
         cairo_surface_set_fallback_resolution(surface, options->dmYResolution,
                                               options->dmYResolution);
-        cairo_scale(cr, options->dmYResolution / 72.0, options->dmYResolution / 72.0);
+        double scale, xOffset = 0.0, yOffset = 0.0;
+        scale = options->dmYResolution / 72.0;
+        getPaperMargins(printer, options->dmPaperSize, &xOffset, &yOffset);
+        cairo_scale(cr, scale, scale);
+        cairo_translate(cr, -xOffset, -yOffset);
         DOCINFO docinfo = { sizeof (DOCINFO), title, NULL, NULL, 0 };
         StartDoc(dc, &docinfo);
         int i, num_pages = poppler_document_get_n_pages(document);
@@ -407,27 +464,30 @@ static int printFile(const wchar_t * printer, const char * pdf,
 }
 
 
+static void openWithApp(const char * file) {
+    char command[1024];
+    snprintf(command, 1024, "start %s", file);
+    system(command);
+}
+
+
 void printJob(PrintJob * job) {
     char * printerUtf8 = getJobOption(job->options, "printer");
-    wchar_t * printer = g_utf8_to_utf16(printerUtf8, -1, NULL, NULL, NULL);
+    ClientPrinter * printer = newClientPrinter(printerUtf8);
     char * titleUtf8 = getJobOption(job->options, "title");
     wchar_t * title = g_utf8_to_utf16(titleUtf8, -1, NULL, NULL, NULL);
     int result = FALSE;
 
     if (printer) {
-        HANDLE printerH;
-        if (OpenPrinter((wchar_t *)printer, &printerH, NULL)) {
-            DEVMODE * options = jobOptionsToWindows(printerH, job->name, job->options);
-            if (options) {
-                result = printFile(printer, job->name, title ? title : L"", options);
-                g_free(options);
-            }
+        DEVMODE * options = jobOptionsToWindows(printer, job->name, job->options);
+        if (options) {
+            result = printFile(printer, job->name, title ? title : L"", options);
+            g_free(options);
         }
-        ClosePrinter(printerH);
+        deleteClientPrinter(printer);
     }
 
     if (!result) openWithApp(job->name);
-    g_free(printer);
     g_free(title);
     g_free(printerUtf8);
     g_free(titleUtf8);
