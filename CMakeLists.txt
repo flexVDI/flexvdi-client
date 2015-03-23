@@ -11,17 +11,20 @@ if (NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 message("${CMAKE_PROJECT_NAME} v${FLEXVDI_VERSION} ${CMAKE_BUILD_TYPE} build")
 
-# Find required packages
+# Find required/optional packages
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${PROJECT_SOURCE_DIR}/cmake")
 include(FindPkgConfig)
 pkg_search_module(spice_protocol REQUIRED spice-protocol)
-pkg_search_module(spice_glib REQUIRED spice-client-glib-2.0)
-pkg_search_module(spice_gtk REQUIRED spice-client-gtk-3.0)
 find_package(Boost 1.50.0 REQUIRED COMPONENTS system thread locale unit_test_framework)
-include_directories("${spice_protocol_INCLUDE_DIRS}"
-                    "${spice_glib_INCLUDE_DIRS}"
-                    "${spice_gtk_INCLUDE_DIRS}"
-                    "${Boost_INCLUDE_DIRS}")
+include_directories("${spice_protocol_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}")
+pkg_search_module(spice_glib spice-client-glib-2.0)
+pkg_search_module(spice_gtk spice-client-gtk-3.0)
+include_directories(${spice_glib_INCLUDE_DIRS} ${spice_gtk_INCLUDE_DIRS})
+# NOTE: At least, the following line won't work from inside the if block!!
+link_directories(${spice_glib_LIBRARY_DIRS} ${spice_gtk_LIBRARY_DIRS})
+if (spice_glib_FOUND AND spice_gtk_FOUND)
+    set(BUILD_CLIENT True)
+endif ()
 include(TestBigEndian)
 test_big_endian(BIG_ENDIAN)
 set(SELINUX_MAKEFILE /usr/share/selinux/devel/Makefile)
@@ -99,7 +102,9 @@ endif (WIN32)
 # Build components
 add_subdirectory(cred-connectors)
 add_subdirectory(print)
-add_subdirectory(client)
+if (BUILD_CLIENT)
+    add_subdirectory(client)
+endif ()
 add_subdirectory(test)
 
 # CPack commands
