@@ -10,54 +10,5 @@
 !define APPNAME "flexVDI Guest Tools"
 !define APPVERSION @CPACK_PACKAGE_VERSION_MAJOR@.@CPACK_PACKAGE_VERSION_MINOR@.@CPACK_PACKAGE_VERSION_PATCH@
 !cd @CPACK_NSIS_WORKING_DIR@
-!include setup.nsi
-
-Name "${APPNAME} v${APPVERSION}"
 OutFile "@CPACK_TOPLEVEL_DIRECTORY@/@CPACK_OUTPUT_FILE_NAME@"
-InstallDirRegKey HKLM "Software\${APPNAME}" "Install_Dir"
-RequestExecutionLevel admin
-ShowInstDetails show
-ShowUninstDetails show
-SetOverwrite try
-SetPluginUnload alwaysoff
-
-;Version Information
-VIProductVersion "${APPVERSION}.0"
-VIAddVersionKey "ProductName" "${APPNAME}"
-VIAddVersionKey "CompanyName" "Flexible Software Solutions S.L."
-VIAddVersionKey "LegalCopyright" "Copyright Flexible Software Solutions S.L. 2014"
-VIAddVersionKey "FileDescription" "${APPNAME}"
-VIAddVersionKey "FileVersion" "${APPVERSION}"
-VIAddVersionKey "ProductVersion" "${APPVERSION}"
-
-
-Section "flexVDI guest agent" install_section_id
-    ${DisableX64FSRedirection}
-    SetOutPath $INSTDIR
-    SetAutoClose true
-    SetRegView 64
-
-    !insertmacro installMacro
-SectionEnd
-
-
-Function .onInit
-    SectionSetFlags ${install_section_id} ${SF_SELECTED}
-    ${IfNot} ${AtLeastWinXP}
-        MessageBox MB_OK "XP and above required"
-        Quit
-    ${EndIf}
-    ${If} ${RunningX64}
-        StrCpy $INSTDIR "$PROGRAMFILES64\flexVDI"
-    ${Else}
-        StrCpy $INSTDIR "$PROGRAMFILES32\flexVDI"
-    ${EndIf}
-FunctionEnd
-
-
-Section "Uninstall"
-    SetAutoClose true
-    ${DisableX64FSRedirection}
-
-    !insertmacro uninstallMacro
-SectionEnd
+!include setup.nsi

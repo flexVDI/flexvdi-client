@@ -7,7 +7,48 @@
 !include print/windriver/setup.nsi
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 
-!macro installMacro
+Name "${APPNAME} v${APPVERSION}"
+InstallDirRegKey HKLM "Software\${APPNAME}" "Install_Dir"
+RequestExecutionLevel admin
+ShowInstDetails show
+ShowUninstDetails show
+SetOverwrite try
+SetPluginUnload alwaysoff
+
+; Version Information
+VIProductVersion "${APPVERSION}.0"
+VIAddVersionKey "ProductName" "${APPNAME}"
+VIAddVersionKey "CompanyName" "Flexible Software Solutions S.L."
+VIAddVersionKey "LegalCopyright" "Copyright Flexible Software Solutions S.L. 2014"
+VIAddVersionKey "FileDescription" "${APPNAME}"
+VIAddVersionKey "FileVersion" "${APPVERSION}"
+VIAddVersionKey "ProductVersion" "${APPVERSION}"
+
+; Pages
+Page components
+Page instfiles
+UninstPage instfiles
+
+
+Function .onInit
+    ${IfNot} ${AtLeastWinXP}
+        MessageBox MB_OK "XP and above required"
+        Quit
+    ${EndIf}
+    ${If} ${RunningX64}
+        StrCpy $INSTDIR "$PROGRAMFILES64\flexVDI"
+    ${Else}
+        StrCpy $INSTDIR "$PROGRAMFILES32\flexVDI"
+    ${EndIf}
+FunctionEnd
+
+
+Section "!flexVDI guest agent"
+    ${DisableX64FSRedirection}
+    SetOutPath $INSTDIR
+    SetRegView 64
+    SetAutoClose true
+
     ; Write the uninstall keys for Windows
     WriteRegStr HKLM "${UNINSTALL_KEY}"   "DisplayName" "${APPNAME}"
     WriteRegStr HKLM "${UNINSTALL_KEY}"   "DisplayIcon" "$INSTDIR\flexvdi-guest-agent.exe"
@@ -34,24 +75,40 @@
         Pop $0
         MessageBox MB_OK|MB_ICONEXCLAMATION "Guest agent failed to install: $0"
     ${EndIf}
+SectionEnd
 
-    ; SSO
+
+Section /o "Single Sign-On plugin"
+    ${DisableX64FSRedirection}
+    SetRegView 64
+    SetOutPath $INSTDIR
     ${If} ${IsWinXP}
         !insertmacro installGina
     ${Else}
         !insertmacro installCredProvider
     ${EndIf}
+SectionEnd
 
-    ; Print driver
+
+Section "Follow-me Printing driver"
+    ${DisableX64FSRedirection}
+    SetRegView 64
     !insertmacro installPrintDriver
+SectionEnd
 
+
+Function .onInstSuccess
     ; Compute installed size
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
     IntFmt $0 "0x%08X" $0
     WriteRegDWORD HKLM "${UNINSTALL_KEY}" "EstimatedSize" "$0"
-!macroend
+FunctionEnd
 
-!macro uninstallMacro
+
+Section "Uninstall"
+    SetAutoClose true
+    ${DisableX64FSRedirection}
+
     ${If} ${IsWinXP}
         !insertmacro uninstallGina
     ${Else}
@@ -70,4 +127,4 @@
         Pop $0
         MessageBox MB_OK|MB_ICONEXCLAMATION "Guest agent failed to uninstall: $0"
     ${EndIf}
-!macroend
+SectionEnd
