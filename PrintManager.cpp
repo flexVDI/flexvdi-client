@@ -142,7 +142,30 @@ static bool uninstallPrinter(PRINTER_INFO_2 * pinfo) {
 }
 
 
+static void restartSpooler() {
+    SC_HANDLE serviceCM, spooler;
+    if ((serviceCM = OpenSCManager(0, 0, SC_MANAGER_CONNECT))) {
+        if ((spooler = OpenService(serviceCM, L"Spooler", SERVICE_ALL_ACCESS))) {
+            SERVICE_STATUS status;
+            ControlService(spooler, SERVICE_CONTROL_STOP, &status);
+            for (int i = 0; status.dwCurrentState != SERVICE_STOPPED && i < 10; ++i) {
+                Sleep(100);
+                QueryServiceStatus(spooler, &status);
+            }
+            StartService(spooler, 0, NULL);
+            for (int i = 0; status.dwCurrentState != SERVICE_RUNNING && i < 10; ++i) {
+                Sleep(100);
+                QueryServiceStatus(spooler, &status);
+            }
+            CloseServiceHandle(spooler);
+        }
+        CloseServiceHandle(serviceCM);
+    }
+}
+
+
 void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) {
+    restartSpooler();
     DWORD numPrinters;
     std::shared_ptr<PRINTER_INFO_2> printers = getPrinters(numPrinters);
     PRINTER_INFO_2 * pinfo = printers.get();
