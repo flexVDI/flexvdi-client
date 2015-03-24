@@ -18,6 +18,13 @@
 
 !macro uninstallGina
     ReadRegStr $0 HKLM "${UNINSTALL_KEY}" "OldGinaDLL"
+    IfErrors 0 oldgina_present
+        StrCpy $0 "msgina.dll"
+    oldgina_present:
+    FindFirst $1 $2 $SYSDIR\$0
+    IfErrors 0 oldgina_noexists
+        StrCpy $0 "msgina.dll"
+    oldgina_noexists:
     WriteRegStr HKLM "${WINLOGON_KEY}" "GinaDLL" "$0"
     Delete /REBOOTOK $SYSDIR\flexVDIGina.dll
     DetailPrint "GINA hook removed"
