@@ -16,7 +16,7 @@ set(DEF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/FlexVDICredentialProvider.def")
 add_library(flexVDICredentialProvider SHARED FlexCredential.cpp FlexProvider.cpp
             guid.cpp ../CredentialsThread.cpp FlexProviderFactory.cpp helpers.cpp
             resources.rc $<TARGET_OBJECTS:util_o>)
-target_link_libraries(flexVDICredentialProvider shlwapi secur32 Uuid "${FLEXVDI_LIBRARIES}")
+target_link_libraries(flexVDICredentialProvider shlwapi secur32 Uuid ${FLEXVDI_LIBRARIES})
 set_target_properties(flexVDICredentialProvider PROPERTIES
     LINK_FLAGS "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static"
     PREFIX "")
