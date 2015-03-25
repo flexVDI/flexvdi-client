@@ -1,3 +1,6 @@
+set(agent_sources ${agent_sources}
+    ${CMAKE_CURRENT_SOURCE_DIR}/CredentialsManager.cpp PARENT_SCOPE)
+
 if (WIN32)
     add_subdirectory(gina)
     add_subdirectory(credential-provider)

@@ -61,21 +61,22 @@ endif ()
 configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config.h")
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-set(sources FlexVDIGuestAgent.cpp VirtioPort.cpp
-    DispatcherRegistry.cpp Connection.cpp LocalPipe.cpp
-    CredentialsManager.cpp
-    PrintManager.cpp
-    )
-add_library(objects OBJECT ${sources})
+set(agent_sources FlexVDIGuestAgent.cpp DispatcherRegistry.cpp
+                  Connection.cpp VirtioPort.cpp LocalPipe.cpp)
+
+# Build components
+add_subdirectory(credentials-manager)
+add_subdirectory(print)
 
 # Build guest agent
+add_library(agent_objects OBJECT ${agent_sources})
 if (WIN32)
     add_library(util_o OBJECT util.cpp WinSpoolImpl.cpp)
     configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.rc"
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc" @ONLY)
     add_executable(flexvdi-guest-agent WindowsService.cpp
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc"
-                   $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
+                   $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
     set_target_properties(flexvdi-guest-agent PROPERTIES LINK_FLAGS "-static")
     target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
     configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
@@ -83,7 +84,7 @@ if (WIN32)
 else (WIN32)
     add_library(util_o OBJECT util.cpp)
     add_executable(flexvdi-guest-agent main.cpp
-                   $<TARGET_OBJECTS:objects> $<TARGET_OBJECTS:util_o>)
+                   $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
     target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
     configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.te.in"
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te")
@@ -99,9 +100,7 @@ else (WIN32)
             DESTINATION share/selinux/targeted)
 endif (WIN32)
 
-# Build components
-add_subdirectory(cred-connectors)
-add_subdirectory(print)
+# Build other
 if (BUILD_CLIENT)
     add_subdirectory(client)
 endif ()

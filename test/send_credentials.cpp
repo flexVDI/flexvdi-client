@@ -10,7 +10,7 @@
 #include "FlexVDIProto.h"
 #include "MessageBuffer.hpp"
 #include "util.hpp"
-#include "cred-connectors/CredentialsThread.hpp"
+#include "credentials-manager/CredentialsThread.hpp"
 
 #ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
 #include <windows.h>

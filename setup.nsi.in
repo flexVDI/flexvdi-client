@@ -2,8 +2,8 @@
 ; Copyright Flexible Software Solutions S.L. 2014
 ;
 
-!include cred-connectors/credential-provider/setup.nsi
-!include cred-connectors/gina/setup.nsi
+!include credentials-manager/credential-provider/setup.nsi
+!include credentials-manager/gina/setup.nsi
 !include print/windriver/setup.nsi
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 

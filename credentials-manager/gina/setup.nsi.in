@@ -2,9 +2,9 @@
 
 !macro installGina
     ${If} ${RunningX64}
-        File "../win64/cred-connectors/gina/flexVDIGina.dll"
+        File "../win64/credentials-manager/gina/flexVDIGina.dll"
     ${Else}
-        File "../win32/cred-connectors/gina/flexVDIGina.dll"
+        File "../win32/credentials-manager/gina/flexVDIGina.dll"
     ${EndIf}
     Rename /REBOOTOK $INSTDIR\flexVDIGina.dll $SYSDIR\flexVDIGina.dll
     ReadRegStr $0 HKLM "${UNINSTALL_KEY}" "OldGinaDLL"
