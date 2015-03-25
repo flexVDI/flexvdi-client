@@ -4,6 +4,7 @@
 
 #include <windows.h>
 #include <winspool.h>
+#include <setupapi.h>
 #include <wctype.h>
 #include "PrintManager.hpp"
 #include "util.hpp"
@@ -123,57 +124,92 @@ void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) 
 }
 
 
-static wstring fileAt(const wstring & srcFile, const wstring & dstDir) {
-    int withSlash = dstDir.back() == '\\' ? 1 : 0;
-    return dstDir + srcFile.substr(srcFile.find_last_of('\\') + withSlash);
+static wstring getPrinterDriverDirectory() {
+    DWORD needed = 0;
+    GetPrinterDriverDirectory(NULL, NULL, 1, NULL, 0, &needed);
+    std::unique_ptr<BYTE[]> bufferDir(new BYTE[needed]);
+    if (!needed || !GetPrinterDriverDirectory(NULL, NULL, 1, bufferDir.get(),
+                                              needed, &needed)) {
+        LogError() << "Failed to get Printer Driver Directory";
+        return L"";
+    }
+    return wstring((wchar_t *)bufferDir.get());
+}
+
+
+static bool copyPScriptFiles(const wstring & dst) {
+    HINF psInf = SetupOpenInfFile(L"ntprint.inf", NULL, INF_STYLE_WIN4, NULL);
+    return_if(psInf == INVALID_HANDLE_VALUE, "Opening ntprint.inf failed", false);
+    SetupSetDirectoryId(psInf, 66000, dst.c_str());
+    PVOID context = SetupInitDefaultQueueCallback(NULL);
+    PSP_FILE_CALLBACK callback = &SetupDefaultQueueCallback;
+    bool result = SetupInstallFromInfSection(NULL, psInf, L"PSCRIPT.OEM", SPINST_FILES,
+                                             NULL, NULL, SP_COPY_NEWER_ONLY, callback,
+                                             context, NULL, NULL);
+    if (!result) LogError() << "PScript files intallation failed";
+    SetupCloseInfFile(psInf);
+    return result;
 }
 
 
 static bool installPrinterDriver(const wsbuffer & printer, const wsbuffer & ppd) {
+    // First look for an existing PScript driver
+    bool found = false;
     DWORD needed = 0, returned = 0;
     EnumPrinterDrivers(NULL, NULL, 2, NULL, 0, &needed, &returned);
     std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
     DRIVER_INFO_2W * dinfo = (DRIVER_INFO_2W *)buffer.get();
     if (needed && EnumPrinterDrivers(NULL, NULL, 2, buffer.get(),
                                      needed, &needed, &returned)) {
-        for (unsigned int i = 0; i < returned; i++) {
-            wstring driverName = dinfo[i].pDriverPath;
+        for (unsigned int i = 0; !found && i < returned; ++i, ++dinfo) {
+            wstring driverName = dinfo->pDriverPath;
             if (driverName.length() < 12) continue;
             driverName = driverName.substr(driverName.length() - 12);
-            for (wchar_t & c : driverName) {
-                c = towupper(c);
-            }
-            if (driverName == L"PSCRIPT5.DLL") {
-                GetPrinterDriverDirectory(NULL, NULL, 1, NULL, 0, &needed);
-                std::unique_ptr<BYTE[]> bufferDir(new BYTE[needed]);
-                if (!needed || !GetPrinterDriverDirectory(NULL, NULL, 1, bufferDir.get(),
-                                                          needed, &needed)) {
-                    LogError() << "Failed to get Printer Driver Directory";
-                    return false;
-                }
-                wstring driverPath((wchar_t *)bufferDir.get());
-                wsbuffer ppdNew = fileAt(ppd, driverPath),
-                         config = fileAt(dinfo[i].pConfigFile, driverPath),
-                         driver = fileAt(dinfo[i].pDriverPath, driverPath);
-                bool result = false;
-                if (CopyFile(ppd, ppdNew, TRUE) &&
-                    CopyFile(dinfo[i].pConfigFile, config, FALSE) &&
-                    CopyFile(dinfo[i].pDriverPath, driver, FALSE)) {
-                    dinfo[i].pName = printer;
-                    dinfo[i].pDataFile = ppdNew;
-                    if (AddPrinterDriver(NULL, 2, (LPBYTE)&dinfo[i])) result = true;
-                    else LogError() << "AddPrinterDriver failed";
-                }
-                DeleteFile(ppdNew);
-                DeleteFile(config);
-                DeleteFile(driver);
-                return result;
-            }
+            for (wchar_t & c : driverName) c = towupper(c);
+            found = driverName == L"PSCRIPT5.DLL";
         }
-        LogError() << "No pscript5 printer driver found";
     } else LogError() << "EnumPrinterDrivers failed";
-    LogError() << "Failed to install printer driver " << printer;
-    return false;
+
+    wstring driverPath = getPrinterDriverDirectory();
+    if (driverPath == L"") return false;
+    wstring ppdBase = ppd;
+    ppdBase = ppdBase.substr(ppdBase.find_last_of(L'\\'));
+    wsbuffer ppdNew = driverPath + ppdBase,
+             config = driverPath + L"\\PS5UI.DLL",
+             driver = driverPath + L"\\PSCRIPT5.DLL";
+
+    if (found) {
+        --dinfo;
+        if (!CopyFile(dinfo->pConfigFile, config, FALSE) ||
+            !CopyFile(dinfo->pDriverPath, driver, FALSE)) {
+            LogError() << "Could not copy driver files to print driver directory";
+            return false;
+        }
+    } else {
+        return_if(!copyPScriptFiles(driverPath),
+                  "Failed to locate PScript driver files", false);
+        // Help and NTF files not needed
+        DeleteFile((driverPath + L"\\PSCRIPT.HLP").c_str());
+        DeleteFile((driverPath + L"\\PSCRIPT.NTF").c_str());
+        buffer.reset(new BYTE[sizeof(DRIVER_INFO_2W)]);
+        dinfo = (DRIVER_INFO_2W *)buffer.get();
+        dinfo->cVersion = 3;
+        dinfo->pEnvironment = NULL;
+    }
+
+    bool result = false;
+    if (CopyFile(ppd, ppdNew, TRUE)) {
+        dinfo->pName = printer;
+        dinfo->pDataFile = ppdNew;
+        dinfo->pDriverPath = driver;
+        dinfo->pConfigFile = config;
+        if (AddPrinterDriver(NULL, 2, (LPBYTE)dinfo)) result = true;
+        else LogError() << "AddPrinterDriver failed";
+    } else LogError() << "Failed to copy ppd";
+    DeleteFile(ppdNew);
+    DeleteFile(config);
+    DeleteFile(driver);
+    return result;
 }
 
 
@@ -181,6 +217,7 @@ static bool installPrinter(const wsbuffer & printer, const wsbuffer & ppd) {
     Log(L_DEBUG) << "Installing printer " << printer << " from " << ppd;
 
     if (!installPrinterDriver(printer, ppd)) return false;
+    Log(L_DEBUG) << "Printer driver installed";
 
     wsbuffer comment(toWstring(PrintManager::sharedPrinterDescription).c_str());
     wsbuffer location(toWstring(PrintManager::sharedPrinterLocation).c_str());
@@ -294,6 +331,7 @@ static bool addPort(const wchar_t * portName) {
 bool installFollowMePrinting(const char * portDll, const char * ppd) {
     return installMonitor(toWstring(portDll).c_str()) &&
             addPort(portName) &&
+            PrintManager::uninstallPrinter(toString(pdfPrinter)) &&
             installPrinter(pdfPrinter, toWstring(ppd));
 }
 

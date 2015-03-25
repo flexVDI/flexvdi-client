@@ -32,6 +32,9 @@ public:
     void handle(const Connection::Ptr & src, const UnsharePrinterMsgPtr & msg);
     void handle(const Connection::Ptr & src, const ResetMsgPtr & msg);
 
+    static bool installPrinter(const std::string & printer, const std::string & ppd);
+    static bool uninstallPrinter(const std::string & printer);
+
     static const char * sharedPrinterDescription;
     static const char * sharedPrinterLocation;
 
@@ -52,9 +55,6 @@ private:
     }
 
     void closed(const Connection::Ptr & src, const boost::system::error_code & error);
-
-    static bool installPrinter(const std::string & printer, const std::string & ppd);
-    static bool uninstallPrinter(const std::string & printer);
 };
 
 }
