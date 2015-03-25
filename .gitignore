@@ -1,0 +1,5 @@
+build
+win32
+win64
+*kdev4
+
