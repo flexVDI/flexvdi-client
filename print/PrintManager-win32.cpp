@@ -4,6 +4,7 @@
 
 #include <windows.h>
 #include <winspool.h>
+#include <wctype.h>
 #include "PrintManager.hpp"
 #include "util.hpp"
 
@@ -12,7 +13,43 @@ using std::string;
 using std::wstring;
 
 
-std::shared_ptr<PRINTER_INFO_2> getPrinters(DWORD & numPrinters) {
+class wsbuffer {
+public:
+    wsbuffer(const wchar_t * copy) {
+        size_t len = std::wcslen(copy);
+        buffer.reset(new wchar_t[len + 1]);
+        std::wcscpy(buffer.get(), copy);
+    }
+    wsbuffer(const wstring & copy) : wsbuffer(copy.c_str()) {}
+    operator wchar_t *() const { return buffer.get(); }
+    operator wstring() const { return wstring(buffer.get()); }
+    wsbuffer & operator+=(const wsbuffer & r) {
+        size_t lenThis = std::wcslen(*this), len = lenThis + std::wcslen(r);
+        wchar_t * tmp = new wchar_t[(len + 1)*sizeof(wchar_t)];
+        std::wcscpy(tmp, *this);
+        std::wcscpy(tmp + lenThis, r);
+        buffer.reset(tmp);
+        return *this;
+    }
+    friend Log & operator<<(Log & os, const wsbuffer & s) {
+        return os << s.buffer.get();
+    }
+    bool isEqualTo(const wchar_t * r) const {
+        return std::wcscmp(*this, r) == 0;
+    }
+
+private:
+    std::unique_ptr<wchar_t[]> buffer;
+};
+
+
+static const wsbuffer portName(L"flexVDIprint");
+static const wsbuffer monitorName(L"flexVDI Redirection Port");
+static const wsbuffer pdfPrinter(L"flexVDI PDF Printer");
+static const wsbuffer tag(L"flexVDI shared printer");
+
+
+static std::shared_ptr<PRINTER_INFO_2> getPrinters(DWORD & numPrinters) {
     DWORD needed = 0;
     DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
     EnumPrinters(flags, NULL, 2, NULL, 0, &needed, &numPrinters);
@@ -28,7 +65,8 @@ std::shared_ptr<PRINTER_INFO_2> getPrinters(DWORD & numPrinters) {
 
 
 static bool uninstallPrinterDriver(wchar_t * printer, bool cannotFail) {
-    if (!DeletePrinterDriverEx(NULL, NULL, printer, DPD_DELETE_UNUSED_FILES, 0) && cannotFail) {
+    if (!DeletePrinterDriverEx(NULL, NULL, printer, DPD_DELETE_UNUSED_FILES, 0) &&
+            cannotFail) {
         LogError() << "DeletePrinterDriverEx failed";
         return false;
     }
@@ -77,8 +115,8 @@ void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) 
     std::shared_ptr<PRINTER_INFO_2> printers = getPrinters(numPrinters);
     PRINTER_INFO_2 * pinfo = printers.get();
     for (unsigned int i = 0; i < numPrinters; i++) {
-        if (pinfo[i].pPortName == wstring(L"flexVDIprint") &&
-            pinfo[i].pDriverName != wstring(L"flexVDI Printer")) {
+        if (portName.isEqualTo(pinfo[i].pPortName) &&
+            !pdfPrinter.isEqualTo(pinfo[i].pDriverName)) {
             ::uninstallPrinter(&pinfo[i]);
         }
     }
@@ -91,15 +129,21 @@ static wstring fileAt(const wstring & srcFile, const wstring & dstDir) {
 }
 
 
-static bool installPrinterDriver(const wstring & printer, const wstring & ppd) {
+static bool installPrinterDriver(const wsbuffer & printer, const wsbuffer & ppd) {
     DWORD needed = 0, returned = 0;
     EnumPrinterDrivers(NULL, NULL, 2, NULL, 0, &needed, &returned);
     std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
     DRIVER_INFO_2W * dinfo = (DRIVER_INFO_2W *)buffer.get();
     if (needed && EnumPrinterDrivers(NULL, NULL, 2, buffer.get(),
-                                      needed, &needed, &returned)) {
+                                     needed, &needed, &returned)) {
         for (unsigned int i = 0; i < returned; i++) {
-            if (dinfo[i].pName == wstring(L"flexVDI Printer")) {
+            wstring driverName = dinfo[i].pDriverPath;
+            if (driverName.length() < 12) continue;
+            driverName = driverName.substr(driverName.length() - 12);
+            for (wchar_t & c : driverName) {
+                c = towupper(c);
+            }
+            if (driverName == L"PSCRIPT5.DLL") {
                 GetPrinterDriverDirectory(NULL, NULL, 1, NULL, 0, &needed);
                 std::unique_ptr<BYTE[]> bufferDir(new BYTE[needed]);
                 if (!needed || !GetPrinterDriverDirectory(NULL, NULL, 1, bufferDir.get(),
@@ -108,79 +152,62 @@ static bool installPrinterDriver(const wstring & printer, const wstring & ppd) {
                     return false;
                 }
                 wstring driverPath((wchar_t *)bufferDir.get());
-                wstring ppdNew = fileAt(ppd, driverPath),
-                        config = fileAt(dinfo[i].pConfigFile, driverPath),
-                        driver = fileAt(dinfo[i].pDriverPath, driverPath);
+                wsbuffer ppdNew = fileAt(ppd, driverPath),
+                         config = fileAt(dinfo[i].pConfigFile, driverPath),
+                         driver = fileAt(dinfo[i].pDriverPath, driverPath);
                 bool result = false;
-                if (CopyFile(ppd.c_str(), ppdNew.c_str(), TRUE) &&
-                    CopyFile(dinfo[i].pConfigFile, config.c_str(), FALSE) &&
-                    CopyFile(dinfo[i].pDriverPath, driver.c_str(), FALSE)) {
-                    dinfo[i].pName = (wchar_t *)printer.c_str();
-                    dinfo[i].pDataFile = (wchar_t *)ppdNew.c_str();
+                if (CopyFile(ppd, ppdNew, TRUE) &&
+                    CopyFile(dinfo[i].pConfigFile, config, FALSE) &&
+                    CopyFile(dinfo[i].pDriverPath, driver, FALSE)) {
+                    dinfo[i].pName = printer;
+                    dinfo[i].pDataFile = ppdNew;
                     if (AddPrinterDriver(NULL, 2, (LPBYTE)&dinfo[i])) result = true;
                     else LogError() << "AddPrinterDriver failed";
                 }
-                DeleteFile(ppdNew.c_str());
-                DeleteFile(config.c_str());
-                DeleteFile(driver.c_str());
+                DeleteFile(ppdNew);
+                DeleteFile(config);
+                DeleteFile(driver);
                 return result;
             }
         }
-        LogError() << "No flexVDI printer driver found";
+        LogError() << "No pscript5 printer driver found";
     } else LogError() << "EnumPrinterDrivers failed";
     LogError() << "Failed to install printer driver " << printer;
     return false;
 }
 
 
-static bool clonePrinter(const wstring & printer, PRINTER_INFO_2 * pinfo) {
-    pinfo->pDriverName = pinfo->pPrinterName = (wchar_t *)printer.c_str();
-    wstring comment(toWstring(PrintManager::sharedPrinterDescription));
-    wstring location(toWstring(PrintManager::sharedPrinterLocation));
-    pinfo->pComment = (wchar_t *)comment.c_str();
-    pinfo->pLocation = (wchar_t *)location.c_str();
-    pinfo->Attributes &= ~PRINTER_ATTRIBUTE_SHARED;
-    HANDLE hprinter = AddPrinter(NULL, 2, (LPBYTE)pinfo);
-    if (hprinter) {
-        Log(L_DEBUG) << "Printer " << printer << " added successfully";
-        SetPrinterData(hprinter, (wchar_t *)L"flexVDI shared printer", REG_SZ,
-                       (LPBYTE)printer.c_str(), (printer.length() + 1) * sizeof(wchar_t));
-        ClosePrinter(hprinter);
-        return true;
-    } else return false;
-}
-
-
-static bool installPrinter(const wstring & printer, const wstring & ppd) {
+static bool installPrinter(const wsbuffer & printer, const wsbuffer & ppd) {
     Log(L_DEBUG) << "Installing printer " << printer << " from " << ppd;
 
     if (!installPrinterDriver(printer, ppd)) return false;
 
-    DWORD needed = 0;
-    GetDefaultPrinter(NULL, &needed);
-    std::unique_ptr<wchar_t[]> defaultPrinter(new wchar_t[needed]);
-    bool resetDefault = needed && GetDefaultPrinter(defaultPrinter.get(), &needed);
+    wsbuffer comment(toWstring(PrintManager::sharedPrinterDescription).c_str());
+    wsbuffer location(toWstring(PrintManager::sharedPrinterLocation).c_str());
+    wsbuffer printProcessor(L"WinPrint");
+    wsbuffer dataType(L"RAW");
+    PRINTER_INFO_2 pinfo;
+    std::fill_n((uint8_t *)&pinfo, sizeof(PRINTER_INFO_2), 0);
+    pinfo.pDriverName = pinfo.pPrinterName = printer;
+    pinfo.pPortName = portName;
+    pinfo.pComment = comment;
+    pinfo.pLocation = location;
+    pinfo.pPrintProcessor = printProcessor;
+    pinfo.pDatatype = dataType;
 
-    DWORD numPrinters;
-    std::shared_ptr<PRINTER_INFO_2> printers = getPrinters(numPrinters);
-    PRINTER_INFO_2 * pinfo = printers.get();
-    bool found = false;
-    for (unsigned int i = 0; i < numPrinters && !found; ++i, ++pinfo) {
-        found = pinfo->pDriverName == wstring(L"flexVDI Printer");
-    }
-    if (!found) {
-        LogError() << "No flexVDI printer found";
-    } else if (clonePrinter(printer, --pinfo)) {
-        if (resetDefault) {
-            Log(L_DEBUG) << "Reseting default printer to " << defaultPrinter.get();
-            SetDefaultPrinter(defaultPrinter.get());
-        }
+    HANDLE hprinter = AddPrinter(NULL, 2, (LPBYTE)&pinfo);
+    if (hprinter) {
+        Log(L_DEBUG) << "Printer " << printer << " added successfully";
+        LPBYTE buffer = (LPBYTE)(wchar_t *)printer;
+        size_t size = (std::wcslen(printer) + 1) * sizeof(wchar_t);
+        SetPrinterData(hprinter, tag, REG_SZ, buffer, size);
+        ClosePrinter(hprinter);
         return true;
     } else {
         LogError() << "Failed to install new printer";
+        uninstallPrinterDriver(printer, false);
+        return false;
     }
-    uninstallPrinterDriver((wchar_t *)printer.c_str(), false);
-    return false;
 }
 
 
@@ -200,17 +227,117 @@ bool PrintManager::uninstallPrinter(const string & printer) {
         HANDLE hprinter;
         if (OpenPrinter(pinfo->pPrinterName, &hprinter, NULL)) {
             DWORD needed = 0, type;
-            GetPrinterData(hprinter, (wchar_t *)L"flexVDI shared printer",
-                           &type, NULL, 0, &needed);
+            GetPrinterData(hprinter, tag, &type, NULL, 0, &needed);
             std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
             wchar_t * name = (wchar_t *)buffer.get();
-            DWORD result = GetPrinterData(hprinter, (wchar_t *)L"flexVDI shared printer",
-                                          &type, buffer.get(), needed, &needed);
+            DWORD result = GetPrinterData(hprinter, tag, &type,
+                                          buffer.get(), needed, &needed);
             ClosePrinter(hprinter);
             if (needed && result == ERROR_SUCCESS && type == REG_SZ && wPrinter == name)
                 return ::uninstallPrinter(pinfo);
         }
     }
     Log(L_INFO) << "Printer " << printer << " not found";
+    return true;
+}
+
+
+static bool isMonitorInstalled() {
+    DWORD needed = 0, returned = 0;
+    EnumMonitors(NULL, 1, NULL, 0, &needed, &returned);
+    std::unique_ptr<uint8_t[]> buffer(new uint8_t[needed]);
+    MONITOR_INFO_1W * mi = (MONITOR_INFO_1W *)buffer.get();
+    return_if(needed <= 0 || !EnumMonitors(NULL, 1, (LPBYTE)mi, needed, &needed, &returned),
+              "EnumMonitorsW failed", false);
+    for (DWORD i = 0; i < returned; i++) {
+        if (monitorName.isEqualTo(mi[i].pName)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+static bool installMonitor(const wsbuffer & dll) {
+    if (!isMonitorInstalled()) {
+        MONITOR_INFO_2W mi2;
+        mi2.pName = monitorName;
+        mi2.pDLLName = dll;
+        mi2.pEnvironment = NULL;
+        return_if(!AddMonitor(NULL, 2, (LPBYTE)&mi2), "AddMonitorW failed", false);
+    }
+    return true;
+}
+
+
+static bool addPort(const wchar_t * portName) {
+    HANDLE hMonitor = INVALID_HANDLE_VALUE;
+    PRINTER_DEFAULTS pdef = { NULL, NULL, SERVER_ACCESS_ADMINISTER };
+    wsbuffer monitorString(L",XcvMonitor ");
+    monitorString += monitorName;
+    DWORD xcvSize = (std::wcslen(portName) + 1) * sizeof(wchar_t);
+
+    return_if(!OpenPrinter(monitorString, &hMonitor, &pdef), "OpenPrinterW failed", false);
+
+    DWORD status, needed;
+    bool success = XcvData(hMonitor, L"AddPort", (BYTE *)portName, xcvSize,
+                           NULL, 0, &needed, &status);
+    success = success && (status == NO_ERROR || status == ERROR_ALREADY_EXISTS);
+    if (!success)
+        LogError() << "XcvDataWProc failed";
+
+    ClosePrinter(hMonitor);
+    return success;
+}
+
+
+bool installFollowMePrinting(const char * portDll, const char * ppd) {
+    return installMonitor(toWstring(portDll).c_str()) &&
+            addPort(portName) &&
+            installPrinter(pdfPrinter, toWstring(ppd));
+}
+
+
+static bool deletePort(const wsbuffer & portName) {
+    DWORD numPrinters;
+    std::shared_ptr<PRINTER_INFO_2> printers = getPrinters(numPrinters);
+    PRINTER_INFO_2 * pinfo = printers.get();
+    for (unsigned int i = 0; i < numPrinters; ++i, ++pinfo) {
+        if (portName.isEqualTo(pinfo->pPortName)) {
+            uninstallPrinter(pinfo);
+        }
+    }
+    /* This may not be silent, but probably is */
+    DeletePort(NULL, HWND_DESKTOP, portName);
+    return true;
+}
+
+
+bool uninstallFollowMePrinting() {
+    if (!isMonitorInstalled()) return true;
+
+    DWORD needed = 0, returned = 0;
+    /* Check if monitor is still in use */
+    EnumPorts(NULL, 2, NULL, 0, &needed, &returned);
+    std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
+    PORT_INFO_2W * pi = (PORT_INFO_2W *)buffer.get();
+    return_if(!needed || !EnumPorts(NULL, 2, buffer.get(), needed, &needed, &returned),
+              "EnumPortsW failed", false);
+    for (DWORD i = 0; i < returned; i++) {
+        if (monitorName.isEqualTo(pi[i].pMonitorName)) {
+            deletePort(pi[i].pPortName);
+        }
+    }
+
+    /* Try again, hoping that we succeeded in deleting all ports/printers */
+    return_if(!EnumPorts(NULL, 2, buffer.get(), needed, &needed, &returned),
+              "EnumPortsW failed", false);
+    for (unsigned int i = 0; i < returned; i++) {
+        return_if(monitorName.isEqualTo(pi[i].pMonitorName), "Monitor still in use", false);
+    }
+
+    /* Try to delete the monitor */
+    return_if(DeleteMonitor(NULL, NULL, monitorName), "DeleteMonitor failed", false);
+
     return true;
 }

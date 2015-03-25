@@ -11,6 +11,12 @@
 using std::string;
 using namespace flexvm;
 
+
+// Printer functions
+bool installFollowMePrinting(const char * portDll, const char * ppd);
+bool uninstallFollowMePrinting();
+
+
 static wchar_t serviceName[] = L"flexvdi_service";
 static wchar_t serviceDescription[] =
     L"Provides several VDI functionalities on top of SPICE.";
@@ -51,6 +57,10 @@ int main(int argc, char * argv[]) {
         return WindowsService::install();
     } else if (argc == 2 && string("uninstall") == argv[1]) {
         return WindowsService::uninstall();
+    } else if (argc == 4 && string("install-followme-printing") == argv[1]) {
+        return installFollowMePrinting(argv[2], argv[3]) ? 0 : 1;
+    } else if (argc == 2 && string("uninstall-followme-printing") == argv[1]) {
+        return uninstallFollowMePrinting();
     } else {
         std::ofstream logFile;
         logFile.open(Log::getDefaultLogPath() + string("\\flexvdi_service.log"),

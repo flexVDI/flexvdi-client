@@ -1,47 +1,38 @@
-!define REDMON_DLL "flexVDIprint_redmon.dll"
+!define REDMON_DLL "$SYSDIR\flexVDIprint_redmon.dll"
 !define REDMON_NAME "flexVDI Redirection Port"
 !define PORT_NAME "flexVDIprint"
-!define PORT_CONFIG_KEY "SYSTEM\CurrentControlSet\Control\Print\Monitors\${REDMON_NAME}\Ports\${PORT_NAME}"
+!define MONITORS_KEY "SYSTEM\CurrentControlSet\Control\Print\Monitors"
+!define PORT_CONFIG_KEY "${MONITORS_KEY}\${REDMON_NAME}\Ports\${PORT_NAME}"
 !define PDF_PRINTER_NAME "flexVDI PDF Printer"
 
 !macro installPrintDriver
     SetOutPath "$INSTDIR\printdriver"
-    File "@PROJECT_SOURCE_DIR@/print/windriver/flexvdips.inf"
     File "@PROJECT_SOURCE_DIR@/print/flexvdips.ppd"
     File "@PROJECT_SOURCE_DIR@/print/windriver/gs9.15/gsdll32.dll"
     File "../win32/print/windriver/filter.exe"
-    File "../win32/print/windriver/printer-setup.dll"
     SetOutPath "$INSTDIR"
     ${If} ${RunningX64}
         File "../win64/print/windriver/redmon.dll"
     ${Else}
         File "../win32/print/windriver/redmon.dll"
     ${EndIf}
-    Rename /REBOOTOK "$INSTDIR\redmon.dll" "$SYSDIR\${REDMON_DLL}"
-    System::Call 'printdriver\printer-setup::installRedMon(w "${REDMON_NAME}", w "${REDMON_DLL}", w "${PORT_NAME}", w .r1) i .r0'
+    Rename /REBOOTOK "$INSTDIR\redmon.dll" "${REDMON_DLL}"
+    DetailPrint "Installing Follow-me Printing driver"
+    ; FIXME: I should be able to find pscript drivers without installing a full driver
+    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /ia /f "$WINDIR\inf\ntprint.inf" /m "HP LaserJet 4000 Series PS" /z /q'
+    nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" install-followme-printing "${REDMON_DLL}" "$INSTDIR\printdriver\flexvdips.ppd"'
+    Pop $0
     ${If} $0 = 0
-        DetailPrint "Print monitor installed"
-        WriteRegStr HKLM "${PORT_CONFIG_KEY}"   "Command" '$INSTDIR\printdriver\filter.exe'
-        DetailPrint "Installing flexVDI printer"
-        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "${PDF_PRINTER_NAME}" /q'
-        nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /if /f "$INSTDIR\printdriver\flexvdips.inf" /m "flexVDI Printer" /r "${PORT_NAME}" /z'
-        Pop $0
-        ${If} $0 = 0
-            DetailPrint "flexVDI printer successfully installed"
-            System::Call 'printdriver\printer-setup::renamePrinter(w "flexVDI Printer", w "${PDF_PRINTER_NAME}", w .r1) i .r0'
-        ${Else}
-            MessageBox MB_OK|MB_ICONEXCLAMATION "flexVDI printer NOT installed (error code $0)."
-        ${EndIf}
+        DetailPrint "Follow-me Printing driver successfully installed"
+        WriteRegStr HKLM "${PORT_CONFIG_KEY}" "Command" '$INSTDIR\printdriver\filter.exe'
     ${Else}
-        MessageBox MB_OK|MB_ICONEXCLAMATION "Print monitor installation failed with code $0: $1"
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Follow-me Printing installation failed"
     ${EndIf}
+    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dd /m "HP LaserJet 4000 Series PS" /q'
 !macroend
 
 !macro uninstallPrintDriver
-    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dl /n "${PDF_PRINTER_NAME}" /q'
-    nsExec::Exec 'rundll32 printui.dll,PrintUIEntry /dd /m "flexVDI Printer" /q'
-    SetOutPath "$INSTDIR"
-    System::Call 'printdriver\printer-setup::uninstallRedMon(w "${REDMON_NAME}", w .r1) i .r0 ? u'
+    nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall-followme-printing'
     DeleteRegKey HKLM "${PORT_CONFIG_KEY}"
     ${If} $0 = 0
         Delete /REBOOTOK "$SYSDIR\redmon.dll"

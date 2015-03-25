@@ -9,12 +9,8 @@ set_target_properties(redmon PROPERTIES
     LINK_FLAGS "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static"
     PREFIX "")
 
-# The following targets must be 32-bit
+# The filter program must be 32-bit
 if (WIN_BITS EQUAL 32)
-add_library(printer-setup SHARED printer-setup.cpp $<TARGET_OBJECTS:util_o>)
-set_target_properties(printer-setup PROPERTIES
-    LINK_FLAGS "-static"
-    PREFIX "")
 add_executable(filter WIN32 filter.cpp ../send-job.cpp $<TARGET_OBJECTS:util_o>)
 set_target_properties(filter PROPERTIES LINK_FLAGS "-static")
 target_link_libraries(filter ${FLEXVDI_LIBRARIES} gsdll32)
