@@ -44,6 +44,7 @@ FunctionEnd
 
 
 Section "!flexVDI guest agent"
+    SectionIn RO
     ${DisableX64FSRedirection}
     SetOutPath $INSTDIR
     SetRegView 64
@@ -78,7 +79,16 @@ Section "!flexVDI guest agent"
 SectionEnd
 
 
-Section /o "Single Sign-On plugin"
+Section "!SPICE guest tools"
+    SectionIn RO
+    SetOutPath $INSTDIR
+    File "@SPICE_GUEST_TOOLS@"
+    nsExec::Exec '"$INSTDIR\@SPICE_GUEST_TOOLS@"'
+    Delete "$INSTDIR\@SPICE_GUEST_TOOLS@"
+SectionEnd
+
+
+Section "Single Sign-On plugin"
     ${DisableX64FSRedirection}
     SetRegView 64
     SetOutPath $INSTDIR
