@@ -125,6 +125,13 @@ set(CPACK_PACKAGE_VERSION_PATCH ${FLEXVDI_VERSION_PATCH})
 if (WIN32)
     set(CPACK_GENERATOR "NSIS")
     set(CPACK_NSIS_WORKING_DIR "${PROJECT_BINARY_DIR}")
+    configure_file("${PROJECT_SOURCE_DIR}/autorun.inf.in"
+                   "${PROJECT_BINARY_DIR}/autorun.inf")
+    add_custom_target(guest_tools_iso
+                      COMMAND mkisofs -J -r -V "flexVDI Guest Tools v${FLEXVDI_VERSION}"
+                                      -o ${CPACK_PACKAGE_FILE_NAME}.iso
+                                      autorun.inf ${CPACK_PACKAGE_FILE_NAME}.exe
+                      WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 else (WIN32)
     set(CPACK_GENERATOR "STGZ")
 endif (WIN32)

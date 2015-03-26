@@ -8,6 +8,7 @@
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 
 Name "${APPNAME} v${APPVERSION}"
+Icon @PROJECT_SOURCE_DIR@/images/icon.ico
 InstallDirRegKey HKLM "Software\${APPNAME}" "Install_Dir"
 RequestExecutionLevel admin
 ShowInstDetails show

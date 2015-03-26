@@ -1,0 +1,5 @@
+[autorun] 
+open=@CPACK_PACKAGE_FILE_NAME@.exe
+icon=@CPACK_PACKAGE_FILE_NAME@.exe,0
+label=flexVDI Guest Tools v@FLEXVDI_VERSION@ Setup
+
