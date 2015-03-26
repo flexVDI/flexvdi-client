@@ -8,6 +8,7 @@
 #include <glib.h>
 
 void flexvdi_port_register_session(gpointer session);
+GOptionGroup * flexvdi_get_option_group(void);
 
 // SSO API
 void flexvdi_send_credentials(const gchar *username, const gchar *password,

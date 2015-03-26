@@ -7,7 +7,9 @@
 #include <string.h>
 #include <glib.h>
 #include <glib/gstdio.h>
+#include <glib/gi18n.h>
 #include "flexvdi-spice.h"
+#include "flexvdi-port.h"
 #include "spice-client.h"
 #define FLEXVDI_PROTO_IMPL
 #include "FlexVDIProto.h"
@@ -35,6 +37,40 @@ void flexvdiLog(FlexVDILogLevel level, const char * format, ...) {
     };
     g_logv("flexvdi", map[level], format, args);
     va_end(args);
+}
+
+
+static size_t freadsecure(gchar ** buffer, FILE * file) {
+    size_t count = 0, bufferSize = 0, i;
+    do {
+        gchar * c = *buffer;
+        *buffer = g_malloc(bufferSize += 1024);
+        memcpy(*buffer, c, count);
+        for (i = 0; i < count; ++i)
+            c[i] = '\0';
+        c = *buffer + count;
+        for (; count < bufferSize; ++c, ++count) {
+            int r = fgetc(file);
+            if (r == '\n' || r == EOF) break;
+            *c = r & 255;
+        }
+    } while (count == bufferSize);
+    (*buffer)[count] = '\0';
+    return count;
+}
+
+
+static gchar * username, * password, * domain;
+static gboolean parseUsernameOpt(const gchar * optionName, const gchar * value,
+                                 gpointer data, GError ** error) {
+    username = g_strdup(value);
+    size_t bytesRead = freadsecure(&password, stdin);
+    if (bytesRead > 0) {
+        return TRUE;
+    } else {
+        g_warning("Failed to read password from stdin");
+        return FALSE;
+    }
 }
 
 
@@ -83,6 +119,9 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
         uint8_t * buf = getMsgBuffer(0);
         if (buf) {
             sendMessage(FLEXVDI_RESET, buf);
+        }
+        if (username && password) {
+            flexvdi_send_credentials(username, password, domain ? domain : "");
         }
     }
 }
@@ -172,6 +211,26 @@ void flexvdi_port_register_session(gpointer session) {
     //     g_signal_connect(session, "notify::migration-state",
     //                      G_CALLBACK(migration_state), port);
     initPrintClient();
+}
+
+
+static const GOptionEntry cmdline_entries[] = {
+    // { long_name, short_name, flags, arg, arg_data, description, arg_description },
+    { "flexvdi-user", 0, 0, G_OPTION_ARG_CALLBACK, parseUsernameOpt,
+      N_("User name for Single Sign-on. Provide password through stdin."), N_("<username>") },
+    { "flexvdi-domain", 0, 0, G_OPTION_ARG_STRING, &domain,
+      N_("Domain name for Single Sign-on."), N_("<domainname>") },
+    { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
+};
+
+
+GOptionGroup * flexvdi_get_option_group(void) {
+    username = password = domain = NULL;
+    GOptionGroup * grp = g_option_group_new("flexvdi", _("flexVDI Options:"),
+                                            _("Show flexVDI Options"), NULL, NULL);
+    g_option_group_add_entries(grp, cmdline_entries);
+
+    return grp;
 }
 
 
