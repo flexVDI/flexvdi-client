@@ -164,7 +164,7 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel) {
 }
 
 
-void flexvdi_port_register_session(SpiceSession * session) {
+void flexvdi_port_register_session(gpointer session) {
     g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), NULL);
     g_signal_connect(session, "channel-destroy",

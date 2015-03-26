@@ -5,9 +5,9 @@
 #ifndef _FLEXVDI_PORT_H_
 #define _FLEXVDI_PORT_H_
 
-#include "spice-session.h"
+#include <glib.h>
 
-void flexvdi_port_register_session(SpiceSession *session);
+void flexvdi_port_register_session(gpointer session);
 
 // SSO API
 void flexvdi_send_credentials(const gchar *username, const gchar *password,
