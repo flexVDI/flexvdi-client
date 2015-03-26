@@ -102,6 +102,10 @@ Function .onInstSuccess
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
     IntFmt $0 "0x%08X" $0
     WriteRegDWORD HKLM "${UNINSTALL_KEY}" "EstimatedSize" "$0"
+    IfRebootFlag 0 noreboot
+        MessageBox MB_YESNO|MB_ICONQUESTION "The system must reboot, do you wish to do it now?" IDNO noreboot
+            Reboot
+    noreboot:
 FunctionEnd
 
 
