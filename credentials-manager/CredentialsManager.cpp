@@ -43,7 +43,12 @@ void CredentialsManager::handle(const Connection::Ptr & src,
     } else {
         waitingForCredentials.reset();
         Log(L_DEBUG) << "No process waiting for credentials";
+        if (!first) {
+            Log(L_DEBUG) << "Not the first message, discarding";
+            pendingCredentials = MessageBuffer();
+        }
     }
+    first = false;
 }
 
 

@@ -21,9 +21,12 @@ public:
     void handle(const Connection::Ptr & src, const FlexVDICredentialsMsgPtr & msg);
     void handle(const Connection::Ptr & src, const FlexVDIAskCredentialsMsgPtr & msg);
 
+    CredentialsManager() : first(true) {}
+
 private:
     MessageBuffer pendingCredentials;
     Connection::Ptr waitingForCredentials;
+    bool first;
 
     void sendPendingCredentials();
     void securePendingCredentials(const FlexVDICredentialsMsgPtr & msg);
