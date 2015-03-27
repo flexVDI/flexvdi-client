@@ -84,7 +84,7 @@ Section "!SPICE guest tools"
     SectionIn RO
     SetOutPath $INSTDIR
     File "@SPICE_GUEST_TOOLS@"
-    nsExec::Exec '"$INSTDIR\@SPICE_GUEST_TOOLS@"'
+    ExecWait '"$INSTDIR\@SPICE_GUEST_TOOLS@"'
     Delete "$INSTDIR\@SPICE_GUEST_TOOLS@"
 SectionEnd
 
