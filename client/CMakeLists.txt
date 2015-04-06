@@ -1,4 +1,4 @@
-set (sources flexvdi-spice.c printclient.c PPDGenerator.c)
+set (sources flexvdi-spice.c flexvdi-cmdline.c printclient.c PPDGenerator.c)
 if (WIN32)
     set (sources ${sources} printclient-win32.c)
 else ()

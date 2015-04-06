@@ -16,10 +16,12 @@ target_link_libraries(send_credentials ${FLEXVDI_LIBRARIES})
 if (WIN32)
     add_executable(testginalib testginalib.cpp)
     add_executable(read_named_pipe read_named_pipe.cpp)
-    set (get_printer_ppds_sources get_printer_ppds.c ../client/flexvdi-spice.c
+    set (get_printer_ppds_sources get_printer_ppds.c
+         ../client/flexvdi-spice.c ../client/flexvdi-cmdline.c
          ../client/printclient.c ../client/PPDGenerator.c ../client/printclient-win32.c)
 else (WIN32)
-    set (get_printer_ppds_sources get_printer_ppds.c ../client/flexvdi-spice.c
+    set (get_printer_ppds_sources get_printer_ppds.c
+         ../client/flexvdi-spice.c ../client/flexvdi-cmdline.c
          ../client/printclient.c ../client/PPDGenerator.c ../client/printclient-cups.c)
 endif (WIN32)
 if (BUILD_CLIENT)
