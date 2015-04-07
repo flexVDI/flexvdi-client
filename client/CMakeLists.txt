@@ -2,7 +2,7 @@ set (sources flexvdi-spice.c flexvdi-cmdline.c printclient.c PPDGenerator.c)
 if (WIN32)
     set (sources ${sources} printclient-win32.c)
 else ()
-    set (sources ${sources} printclient-cups.c)
+    set (sources ${sources} serialredir.c printclient-cups.c)
 endif ()
 
 add_library(flexvdi-spice-client SHARED ${sources})

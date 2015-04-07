@@ -9,6 +9,7 @@
 #include "flexvdi-cmdline.h"
 
 static gchar * username, * password, * domain;
+static const gchar ** serialParams;
 
 
 const gchar * getUsernameOption() {
@@ -23,6 +24,11 @@ const gchar * getPasswordOption() {
 
 const gchar * getDomainOption() {
     return domain;
+}
+
+
+const gchar ** getSerialPortParams() {
+    return serialParams;
 }
 
 
@@ -68,6 +74,8 @@ static const GOptionEntry cmdline_entries[] = {
       readPwdFromStdin, N_("Read password from stdin."), NULL },
     { "flexvdi-domain", 0, 0, G_OPTION_ARG_STRING, &domain,
       N_("Domain name for Single Sign-on."), N_("<domainname>") },
+    { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, &serialParams,
+      N_("Add serial port with parameters"), N_("<serial params>") },
     { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 

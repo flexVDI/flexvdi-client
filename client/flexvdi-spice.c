@@ -14,6 +14,7 @@
 #define FLEXVDI_PROTO_IMPL
 #include "FlexVDIProto.h"
 #include "printclient.h"
+#include "serialredir.h"
 
 
 typedef struct flexvdi_port {
@@ -78,20 +79,26 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
     gchar *name = NULL;
     gboolean opened = FALSE;
     g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
-    if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0 && opened) {
-        flexvdiLog(L_INFO, "flexVDI guest agent connected");
-        port.channel = SPICE_PORT_CHANNEL(channel);
-        port.cancellable = g_cancellable_new();
-        uint8_t * buf = getMsgBuffer(0);
-        if (buf) {
-            sendMessage(FLEXVDI_RESET, buf);
+    if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
+        if (opened) {
+            flexvdiLog(L_INFO, "flexVDI guest agent connected");
+            port.channel = SPICE_PORT_CHANNEL(channel);
+            port.cancellable = g_cancellable_new();
+            uint8_t * buf = getMsgBuffer(0);
+            if (buf) {
+                sendMessage(FLEXVDI_RESET, buf);
+            }
+            const gchar * username = getUsernameOption(),
+                    * password = getPasswordOption(),
+                    * domain = getDomainOption();
+            if (username && password) {
+                flexvdi_send_credentials(username, password, domain ? domain : "");
+            }
         }
-        const gchar * username = getUsernameOption(),
-                * password = getPasswordOption(),
-                * domain = getDomainOption();
-        if (username && password) {
-            flexvdi_send_credentials(username, password, domain ? domain : "");
-        }
+#ifndef WIN32
+    } else {
+        serialPortOpened(channel);
+#endif
     }
 }
 
@@ -109,7 +116,12 @@ static void handleMessage(uint32_t type, uint8_t * msg) {
 
 
 static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
-    if (pchannel != port.channel) return;
+    if (pchannel != port.channel) {
+#ifndef WIN32
+        serialPortData(pchannel, data, size);
+#endif
+        return;
+    }
 
     static enum {
         WAIT_NEW_MESSAGE,
@@ -167,6 +179,10 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel) {
             port.channel = NULL;
             g_object_unref(port.cancellable);
             port.cancellable = NULL;
+#ifndef WIN32
+        } else {
+            serialChannelDestroy(SPICE_PORT_CHANNEL(channel));
+#endif
         }
     }
 }

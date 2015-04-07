@@ -21,7 +21,7 @@ if (WIN32)
          ../client/printclient.c ../client/PPDGenerator.c ../client/printclient-win32.c)
 else (WIN32)
     set (get_printer_ppds_sources get_printer_ppds.c
-         ../client/flexvdi-spice.c ../client/flexvdi-cmdline.c
+         ../client/flexvdi-spice.c ../client/flexvdi-cmdline.c ../client/serialredir.c
          ../client/printclient.c ../client/PPDGenerator.c ../client/printclient-cups.c)
 endif (WIN32)
 if (BUILD_CLIENT)

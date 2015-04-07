@@ -10,5 +10,6 @@
 const gchar * getUsernameOption();
 const gchar * getPasswordOption();
 const gchar * getDomainOption();
+const gchar ** getSerialPortParams();
 
 #endif /* _FLEXVDICMDLINE_H */
