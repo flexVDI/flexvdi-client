@@ -81,7 +81,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
     g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
     if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
         if (opened) {
-            flexvdiLog(L_INFO, "flexVDI guest agent connected");
+            flexvdiLog(L_INFO, "flexVDI guest agent connected\n");
             port.channel = SPICE_PORT_CHANNEL(channel);
             port.cancellable = g_cancellable_new();
             uint8_t * buf = getMsgBuffer(0);
