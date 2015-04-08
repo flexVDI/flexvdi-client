@@ -91,18 +91,20 @@ else (WIN32)
     add_executable(flexvdi-guest-agent main.cpp
                    $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
     target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
-    configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.te.in"
-                   "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te")
-    add_custom_command(OUTPUT flexvdi-guest-agent.pp
-                       COMMAND make -f "${SELINUX_MAKEFILE}" flexvdi-guest-agent.pp
-                       MAIN_DEPENDENCY "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te"
-                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
-    add_custom_target(flexvdi-selinux-policy ALL DEPENDS flexvdi-guest-agent.pp)
     install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
     install(FILES "${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.service"
             DESTINATION lib/systemd/system)
-    install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.pp"
-            DESTINATION share/selinux/targeted)
+    if (EXISTS "${SELINUX_MAKEFILE}")
+        configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.te.in"
+                       "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te")
+        add_custom_command(OUTPUT flexvdi-guest-agent.pp
+                           COMMAND make -f "${SELINUX_MAKEFILE}" flexvdi-guest-agent.pp
+                           MAIN_DEPENDENCY "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te"
+                           WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
+        add_custom_target(flexvdi-selinux-policy ALL DEPENDS flexvdi-guest-agent.pp)
+        install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.pp"
+                DESTINATION share/selinux/targeted)
+    endif ()
 endif (WIN32)
 
 # Build other
