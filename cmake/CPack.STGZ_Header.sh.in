@@ -11,8 +11,9 @@ cpack_usage()
   cat <<EOF >&3
 Usage: $0 [options]
 Options:
-  --help            print this message
-  --prefix=dir      directory in which to install
+    --help            print this message
+    --version         show version
+    --uninstall       remove the program
 EOF
   exit 1
 }
@@ -39,10 +40,6 @@ cpack_fix_slashes ()
 # cpack_skip_license=FALSE
 cpack_uninstall=FALSE
 for a in "$@CPACK_AT_SIGN@"; do
-  if echo $a | grep "^--prefix="; then
-    cpack_prefix_dir=`echo $a | sed "s/^--prefix=//"`
-    cpack_prefix_dir=`cpack_fix_slashes "${cpack_prefix_dir}"`
-  fi
   if echo $a | grep "^--help"; then
     cpack_usage
   fi
@@ -74,11 +71,7 @@ get_tar()
 }
 
 cpack_version
-toplevel="/usr/local"
-if [ "x${cpack_prefix_dir}x" != "xx" ]
-then
-  toplevel="${cpack_prefix_dir}"
-fi
+toplevel="@CMAKE_INSTALL_PREFIX@"
 
 if [ "x${cpack_uninstall}x" = "xFALSEx" ]; then
     _echo "The archive will be extracted to: ${toplevel}"
