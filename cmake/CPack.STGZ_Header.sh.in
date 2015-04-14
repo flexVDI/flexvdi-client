@@ -121,12 +121,11 @@ ____cpack__here_doc____
         restorecon "${toplevel}/bin/flexvdi-guest-agent"
     fi
 
-    if [ -d /etc/systemd/system ]; then
+    if which systemctl; then
         SERVICE=flexvdi-guest-agent.service
         SERVICE_DIR="${toplevel}/lib/systemd/system"
         systemctl stop ${SERVICE}
         systemctl disable ${SERVICE}
-        sed -i "s;/usr/local;${toplevel};" "${SERVICE_DIR}/${SERVICE}"
         systemctl enable ${SERVICE}
         systemctl start ${SERVICE}
     fi
