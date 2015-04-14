@@ -94,12 +94,17 @@ else (WIN32)
     add_executable(flexvdi-guest-agent main.cpp
                    $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
     target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
+    configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.sh.in"
+                   "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.sh" @ONLY)
     configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.service.in"
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.service" @ONLY)
     configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.te.in"
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te")
 
     install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
+    install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent"
+            DESTINATION libexec/flexvdi-guest-agent
+            PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
     install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.service"
             DESTINATION lib/systemd/system)
     if (EXISTS "${SELINUX_MAKEFILE}")

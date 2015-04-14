@@ -121,6 +121,11 @@ ____cpack__here_doc____
         systemctl disable ${SERVICE}
         systemctl enable ${SERVICE}
         systemctl start ${SERVICE}
+    else
+        [-x /etc/init.d/flexvdi-guest-agent] && /etc/init.d/flexvdi-guest-agent stop
+        cp "${toplevel}/libexec/flexvdi-guest-agent/flexvdi-guest-agent.sh" \
+           /etc/init.d/flexvdi-guest-agent
+        /etc/init.d/flexvdi-guest-agent start
     fi
 
     if which lpadmin; then
