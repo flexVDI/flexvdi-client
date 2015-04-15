@@ -141,5 +141,5 @@ void flexvdiSpiceUnsharePrinter(const char * printer) {
         msg->printerNameLength = nameLength;
         strncpy(msg->printerName, printer, nameLength + 1);
         sendMessage(FLEXVDI_UNSHAREPRINTER, buf);
-    } g_warning("Unable to reserve memory for printer message");
+    } else g_warning("Unable to reserve memory for printer message");
 }
