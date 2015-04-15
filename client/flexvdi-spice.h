@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <glib.h>
+#include <gio/gio.h>
 
 typedef enum {
     L_DEBUG,
@@ -19,7 +20,11 @@ typedef enum {
 
 void flexvdiLog(FlexVDILogLevel level, const char * format, ...);
 uint8_t * getMsgBuffer(size_t size);
+void deleteMsgBuffer(uint8_t * buffer);
 void sendMessage(uint32_t type, uint8_t * buffer);
+void sendMessageAsync(uint32_t type, uint8_t * buffer,
+                      GAsyncReadyCallback callback, gpointer user_data);
+void sendMessageFinish(GObject * source_object, GAsyncResult * res, GError ** error);
 
 // SSO API
 void flexvdiSpiceSendCredentials(const char * username, const char * password,

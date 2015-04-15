@@ -53,25 +53,66 @@ uint8_t * getMsgBuffer(size_t size) {
 }
 
 
-static void port_write_cb(GObject *source_object, GAsyncResult *res, gpointer user_data) {
-    GError *error = NULL;
-    if (!g_cancellable_is_cancelled(port.cancellable)) {
-        spice_port_write_finish(port.channel, res, &error);
-        if (error != NULL)
-            g_warning("%s", error->message);
-        g_clear_error(&error);
+void deleteMsgBuffer(uint8_t * buffer) {
+    g_free(buffer - HEADER_SIZE);
+}
+
+
+typedef struct AsyncUserData {
+    GAsyncReadyCallback callback;
+    gpointer user_data;
+} AsyncUserData;
+
+
+static gpointer newAsyncUserData(GAsyncReadyCallback cb, gpointer u) {
+    AsyncUserData * aud = g_malloc(sizeof(AsyncUserData));
+    if (aud) {
+        aud->callback = cb;
+        aud->user_data = u;
     }
-    g_free(user_data);
+    return aud;
+}
+
+
+static void sendMessageCb(GObject * source_object, GAsyncResult * res, gpointer user_data) {
+    GError * error = NULL;
+    sendMessageFinish(source_object, res, &error);
+    if (error != NULL)
+        g_warning("%s", error->message);
+    g_clear_error(&error);
+    deleteMsgBuffer(user_data);
+}
+
+
+static void sendMessageAsyncCb(GObject * source_object, GAsyncResult * res,
+                               gpointer user_data) {
+    AsyncUserData * aud = (AsyncUserData *)user_data;
+    if (!g_cancellable_is_cancelled(port.cancellable)) {
+        aud->callback(source_object, res, aud->user_data);
+    }
+    g_free(aud);
 }
 
 
 void sendMessage(uint32_t type, uint8_t * buffer) {
+    sendMessageAsync(type, buffer, sendMessageCb, buffer);
+}
+
+
+void sendMessageAsync(uint32_t type, uint8_t * buffer,
+                      GAsyncReadyCallback callback, gpointer user_data) {
     FlexVDIMessageHeader * head = (FlexVDIMessageHeader *)(buffer - HEADER_SIZE);
     size_t size = head->size + HEADER_SIZE;
     head->type = type;
     marshallMessage(type, buffer, head->size);
     marshallHeader(head);
-    spice_port_write_async(port.channel, head, size, port.cancellable, port_write_cb, head);
+    spice_port_write_async(port.channel, head, size, port.cancellable, sendMessageAsyncCb,
+                           newAsyncUserData(callback, user_data));
+}
+
+
+void sendMessageFinish(GObject * source_object, GAsyncResult * res, GError ** error) {
+    spice_port_write_finish(SPICE_PORT_CHANNEL(source_object), res, error);
 }
 
 
