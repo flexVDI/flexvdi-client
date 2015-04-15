@@ -79,20 +79,20 @@ add_subdirectory(print)
 add_library(agent_objects OBJECT ${agent_sources})
 if (WIN32)
     add_library(util_o OBJECT util.cpp WinSpoolImpl.cpp)
+    set(SPICE_GUEST_TOOLS spice-guest-tools-0.74.exe)
+    add_custom_command(OUTPUT ${SPICE_GUEST_TOOLS}
+                       COMMAND wget -nc http://www.spice-space.org/download/windows/spice-guest-tools/${SPICE_GUEST_TOOLS}
+                       WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
     configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.rc"
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc" @ONLY)
     add_executable(flexvdi-guest-agent WindowsService.cpp
                    "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc"
+                   "${PROJECT_BINARY_DIR}/${SPICE_GUEST_TOOLS}"
                    $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
     set_target_properties(flexvdi-guest-agent PROPERTIES LINK_FLAGS "-static")
     target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
-    set(SPICE_GUEST_TOOLS spice-guest-tools-0.74.exe)
     configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
                    "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
-    add_custom_target(spice-guest-tools
-                      COMMAND wget -nc http://www.spice-space.org/download/windows/spice-guest-tools/${SPICE_GUEST_TOOLS}
-                      WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
-    add_dependencies(flexvdi-guest-agent spice-guest-tools)
 else (WIN32)
     add_library(util_o OBJECT util.cpp)
     add_executable(flexvdi-guest-agent main.cpp
