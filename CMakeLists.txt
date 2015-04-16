@@ -48,9 +48,11 @@ if (WIN32)
     set(CLIENT_LIBRARIES ${spice_glib_LIBRARIES} ${spice_gtk_LIBRARIES}
                          ${CAIRO_LIBRARIES} ${POPPLER_LIBRARIES})
 else ()
+    pkg_search_module(gio_unix gio-unix-2.0)
     find_package(Cups REQUIRED)
-    include_directories(${CUPS_INCLUDE_DIR})
-    set(CLIENT_LIBRARIES ${spice_glib_LIBRARIES} ${spice_gtk_LIBRARIES} ${CUPS_LIBRARIES})
+    include_directories(${CUPS_INCLUDE_DIR} ${gio_unix_INCLUDE_DIRS})
+    set(CLIENT_LIBRARIES ${spice_glib_LIBRARIES} ${spice_gtk_LIBRARIES}
+                         ${gio_unix_LIBRARIES} ${CUPS_LIBRARIES})
 endif ()
 
 # Build options
