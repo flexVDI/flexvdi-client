@@ -20,3 +20,4 @@ target_link_libraries(flexVDICredentialProvider shlwapi secur32 Uuid ${FLEXVDI_L
 set_target_properties(flexVDICredentialProvider PROPERTIES
     LINK_FLAGS "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static"
     PREFIX "")
+add_dependencies(guest-tools flexVDICredentialProvider)

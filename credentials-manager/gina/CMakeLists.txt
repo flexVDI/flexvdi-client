@@ -7,3 +7,4 @@ target_link_libraries(flexVDIGina ${FLEXVDI_LIBRARIES})
 set_target_properties(flexVDIGina PROPERTIES
     LINK_FLAGS "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static"
     PREFIX "")
+add_dependencies(guest-tools flexVDIGina)

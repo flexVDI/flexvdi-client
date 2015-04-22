@@ -8,10 +8,12 @@ target_link_libraries(redmon psapi userenv)
 set_target_properties(redmon PROPERTIES
     LINK_FLAGS "-Wl,-enable-stdcall-fixup ${DEF_FILE} -static"
     PREFIX "")
+add_dependencies(guest-tools redmon)
 
 # The filter program must be 32-bit
 if (WIN_BITS EQUAL 32)
 add_executable(filter WIN32 filter.cpp ../send-job.cpp $<TARGET_OBJECTS:util_o>)
 set_target_properties(filter PROPERTIES LINK_FLAGS "-static")
 target_link_libraries(filter ${FLEXVDI_LIBRARIES} gsdll32)
+add_dependencies(guest-tools filter)
 endif (WIN_BITS EQUAL 32)

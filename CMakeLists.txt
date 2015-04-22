@@ -74,6 +74,7 @@ set(agent_sources FlexVDIGuestAgent.cpp DispatcherRegistry.cpp
                   Connection.cpp VirtioPort.cpp LocalPipe.cpp)
 
 # Build components
+add_custom_target(guest-tools)
 add_subdirectory(credentials-manager)
 add_subdirectory(print)
 
@@ -123,6 +124,7 @@ else (WIN32)
                 DESTINATION share/selinux/targeted)
     endif ()
 endif (WIN32)
+add_dependencies(guest-tools flexvdi-guest-agent)
 
 # Build other
 if (BUILD_CLIENT)
