@@ -9,6 +9,7 @@
 
 Name "${APPNAME} v${APPVERSION}"
 Icon @PROJECT_SOURCE_DIR@/images/icon.ico
+LicenseData "@PROJECT_SOURCE_DIR@/LICENSE"
 InstallDirRegKey HKLM "Software\${APPNAME}" "Install_Dir"
 RequestExecutionLevel admin
 ShowInstDetails show
@@ -26,6 +27,7 @@ VIAddVersionKey "FileVersion" "${APPVERSION}"
 VIAddVersionKey "ProductVersion" "${APPVERSION}"
 
 ; Pages
+Page license
 Page components
 Page instfiles
 UninstPage instfiles
