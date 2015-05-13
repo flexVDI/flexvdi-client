@@ -11,42 +11,69 @@ if (NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 message("${CMAKE_PROJECT_NAME} v${FLEXVDI_VERSION} ${CMAKE_BUILD_TYPE} build")
 
-# Find required/optional packages
+# Find required packages
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${PROJECT_SOURCE_DIR}/cmake")
 include(FindPkgConfig)
 pkg_search_module(spice_protocol REQUIRED spice-protocol)
-if (NOT WIN32)
-    set(Boost_USE_STATIC_LIBS ON)
-endif ()
-find_package(Boost 1.49.0 REQUIRED COMPONENTS system thread locale unit_test_framework)
-include_directories(${spice_protocol_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-pkg_search_module(spice_glib spice-client-glib-2.0)
-include_directories(${spice_glib_INCLUDE_DIRS})
-# NOTE: At least, the following line won't work from inside the if block!!
-link_directories(${spice_glib_LIBRARY_DIRS})
-if (spice_glib_FOUND)
-    set(BUILD_CLIENT True)
-else ()
-    message("Spice client lib is needed to build the client library, skipping it.")
-    set(BUILD_CLIENT False)
-endif ()
+include_directories(${spice_protocol_INCLUDE_DIRS})
 include(TestBigEndian)
 test_big_endian(BIG_ENDIAN)
-set(SELINUX_MAKEFILE /usr/share/selinux/devel/Makefile)
+
+# Find client packages
+set(BUILD_CLIENT True)
+pkg_search_module(spice_glib spice-client-glib-2.0)
+include_directories(${spice_glib_INCLUDE_DIRS})
+# NOTE: The following line won't work from inside the if block!!
+link_directories(${spice_glib_LIBRARY_DIRS})
 if (WIN32)
     pkg_search_module(CAIRO cairo)
     pkg_search_module(POPPLER poppler-glib)
-    if (NOT CAIRO_FOUND OR NOT POPPLER_FOUND)
-        message("Cairo and Poppler are needed to build the client library, skipping it.")
+    if (NOT spice_glib_FOUND OR NOT CAIRO_FOUND OR NOT POPPLER_FOUND)
+        message("Spice client, Cairo and Poppler are needed to build the client library, skipping it.")
         set(BUILD_CLIENT False)
     endif ()
     include_directories(${CAIRO_INCLUDE_DIRS} ${POPPLER_INCLUDE_DIRS})
     set(CLIENT_LIBRARIES ${spice_glib_LIBRARIES} ${CAIRO_LIBRARIES} ${POPPLER_LIBRARIES})
 else ()
     pkg_search_module(gio_unix gio-unix-2.0)
-    find_package(Cups REQUIRED)
+    find_package(Cups)
+    if (NOT spice_glib_FOUND OR NOT gio_unix_FOUND OR NOT CUPS_FOUND)
+        message("Spice client, Cups and GIO-unix are needed to build the client library, skipping it.")
+        set(BUILD_CLIENT False)
+    endif ()
     include_directories(${CUPS_INCLUDE_DIR} ${gio_unix_INCLUDE_DIRS})
     set(CLIENT_LIBRARIES ${spice_glib_LIBRARIES} ${gio_unix_LIBRARIES} ${CUPS_LIBRARIES})
+endif ()
+
+# Find guest packages
+set(BUILD_GUEST True)
+if (NOT WIN32)
+    set(Boost_USE_STATIC_LIBS ON)
+endif ()
+find_package(Boost 1.49.0 COMPONENTS system thread locale unit_test_framework)
+if (WIN32)
+    if (NOT Boost_FOUND)
+        message("Boost >1.49 is needed to build the guest agent, skipping it")
+        set(BUILD_GUEST False)
+    else ()
+        set(FLEXVDI_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
+                              pthread wsock32 setupapi)
+        include_directories(${Boost_INCLUDE_DIRS})
+    endif ()
+else ()
+    set(SELINUX_MAKEFILE /usr/share/selinux/devel/Makefile)
+    if (NOT Boost_FOUND OR NOT CUPS_FOUND)
+        message("Boost >1.49 and Cups are needed to build the guest agent, skipping it")
+        set(BUILD_GUEST False)
+    else ()
+        set(FLEXVDI_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
+                              ${CUPS_LIBRARIES} pthread)
+        include_directories(${Boost_INCLUDE_DIRS})
+    endif ()
+endif ()
+
+if (NOT BUILD_CLIENT AND NOT BUILD_GUEST)
+    message(FATAL_ERROR "Not building client nor guest")
 endif ()
 
 # Build options
@@ -55,15 +82,11 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 if (CMAKE_BUILD_TYPE STREQUAL Release)
     set(CMAKE_EXE_LINKER_FLAGS "-s")
 endif (CMAKE_BUILD_TYPE STREQUAL Release)
-set(FLEXVDI_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} pthread)
 if (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
-    set(FLEXVDI_LIBRARIES "${FLEXVDI_LIBRARIES}" wsock32 setupapi)
     add_definitions(-DWIN32 -DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0600 -DWIN32_LEAN_AND_MEAN)
     string(REPLACE "." "," FLEXVDI_VERSION_COMA "${FLEXVDI_VERSION}")
-else ()
-    set (FLEXVDI_LIBRARIES ${FLEXVDI_LIBRARIES} ${CUPS_LIBRARIES})
 endif ()
 
 # Sources and objects
@@ -73,66 +96,69 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 set(agent_sources FlexVDIGuestAgent.cpp DispatcherRegistry.cpp
                   Connection.cpp VirtioPort.cpp LocalPipe.cpp)
 
-# Build components
-add_custom_target(guest-tools)
-add_subdirectory(credentials-manager)
-add_subdirectory(print)
-
 # Build guest agent
-add_library(agent_objects OBJECT ${agent_sources})
-if (WIN32)
-    add_library(util_o OBJECT util.cpp WinSpoolImpl.cpp)
-    set(SPICE_GUEST_TOOLS spice-guest-tools-0.100.exe)
-    add_custom_command(OUTPUT /tmp/${SPICE_GUEST_TOOLS}
-                       COMMAND wget -nc http://www.spice-space.org/download/windows/spice-guest-tools/${SPICE_GUEST_TOOLS}
-                       WORKING_DIRECTORY /tmp)
-    configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.rc"
-                   "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc" @ONLY)
-    add_executable(flexvdi-guest-agent WindowsService.cpp
-                   "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc"
-                   "/tmp/${SPICE_GUEST_TOOLS}"
-                   $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
-    set_target_properties(flexvdi-guest-agent PROPERTIES LINK_FLAGS "-static")
-    target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
-    configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
-                   "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
-else (WIN32)
-    add_library(util_o OBJECT util.cpp)
-    add_executable(flexvdi-guest-agent main.cpp
-                   $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
-    target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
-    configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.sh.in"
-                   "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.sh" @ONLY)
-    configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.service.in"
-                   "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.service" @ONLY)
-    configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.te.in"
-                   "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te")
+if (BUILD_GUEST)
+    add_custom_target(guest-tools)
+    add_subdirectory(credentials-manager)
+    add_subdirectory(print)
 
-    install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
-    install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent"
-            DESTINATION libexec/flexvdi-guest-agent
-            PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
-    install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.service"
-            DESTINATION lib/systemd/system)
-    if (EXISTS "${SELINUX_MAKEFILE}")
-        add_custom_command(OUTPUT flexvdi-guest-agent.pp
-                           COMMAND make -f "${SELINUX_MAKEFILE}" flexvdi-guest-agent.pp
-                           MAIN_DEPENDENCY "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te"
-                           WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
-        add_custom_target(flexvdi-selinux-policy ALL DEPENDS flexvdi-guest-agent.pp)
-        install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.pp"
-                DESTINATION share/selinux/targeted)
-    endif ()
-endif (WIN32)
-add_dependencies(guest-tools flexvdi-guest-agent)
+    add_library(agent_objects OBJECT ${agent_sources})
+    if (WIN32)
+        add_library(util_o OBJECT util.cpp WinSpoolImpl.cpp)
+        set(SPICE_GUEST_TOOLS spice-guest-tools-0.100.exe)
+        add_custom_command(OUTPUT /tmp/${SPICE_GUEST_TOOLS}
+                           COMMAND wget -nc http://www.spice-space.org/download/windows/spice-guest-tools/${SPICE_GUEST_TOOLS}
+                           WORKING_DIRECTORY /tmp)
+        configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.rc"
+                       "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc" @ONLY)
+        add_executable(flexvdi-guest-agent WindowsService.cpp
+                       "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc"
+                       "/tmp/${SPICE_GUEST_TOOLS}"
+                       $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
+        set_target_properties(flexvdi-guest-agent PROPERTIES LINK_FLAGS "-static")
+        target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
+        configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
+                       "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
+    else (WIN32)
+        add_library(util_o OBJECT util.cpp)
+        add_executable(flexvdi-guest-agent main.cpp
+                       $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
+        target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
+        configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.sh.in"
+                       "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.sh" @ONLY)
+        configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.service.in"
+                       "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.service" @ONLY)
+        configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.te.in"
+                       "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te")
 
-# Build other
+        install(TARGETS flexvdi-guest-agent RUNTIME DESTINATION bin)
+        install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent"
+                DESTINATION libexec/flexvdi-guest-agent
+                PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+        install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.service"
+                DESTINATION lib/systemd/system)
+        if (EXISTS "${SELINUX_MAKEFILE}")
+            add_custom_command(OUTPUT flexvdi-guest-agent.pp
+                               COMMAND make -f "${SELINUX_MAKEFILE}" flexvdi-guest-agent.pp
+                               MAIN_DEPENDENCY "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.te"
+                               WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
+            add_custom_target(flexvdi-selinux-policy ALL DEPENDS flexvdi-guest-agent.pp)
+            install(FILES "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.pp"
+                    DESTINATION share/selinux/targeted)
+        endif ()
+    endif (WIN32)
+    add_dependencies(guest-tools flexvdi-guest-agent)
+endif ()
+
+# Build client library
 if (BUILD_CLIENT)
     add_subdirectory(client)
 endif ()
+
+# Build tests
 add_subdirectory(test)
 
-# CPack commands
+# Packages
 set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${FLEXVDI_VERSION}")
 add_custom_target(dist
                   COMMAND git archive --prefix=${CPACK_PACKAGE_FILE_NAME}/

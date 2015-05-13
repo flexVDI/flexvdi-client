@@ -1,16 +1,18 @@
-add_executable(unit-tests unit-main.cpp
-               unit-MessageBuffer.cpp
-               unit-Connection.cpp
-               unit-LocalPipe.cpp
-               unit-DispatcherRegistry.cpp
-               $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
-target_link_libraries(unit-tests ${FLEXVDI_LIBRARIES}
-                      ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+if (BUILD_GUEST)
+    add_executable(unit-tests unit-main.cpp
+                   unit-MessageBuffer.cpp
+                   unit-Connection.cpp
+                   unit-LocalPipe.cpp
+                   unit-DispatcherRegistry.cpp
+                   $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
+    target_link_libraries(unit-tests ${FLEXVDI_LIBRARIES}
+                          ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
-add_executable(send_credentials send_credentials.cpp
-               ../credentials-manager/CredentialsThread.cpp
-               $<TARGET_OBJECTS:util_o>)
-target_link_libraries(send_credentials ${FLEXVDI_LIBRARIES})
+    add_executable(send_credentials send_credentials.cpp
+                   ../credentials-manager/CredentialsThread.cpp
+                   $<TARGET_OBJECTS:util_o>)
+    target_link_libraries(send_credentials ${FLEXVDI_LIBRARIES})
+endif ()
 
 if (WIN32)
     add_definitions(-DBOOST_TEST_DYN_LINK)
