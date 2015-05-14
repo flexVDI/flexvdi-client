@@ -21,6 +21,8 @@ test_big_endian(BIG_ENDIAN)
 
 # Find client packages
 set(BUILD_CLIENT True)
+include(CheckFunctionExists)
+check_function_exists(strnlen HAVE_STRNLEN)
 pkg_search_module(spice_glib spice-client-glib-2.0)
 if (WIN32)
     pkg_search_module(CAIRO cairo)
