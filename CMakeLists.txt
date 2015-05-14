@@ -85,7 +85,8 @@ endif (CMAKE_BUILD_TYPE STREQUAL Release)
 if (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
-    add_definitions(-DWIN32 -DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0600 -DWIN32_LEAN_AND_MEAN)
+    # WINVER = 0x0501 -> Windows XP
+    add_definitions(-DWIN32 -DUNICODE -D_UNICODE -DWINVER=0x0501 -DWIN32_LEAN_AND_MEAN)
     string(REPLACE "." "," FLEXVDI_VERSION_COMA "${FLEXVDI_VERSION}")
 endif ()
 
