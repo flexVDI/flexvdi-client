@@ -11,6 +11,7 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/flexvdi-spice-client.pc.in"
                "${CMAKE_CURRENT_BINARY_DIR}/flexvdi-spice-client.pc" @ONLY)
 
 install(TARGETS flexvdi-spice-client RUNTIME DESTINATION bin COMPONENT client
+                                     ARCHIVE DESTINATION lib COMPONENT client
                                      LIBRARY DESTINATION lib COMPONENT client)
 install(FILES flexvdi-port.h DESTINATION include COMPONENT client)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/flexvdi-spice-client.pc"
