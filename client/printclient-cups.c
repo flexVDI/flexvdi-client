@@ -8,7 +8,7 @@
 #include "flexvdi-spice.h"
 
 
-void flexvdiSpiceGetPrinterList(GSList ** printerList) {
+int flexvdiSpiceGetPrinterList(GSList ** printerList) {
     int i;
     cups_dest_t * dests, * dest;
     int numDests = cupsGetDests(&dests);
@@ -22,6 +22,7 @@ void flexvdiSpiceGetPrinterList(GSList ** printerList) {
         }
     }
     cupsFreeDests(numDests, dests);
+    return TRUE;
 }
 
 

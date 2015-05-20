@@ -13,8 +13,8 @@
 #include "flexvdi-spice.h"
 
 
-void flexvdiSpiceGetPrinterList(GSList ** printerList) {
-    int i;
+int flexvdiSpiceGetPrinterList(GSList ** printerList) {
+    int i, result;
     DWORD needed = 0, returned = 0;
     DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
     *printerList = NULL;
@@ -26,8 +26,13 @@ void flexvdiSpiceGetPrinterList(GSList ** printerList) {
             *printerList = g_slist_prepend(*printerList,
                 g_utf16_to_utf8(pinfo[i].pPrinterName, -1, NULL, NULL, NULL));
         }
+        result = TRUE;
+    } else {
+        flexvdiLog(L_WARN, "EnumPrinters failed");
+        result = FALSE;
     }
     g_free(buffer);
+    return result;
 }
 
 

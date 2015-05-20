@@ -241,29 +241,44 @@ void flexvdi_port_register_session(gpointer session) {
 }
 
 
-void flexvdi_send_credentials(const gchar *username, const gchar *password,
-                              const gchar *domain) {
+int flexvdi_is_agent_connected(void) {
+    return port.channel != NULL;
+}
+
+
+int flexvdi_send_credentials(const gchar *username, const gchar *password,
+                             const gchar *domain) {
     if (port.channel) {
         flexvdiSpiceSendCredentials(username, password, domain);
+        return TRUE;
+    } else {
+        flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
+        return FALSE;
     }
 }
 
 
-void flexvdi_get_printer_list(GSList ** printer_list) {
-    flexvdiSpiceGetPrinterList(printer_list);
+int flexvdi_get_printer_list(GSList ** printer_list) {
+    return flexvdiSpiceGetPrinterList(printer_list);
 }
 
 
-void flexvdi_share_printer(const char * printer) {
+int flexvdi_share_printer(const char * printer) {
     if (port.channel) {
-        flexvdiSpiceSharePrinter(printer);
+        return flexvdiSpiceSharePrinter(printer);
+    } else {
+        flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
+        return FALSE;
     }
 }
 
 
-void flexvdi_unshare_printer(const char * printer) {
+int flexvdi_unshare_printer(const char * printer) {
     if (port.channel) {
-        flexvdiSpiceUnsharePrinter(printer);
+        return flexvdiSpiceUnsharePrinter(printer);
+    } else {
+        flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
+        return FALSE;
     }
 }
 

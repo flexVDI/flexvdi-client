@@ -38,11 +38,11 @@ void sendMessageFinish(GObject * source_object, GAsyncResult * res, GError ** er
 
 // SSO API
 void flexvdiSpiceSendCredentials(const char * username, const char * password,
-                                 const char * domain);
+                                const char * domain);
 
 // Print Client API
-void flexvdiSpiceGetPrinterList(GSList ** printerList);
-void flexvdiSpiceSharePrinter(const char * printer);
-void flexvdiSpiceUnsharePrinter(const char * printer);
+int flexvdiSpiceGetPrinterList(GSList ** printerList);
+int flexvdiSpiceSharePrinter(const char * printer);
+int flexvdiSpiceUnsharePrinter(const char * printer);
 
 #endif /* _FLEXVDI_SPICE_H_ */

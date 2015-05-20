@@ -105,9 +105,10 @@ void initPrintClient() {
 }
 
 
-void flexvdiSpiceSharePrinter(const char * printer) {
+int flexvdiSpiceSharePrinter(const char * printer) {
     flexvdiLog(L_DEBUG, "Sharing printer %s", printer);
 
+    int result = FALSE;
     size_t bufSize, nameLength, ppdLength;
     GStatBuf statbuf;
     char * ppdName = getPPDFile(printer);
@@ -125,16 +126,18 @@ void flexvdiSpiceSharePrinter(const char * printer) {
                 strncpy(msg->data, printer, nameLength + 1);
                 fread(&msg->data[nameLength + 1], 1, ppdLength, ppd);
                 sendMessage(FLEXVDI_SHAREPRINTER, buf);
+                result = TRUE;
             } else flexvdiLog(L_WARN, "Failed to open PPD file %s", ppdName);
             fclose(ppd);
         } else flexvdiLog(L_WARN, "Unable to reserve memory for printer message");
     }
     g_unlink(ppdName);
     g_free(ppdName);
+    return result;
 }
 
 
-void flexvdiSpiceUnsharePrinter(const char * printer) {
+int flexvdiSpiceUnsharePrinter(const char * printer) {
     flexvdiLog(L_DEBUG, "Unsharing printer %s", printer);
     size_t nameLength = strnlen(printer, 1024);
     size_t bufSize = sizeof(FlexVDIUnsharePrinterMsg) + nameLength + 1;
@@ -144,5 +147,9 @@ void flexvdiSpiceUnsharePrinter(const char * printer) {
         msg->printerNameLength = nameLength;
         strncpy(msg->printerName, printer, nameLength + 1);
         sendMessage(FLEXVDI_UNSHAREPRINTER, buf);
-    } else flexvdiLog(L_WARN, "Unable to reserve memory for printer message");
+        return TRUE;
+    } else {
+        flexvdiLog(L_WARN, "Unable to reserve memory for printer message");
+        return FALSE;
+    }
 }
