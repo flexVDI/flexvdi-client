@@ -36,7 +36,7 @@ void flexvdiLog(FlexVDILogLevel level, const char * format, ...) {
         G_LOG_LEVEL_ERROR,
         G_LOG_LEVEL_CRITICAL
     };
-    g_logv("flexvdi", map[level], format, args);
+    g_logv(G_LOG_DOMAIN, map[level], format, args);
     va_end(args);
 }
 
@@ -78,7 +78,7 @@ static void sendMessageCb(GObject * source_object, GAsyncResult * res, gpointer 
     GError * error = NULL;
     sendMessageFinish(source_object, res, &error);
     if (error != NULL)
-        g_warning("%s", error->message);
+        flexvdiLog(L_WARN, "Error sending message, %s", error->message);
     g_clear_error(&error);
     deleteMsgBuffer(user_data);
 }
@@ -103,6 +103,7 @@ void sendMessageAsync(uint32_t type, uint8_t * buffer,
                       GAsyncReadyCallback callback, gpointer user_data) {
     FlexVDIMessageHeader * head = (FlexVDIMessageHeader *)(buffer - HEADER_SIZE);
     size_t size = head->size + HEADER_SIZE;
+    flexvdiLog(L_DEBUG, "Sending message type %d, size %d", (int)type, (int)size);
     head->type = type;
     marshallMessage(type, buffer, head->size);
     marshallHeader(head);
@@ -191,7 +192,7 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
             data += size;
             if (bufpos == bufend) {
                 if (!marshallMessage(curHeader.type, buffer, curHeader.size)) {
-                    g_warning("Wrong message size on reception");
+                    flexvdiLog(L_WARN, "Wrong message size on reception");
                     return;
                 }
                 handleMessage(curHeader.type, buffer);
@@ -279,7 +280,7 @@ void flexvdiSpiceSendCredentials(const char * username, const char * password,
                 msgTemp.passLength + msgTemp.domainLength + 3;
     buf = getMsgBuffer(bufSize);
     if (!buf) {
-        g_warning("Unable to reserve memory for credentials message");
+        flexvdiLog(L_WARN, "Unable to reserve memory for credentials message");
         return;
     }
     msg = (FlexVDICredentialsMsg *)buf;

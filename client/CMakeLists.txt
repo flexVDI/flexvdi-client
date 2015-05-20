@@ -5,6 +5,7 @@ else ()
     set (sources ${sources} serialredir.c printclient-cups.c)
 endif ()
 
+add_definitions(-DG_LOG_DOMAIN=\"flexvdi\")
 add_library(flexvdi-spice-client SHARED ${sources})
 target_link_libraries(flexvdi-spice-client ${CLIENT_LIBRARIES})
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/flexvdi-spice-client.pc.in"

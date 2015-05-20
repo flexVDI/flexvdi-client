@@ -49,6 +49,8 @@ static CupsConnection * openCups(const char * printer) {
             }
         }
     }
+    if (!cups->dinfo)
+        flexvdiLog(L_WARN, "Failed to contact CUPS for printer %s", printer);
     g_free(name);
     return cups;
 }
@@ -205,19 +207,19 @@ static void getMediaTypes(PPDGenerator * ppd, CupsConnection * cups) {
 char * getPPDFile(const char * printer) {
     char * result = NULL;
     PPDGenerator * ppd = newPPDGenerator(printer);
-    CupsConnection * cups = openCups(printer);
-
-    if (cups->dinfo) {
-        ppdSetColor(ppd, ippHasOtherThan(cups, CUPS_PRINT_COLOR_MODE, "monochrome"));
-        ppdSetDuplex(ppd, ippHasOtherThan(cups, CUPS_SIDES, "one-sided"));
-        getResolutions(ppd, cups);
-        getPapers(ppd, printer);
-        getMediaSources(ppd, cups);
-        getMediaTypes(ppd, cups);
-        result = g_strdup(generatePPD(ppd));
+    if (ppd) {
+        CupsConnection * cups = openCups(printer);
+        if (cups->dinfo) {
+            ppdSetColor(ppd, ippHasOtherThan(cups, CUPS_PRINT_COLOR_MODE, "monochrome"));
+            ppdSetDuplex(ppd, ippHasOtherThan(cups, CUPS_SIDES, "one-sided"));
+            getResolutions(ppd, cups);
+            getPapers(ppd, printer);
+            getMediaSources(ppd, cups);
+            getMediaTypes(ppd, cups);
+            result = g_strdup(generatePPD(ppd));
+        }
+        closeCups(cups);
     }
-
-    closeCups(cups);
     deletePPDGenerator(ppd);
     return result;
 }

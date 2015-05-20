@@ -7,6 +7,7 @@
 #include <string.h>
 #include <glib/gi18n.h>
 #include "flexvdi-cmdline.h"
+#include "flexvdi-spice.h"
 
 static gchar * username, * password, * domain;
 static const gchar ** serialParams;
@@ -58,7 +59,7 @@ static gboolean readPwdFromStdin(const gchar * optionName, const gchar * value,
     if (bytesRead > 0) {
         return TRUE;
     } else {
-        g_warning("Failed to read password from stdin");
+        flexvdiLog(L_WARN, "Failed to read password from stdin");
         return FALSE;
     }
 }

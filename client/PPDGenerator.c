@@ -12,6 +12,7 @@
 #include <windows.h>
 #endif
 #include "PPDGenerator.h"
+#include "flexvdi-spice.h"
 
 
 typedef struct PaperDescription {
@@ -70,6 +71,7 @@ PPDGenerator * newPPDGenerator(const char * printerName) {
     int fd = g_file_open_tmp("fvXXXXXX.ppd", &result->fileName, NULL);
     result->file = fdopen(fd, "w");
     if (fd == -1 || result->file == NULL) {
+        flexvdiLog(L_WARN, "Failed to create temp PPD file for printer %s", printerName);
         deletePPDGenerator(result);
         return NULL;
     }
@@ -499,7 +501,10 @@ static void generateFonts(PPDGenerator * ppd) {
 
 
 gchar * generatePPD(PPDGenerator * ppd) {
-    if (!isValid(ppd)) return NULL;
+    if (!isValid(ppd)) {
+        flexvdiLog(L_WARN, "Invalid PPD data for printer %s", ppd->printerName);
+        return NULL;
+    }
     char * oldLocale = setlocale(LC_NUMERIC, "C");
     setlocale(LC_NUMERIC, "C");
     generateHeader(ppd);

@@ -154,7 +154,7 @@ static void sendCallback(GObject * sourceObject, GAsyncResult * res,
     spice_port_write_finish(channel, res, &error);
     flexvdiLog(L_DEBUG, "Data sent to serial port %d\n", buffer->serial - serialPorts);
     if (error) {
-        g_warning("Error sending data to guest: %s", error->message);
+        flexvdiLog(L_WARN, "Error sending data to guest: %s", error->message);
         g_clear_error(&error);
     }
     g_free(userData);
@@ -176,7 +176,7 @@ static void readCallback(GObject * sourceObject, GAsyncResult * res,
             spice_port_write_async(serial->channel, &buffer->data, 1, serial->cancellable,
                                    sendCallback, buffer);
         } else {
-            g_warning("Error reading from serial device: %s", error->message);
+            flexvdiLog(L_WARN, "Error reading from serial device: %s", error->message);
             g_free(userData);
             g_clear_error(&error);
             return;
@@ -196,7 +196,7 @@ static void writeCallback(GObject * sourceObject, GAsyncResult * res,
     GOutputStream * ostream = (GOutputStream *)sourceObject;
     g_output_stream_write_finish(ostream, res, &error);
     if (error) {
-        g_warning("Error writing to serial device: %s\n", error->message);
+        flexvdiLog(L_WARN, "Error writing to serial device: %s\n", error->message);
     }
     g_clear_error(&error);
     g_free(userData);
@@ -210,11 +210,11 @@ static void openSerial(SerialPort * serial) {
 
     serial->fd = open(serial->deviceName, O_RDWR | O_NONBLOCK);
     if (serial->fd < 0) {
-        g_warning("Could not open %s\n", serial->deviceName);
+        flexvdiLog(L_WARN, "Could not open %s\n", serial->deviceName);
         return;
     }
     if (tcsetattr(serial->fd, TCSANOW, &serial->tio) < 0) {
-        g_warning("Could not set termios attributes\n");
+        flexvdiLog(L_WARN, "Could not set termios attributes\n");
         return;
     }
     serial->istream = g_unix_input_stream_new(serial->fd, FALSE);
