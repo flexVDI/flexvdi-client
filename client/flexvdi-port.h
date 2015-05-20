@@ -10,6 +10,8 @@
 void flexvdi_port_register_session(gpointer session);
 GOptionGroup * flexvdi_get_option_group(void);
 int flexvdi_is_agent_connected(void);
+typedef void (*flexvdi_agent_connected_cb)(gpointer data);
+void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data);
 
 // SSO API
 int flexvdi_send_credentials(const gchar *username, const gchar *password,

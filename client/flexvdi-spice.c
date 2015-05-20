@@ -26,6 +26,15 @@ typedef struct flexvdi_port {
 static flexvdi_port port;
 
 
+typedef struct ConnectionHandler {
+    flexvdi_agent_connected_cb cb;
+    gpointer data;
+} ConnectionHandler;
+
+
+static GSList * connectionHandlers;
+
+
 void flexvdiLog(FlexVDILogLevel level, const char * format, ...) {
     va_list args;
     va_start(args, format);
@@ -136,6 +145,11 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
             if (username && password) {
                 flexvdi_send_credentials(username, password, domain ? domain : "");
             }
+            GSList * it;
+            for (it = connectionHandlers; it != NULL; it = g_slist_next(it)) {
+                ConnectionHandler * handler = (ConnectionHandler *)it->data;
+                handler->cb(handler->data);
+            }
         }
 #ifndef WIN32
     } else {
@@ -243,6 +257,14 @@ void flexvdi_port_register_session(gpointer session) {
 
 int flexvdi_is_agent_connected(void) {
     return port.channel != NULL;
+}
+
+
+void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data) {
+    ConnectionHandler * h = g_malloc(sizeof(ConnectionHandler));
+    h->cb = cb;
+    h->data = data;
+    connectionHandlers = g_slist_prepend(connectionHandlers, h);
 }
 
 
