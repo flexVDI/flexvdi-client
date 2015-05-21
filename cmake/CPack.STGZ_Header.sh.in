@@ -27,8 +27,10 @@ cpack_echo_exit()
 # Display version
 cpack_version()
 {
-  _echo "flexVDI Guest Tools v@CPACK_PACKAGE_VERSION@"
+  _echo
+  _echo "flexVDI Guest Tools v@CPACK_PACKAGE_VERSION@ Setup"
   _echo "Copyright (c) @CPACK_PACKAGE_VENDOR@ 2015"
+  _echo
 }
 
 # Helper function to fix windows paths.
@@ -108,6 +110,7 @@ ____cpack__here_doc____
 
     # Post-install
     if which semodule; then
+        _echo
         _echo "Installing SELinux policy"
         semodule -i "${toplevel}/share/selinux/targeted/flexvdi-guest-agent.pp"
         semanage fcontext -a -t flexvdi_exec_t "${toplevel}/bin/flexvdi-guest-agent"
@@ -129,6 +132,8 @@ ____cpack__here_doc____
     fi
 
     if which lpadmin; then
+        _echo
+        _echo "Installing CUPS backend and filter"
         lpadmin -x flexvdiprinter
         chmod 700 ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint
         ln -s ${toplevel}/libexec/flexvdi-guest-agent/flexvdiprint /usr/lib/cups/backend
@@ -148,6 +153,7 @@ else
     rm -f /usr/lib/cups/backend/flexvdiprint
 
     if sestatus; then
+        _echo
         _echo "Uninstalling SELinux policy"
         semodule -r "${toplevel}/share/selinux/targeted/flexvdi-guest-agent.pp"
     fi
