@@ -51,22 +51,32 @@ public:
         throw_if(portFd < 0, name);
 #endif
         stream.assign(portFd);
-        registerErrorHandler([this](const Ptr &, const error_code & error) {
-            if (error == asio::error::eof) {
-                Log(L_DEBUG) << "Virtio Port closed, retrying";
-                // Send a reset message, the virtio port will block on write until the host
-                // connects back; then, start reading again
-                send(MessageBuffer(FLEXVDI_RESET, 0),
-                     std::bind(&VirtioConnection::readNextMessage, this));
-            }
-        });
-        readNextMessage();
+        //readNextMessage();
+        retryRead();
+    }
+
+    void retryRead() {
+        // Send a reset message, the virtio port will block on write until the host
+        // connects back; then, start reading again
+        send(MessageBuffer(FLEXVDI_RESET, 0),
+             std::bind(&VirtioConnection::readNextMessage, this));
     }
 };
 
 
 VirtioPort::VirtioPort(asio::io_service & io, Connection::MessageHandler handler)
-    : endpointName(defaultPortName), conn(new VirtioConnection(io, handler)) {}
+    : endpointName(defaultPortName), conn(new VirtioConnection(io, handler)) {
+    conn->registerErrorHandler([this](const Connection::Ptr &, const error_code & error) {
+        if (error == asio::error::eof) {
+            Log(L_DEBUG) << "Virtio Port closed, retrying";
+        } else {
+            Log(L_WARNING) << "Virtio Port error " << error.message() << ", retrying";
+            conn->close();
+            conn->open(endpointName);
+        }
+        conn->retryRead();
+    });
+}
 
 
 void VirtioPort::open() {
