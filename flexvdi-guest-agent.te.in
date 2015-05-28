@@ -2,9 +2,15 @@ policy_module(flexvdi-gest-agent, 1.0)
 
 gen_require(`
     type cupsd_t;
+    type cupsd_etc_t;
+    type cupsd_var_run_t;
+    type cupsd_rw_etc_t;
+    type ipp_port_t;
     type virtio_device_t;
     type var_run_t;
     type var_log_t;
+    type tmp_t;
+    type passwd_file_t;
 ')
 
 
@@ -19,13 +25,27 @@ type flexvdi_socket_t;
 files_type(flexvdi_socket_t)
 
 # Agent rules
-allow flexvdi_t var_run_t : file { open setattr };
-allow flexvdi_t var_run_t : dir { write add_name };
+allow flexvdi_t var_run_t : file { create open getattr setattr write read append unlink lock };
+allow flexvdi_t var_run_t : dir { write add_name search read remove_name };
 type_transition flexvdi_t var_run_t : sock_file flexvdi_socket_t;
 allow flexvdi_t var_log_t : file { open create setattr write };
 allow flexvdi_t var_log_t : dir { write add_name };
-allow flexvdi_t flexvdi_socket_t : sock_file { create read write };
+allow flexvdi_t tmp_t:dir { write add_name remove_name };
+allow flexvdi_t tmp_t:file { create open getattr setattr write read append unlink lock };
+allow flexvdi_t flexvdi_socket_t : sock_file { create open read write };
 allow flexvdi_t virtio_device_t : chr_file { read write open };
+allow flexvdi_t cupsd_etc_t:dir { search read };
+allow flexvdi_t cupsd_var_run_t:dir { search read };
+allow flexvdi_t cupsd_var_run_t:file { open read getattr };
+allow flexvdi_t cupsd_var_run_t:sock_file { write getattr };
+allow flexvdi_t cupsd_rw_etc_t:file { read write getattr open setattr };
+allow flexvdi_t cupsd_t:unix_stream_socket connectto;
+allow flexvdi_t self:capability fsetid;
+allow flexvdi_t ipp_port_t:tcp_socket name_connect;
+allow flexvdi_t passwd_file_t:file { open read getattr };
+allow flexvdi_t self:tcp_socket { create read write setopt connect bind getattr };
+allow flexvdi_t ipp_port_t:tcp_socket name_connect;
+
 
 # CUPS rules
 allow cupsd_t flexvdi_t : unix_stream_socket connectto;

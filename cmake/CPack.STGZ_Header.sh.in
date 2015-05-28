@@ -122,6 +122,7 @@ ____cpack__here_doc____
         SERVICE_DIR="${toplevel}/lib/systemd/system"
         systemctl stop ${SERVICE}
         systemctl disable ${SERVICE}
+        rm -f /var/run/flexvdi_pipe
         systemctl enable ${SERVICE}
         systemctl start ${SERVICE}
     else
