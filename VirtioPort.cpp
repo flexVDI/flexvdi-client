@@ -11,6 +11,8 @@
 #if defined(WIN32) && defined(BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE)
 #include <windows.h>
 #elif defined(BOOST_ASIO_HAS_POSIX_STREAM_DESCRIPTOR)
+#include <chrono>
+#include <thread>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -51,15 +53,18 @@ public:
         throw_if(portFd < 0, name);
 #endif
         stream.assign(portFd);
-        //readNextMessage();
         retryRead();
     }
 
     void retryRead() {
+#ifdef WIN32
+        readNextMessage();
+#else
         // Send a reset message, the virtio port will block on write until the host
         // connects back; then, start reading again
         send(MessageBuffer(FLEXVDI_RESET, 0),
              std::bind(&VirtioConnection::readNextMessage, this));
+#endif
     }
 };
 
@@ -72,6 +77,11 @@ VirtioPort::VirtioPort(asio::io_service & io, Connection::MessageHandler handler
         } else {
             Log(L_WARNING) << "Virtio Port error " << error.message() << ", retrying";
             conn->close();
+#ifdef WIN32
+            Sleep(1000);
+#else
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+#endif
             conn->open(endpointName);
         }
         conn->retryRead();
