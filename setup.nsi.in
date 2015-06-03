@@ -2,6 +2,16 @@
 ; Copyright Flexible Software Solutions S.L. 2014
 ;
 
+!include FileFunc.nsh
+!include Sections.nsh
+!include WinVer.nsh
+!include x64.nsh
+
+!define APPNAME "flexVDI Guest Tools"
+!define APPVERSION @FLEXVDI_VERSION@
+OutFile "@CMAKE_PROJECT_NAME@-@FLEXVDI_VERSION@.exe"
+SetCompressor /SOLID /FINAL lzma
+
 !include credentials-manager/credential-provider/setup.nsi
 !include credentials-manager/gina/setup.nsi
 !include print/windriver/setup.nsi
@@ -67,9 +77,9 @@ Section "!flexVDI guest agent"
     ; Agent
     nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
     ${If} ${RunningX64}
-        File "../win64/flexvdi-guest-agent.exe"
+        File "win64/flexvdi-guest-agent.exe"
     ${Else}
-        File "../win32/flexvdi-guest-agent.exe"
+        File "win32/flexvdi-guest-agent.exe"
     ${EndIf}
     nsExec::ExecToStack '"$INSTDIR\flexvdi-guest-agent.exe" install'
     Pop $0
@@ -85,11 +95,11 @@ SectionEnd
 Section "!SPICE guest tools"
     SectionIn RO
     SetOutPath $INSTDIR
-    File "/tmp/@SPICE_GUEST_TOOLS@"
+    File "@SPICE_GUEST_TOOLS@"
     ExecWait '"$INSTDIR\@SPICE_GUEST_TOOLS@"'
     Delete "$INSTDIR\@SPICE_GUEST_TOOLS@"
-    File /oname=vdagent32.exe "../win32/vdagent.exe"
-    File /oname=vdagent64.exe "../win64/vdagent.exe"
+    File /oname=vdagent32.exe "win32/vdagent.exe"
+    File /oname=vdagent64.exe "win64/vdagent.exe"
     Rename /REBOOTOK "$INSTDIR\vdagent32.exe" "$PROGRAMFILES32\SPICE Guest Tools\32\vdagent.exe"
     Rename /REBOOTOK "$INSTDIR\vdagent64.exe" "$PROGRAMFILES32\SPICE Guest Tools\64\vdagent.exe"
 SectionEnd

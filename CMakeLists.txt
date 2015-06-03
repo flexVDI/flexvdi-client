@@ -113,15 +113,10 @@ if (BUILD_GUEST)
     add_library(agent_objects OBJECT ${agent_sources})
     if (WIN32)
         add_library(util_o OBJECT util.cpp WinSpoolImpl.cpp)
-        set(SPICE_GUEST_TOOLS spice-guest-tools-0.100.exe)
-        add_custom_command(OUTPUT /tmp/${SPICE_GUEST_TOOLS}
-                           COMMAND wget -nc http://www.spice-space.org/download/windows/spice-guest-tools/${SPICE_GUEST_TOOLS}
-                           WORKING_DIRECTORY /tmp)
         configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.rc"
                        "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc" @ONLY)
         add_executable(flexvdi-guest-agent WindowsService.cpp
                        "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc"
-                       "/tmp/${SPICE_GUEST_TOOLS}"
                        $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
         set_target_properties(flexvdi-guest-agent PROPERTIES LINK_FLAGS "-static")
         target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
@@ -172,33 +167,39 @@ add_custom_target(dist
                   COMMAND git archive --prefix=${CPACK_PACKAGE_FILE_NAME}/
                           -o "${PROJECT_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.tar.bz2" HEAD
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-set(CPACK_PACKAGE_VENDOR "Flexible Software Solutions")
-# set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
-set(CPACK_PACKAGE_VERSION_MAJOR ${FLEXVDI_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${FLEXVDI_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${FLEXVDI_VERSION_PATCH})
 if (WIN32)
-    set(CPACK_GENERATOR "NSIS")
-    set(CPACK_NSIS_WORKING_DIR "${PROJECT_BINARY_DIR}")
     configure_file("${PROJECT_SOURCE_DIR}/autorun.inf.in"
                    "${PROJECT_BINARY_DIR}/autorun.inf")
-    add_custom_command(OUTPUT "${PROJECT_BINARY_DIR}/virtio-win.iso"
-                       COMMAND wget -nc https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso
-                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
-    add_custom_target(guest_tools_iso
-                      COMMAND cp virtio-win.iso ${CPACK_PACKAGE_FILE_NAME}.iso
-                      COMMAND growisofs -M ${CPACK_PACKAGE_FILE_NAME}.iso
-                                      -J -r -V "flexVDI Guest Tools v${FLEXVDI_VERSION}"
-                                      autorun.inf ${CPACK_PACKAGE_FILE_NAME}.exe
-                      DEPENDS "${PROJECT_BINARY_DIR}/virtio-win.iso"
-                      WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
+    set(SPICE_GUEST_TOOLS spice-guest-tools-0.100.exe)
+    add_custom_command(OUTPUT ${SPICE_GUEST_TOOLS}
+                       COMMAND wget -nc http://www.spice-space.org/download/windows/spice-guest-tools/${SPICE_GUEST_TOOLS})
+    add_custom_command(OUTPUT vdagent.exe
+                       COMMAND "${PROJECT_SOURCE_DIR}/find_win_components.sh" ${WIN_COMPONENTS_ANCESTORS})
+    add_custom_command(OUTPUT ${CPACK_PACKAGE_FILE_NAME}.exe
+                       COMMAND echo Running makensis, see makensis.log for errors
+                       COMMAND makensis -Omakensis.log setup.nsi
+                       DEPENDS guest-tools vdagent.exe ${SPICE_GUEST_TOOLS})
+    add_custom_target(package DEPENDS ${CPACK_PACKAGE_FILE_NAME}.exe)
+    add_custom_command(OUTPUT virtio-win.iso
+                       COMMAND wget -nc https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso)
+    add_custom_command(OUTPUT ${CPACK_PACKAGE_FILE_NAME}.iso
+                       COMMAND cp virtio-win.iso ${CPACK_PACKAGE_FILE_NAME}.iso
+                       COMMAND growisofs -M ${CPACK_PACKAGE_FILE_NAME}.iso
+                                       -J -r -V "flexVDI Guest Tools v${FLEXVDI_VERSION}"
+                                       autorun.inf ${CPACK_PACKAGE_FILE_NAME}.exe
+                       DEPENDS virtio-win.iso)
+    add_custom_target(guest_tools_iso DEPENDS package ${CPACK_PACKAGE_FILE_NAME}.iso)
 else (WIN32)
+    set(CPACK_PACKAGE_VENDOR "Flexible Software Solutions")
+    set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+    set(CPACK_PACKAGE_VERSION_MAJOR ${FLEXVDI_VERSION_MAJOR})
+    set(CPACK_PACKAGE_VERSION_MINOR ${FLEXVDI_VERSION_MINOR})
+    set(CPACK_PACKAGE_VERSION_PATCH ${FLEXVDI_VERSION_PATCH})
     set(CPACK_GENERATOR "STGZ")
     set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
     set(CPACK_COMPONENTS_ALL Unspecified)
     set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}")
     set(CPACK_COMPONENT_UNSPECIFIED_DISPLAY_NAME "${FLEXVDI_VERSION}")
     set(CPACK_STGZ_USE_DISPLAY_NAME_IN_FILENAME ON)
+    include (CPack)
 endif (WIN32)
-
-include (CPack)

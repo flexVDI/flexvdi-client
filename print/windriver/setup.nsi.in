@@ -9,12 +9,12 @@
     SetOutPath "$INSTDIR\printdriver"
     File "@PROJECT_SOURCE_DIR@/print/flexvdips.ppd"
     File "@PROJECT_SOURCE_DIR@/print/windriver/gs9.15/gsdll32.dll"
-    File "../win32/print/windriver/filter.exe"
+    File "win32/print/windriver/filter.exe"
     SetOutPath "$INSTDIR"
     ${If} ${RunningX64}
-        File "../win64/print/windriver/redmon.dll"
+        File "win64/print/windriver/redmon.dll"
     ${Else}
-        File "../win32/print/windriver/redmon.dll"
+        File "win32/print/windriver/redmon.dll"
     ${EndIf}
     Rename /REBOOTOK "$INSTDIR\redmon.dll" "${REDMON_DLL}"
     DetailPrint "Installing Follow-me Printing driver"
