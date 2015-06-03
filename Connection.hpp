@@ -36,6 +36,7 @@ protected:
     std::list<ErrorHandler> eHandlers;
 
     void readNextMessage();
+    void readNextByte();
     void notifyError(const boost::system::error_code & error) {
         // Prevent this from being destroyed before the end of the method
         Ptr This = shared_from_this();
@@ -71,7 +72,11 @@ public:
         stream.close();
     }
     virtual bool isOpen() const { return stream.is_open(); }
-    virtual void close() {boost::system::error_code ec; stream.close(ec); }
+    virtual void close() {
+        boost::system::error_code ec;
+        stream.close(ec);
+        stream = stream_t(stream.get_io_service());
+    }
 
 protected:
     stream_t stream;

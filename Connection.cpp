@@ -17,6 +17,18 @@ void Connection::readNextMessage() {
 }
 
 
+void Connection::readNextByte() {
+    size_t i = 0;
+    uint8_t * buf = (uint8_t *)&header;
+    while (i < sizeof(FlexVDIMessageHeader) - 1) {
+        buf[i] = buf[i + 1];
+        ++i;
+    }
+    asyncRead(asio::buffer(&buf[i], 1),
+              std::bind(&Connection::readCompleteHeader, this, shared_from_this(), _1, _2));
+}
+
+
 void Connection::readError(const boost::system::error_code & error) {
     if (error == asio::error::eof)
         Log(L_INFO) << "Connection " << this << " reset by peer.";
@@ -36,11 +48,12 @@ void Connection::readCompleteHeader(Ptr This, const sys::error_code & error,
         Log(L_DEBUG) << "Reading message type " << header.type <<
                         " and size " << header.size << " from connection " << this;
         if (header.size > FLEXVDI_MAX_MESSAGE_LENGTH) {
-            Log(L_ERROR) << "Oversized message";
-            notifyError(asio::error::message_size);
+            Log(L_WARNING) << "Oversized message (" << header.size
+                           << " > " << FLEXVDI_MAX_MESSAGE_LENGTH << ')';
+            readNextByte();
         } else if (header.type >= FLEXVDI_MAX_MESSAGE_TYPE) {
-            Log(L_ERROR) << "Unknown message type";
-            notifyError(asio::error::invalid_argument);
+            Log(L_WARNING) << "Unknown message type " << header.type;
+            readNextByte();
         } else {
             readBuffer = MessageBuffer(header);
             asyncRead(asio::buffer(readBuffer.getMsgData(), header.size),
