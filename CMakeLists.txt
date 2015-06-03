@@ -182,10 +182,15 @@ if (WIN32)
     set(CPACK_NSIS_WORKING_DIR "${PROJECT_BINARY_DIR}")
     configure_file("${PROJECT_SOURCE_DIR}/autorun.inf.in"
                    "${PROJECT_BINARY_DIR}/autorun.inf")
+    add_custom_command(OUTPUT "${PROJECT_BINARY_DIR}/virtio-win.iso"
+                       COMMAND wget -nc https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso
+                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
     add_custom_target(guest_tools_iso
-                      COMMAND mkisofs -J -r -V "flexVDI Guest Tools v${FLEXVDI_VERSION}"
-                                      -o ${CPACK_PACKAGE_FILE_NAME}.iso
+                      COMMAND cp virtio-win.iso ${CPACK_PACKAGE_FILE_NAME}.iso
+                      COMMAND growisofs -M ${CPACK_PACKAGE_FILE_NAME}.iso
+                                      -J -r -V "flexVDI Guest Tools v${FLEXVDI_VERSION}"
                                       autorun.inf ${CPACK_PACKAGE_FILE_NAME}.exe
+                      DEPENDS "${PROJECT_BINARY_DIR}/virtio-win.iso"
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 else (WIN32)
     set(CPACK_GENERATOR "STGZ")
