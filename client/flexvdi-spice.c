@@ -19,6 +19,7 @@
 
 typedef struct flexvdi_port {
     SpicePortChannel * channel;
+    gboolean connected;
     GCancellable * cancellable;
 } flexvdi_port;
 
@@ -133,6 +134,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
     if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
         if (opened) {
             flexvdiLog(L_INFO, "flexVDI guest agent connected\n");
+            port.connected = TRUE;
             port.channel = SPICE_PORT_CHANNEL(channel);
             port.cancellable = g_cancellable_new();
             uint8_t * buf = getMsgBuffer(0);
@@ -150,6 +152,12 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
                 ConnectionHandler * handler = (ConnectionHandler *)it->data;
                 handler->cb(handler->data);
             }
+        } else {
+            flexvdiLog(L_INFO, "flexVDI guest agent disconnected\n");
+            port.connected = FALSE;
+            g_cancellable_cancel(port.cancellable);
+            g_object_unref(port.cancellable);
+            port.cancellable = NULL;
         }
 #ifndef WIN32
     } else {
@@ -233,8 +241,6 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel) {
     if (SPICE_IS_PORT_CHANNEL(channel)) {
         if (SPICE_PORT_CHANNEL(channel) == port.channel) {
             port.channel = NULL;
-            g_object_unref(port.cancellable);
-            port.cancellable = NULL;
 #ifndef WIN32
         } else {
             serialChannelDestroy(SPICE_PORT_CHANNEL(channel));
@@ -256,7 +262,7 @@ void flexvdi_port_register_session(gpointer session) {
 
 
 int flexvdi_is_agent_connected(void) {
-    return port.channel != NULL;
+    return port.connected;
 }
 
 
@@ -270,7 +276,7 @@ void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data) {
 
 int flexvdi_send_credentials(const gchar *username, const gchar *password,
                              const gchar *domain) {
-    if (port.channel) {
+    if (port.connected) {
         flexvdiSpiceSendCredentials(username, password, domain);
         return TRUE;
     } else {
@@ -286,7 +292,7 @@ int flexvdi_get_printer_list(GSList ** printer_list) {
 
 
 int flexvdi_share_printer(const char * printer) {
-    if (port.channel) {
+    if (port.connected) {
         return flexvdiSpiceSharePrinter(printer);
     } else {
         flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
@@ -296,7 +302,7 @@ int flexvdi_share_printer(const char * printer) {
 
 
 int flexvdi_unshare_printer(const char * printer) {
-    if (port.channel) {
+    if (port.connected) {
         return flexvdiSpiceUnsharePrinter(printer);
     } else {
         flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
