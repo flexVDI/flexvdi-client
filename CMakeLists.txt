@@ -106,7 +106,7 @@ set(agent_sources FlexVDIGuestAgent.cpp DispatcherRegistry.cpp
 
 # Build guest agent
 if (BUILD_GUEST)
-    add_custom_target(guest-tools)
+    set(GUEST_TOOLS_TARGETS)
     add_subdirectory(credentials-manager)
     add_subdirectory(print)
 
@@ -150,7 +150,7 @@ if (BUILD_GUEST)
                     DESTINATION share/selinux/targeted)
         endif ()
     endif (WIN32)
-    add_dependencies(guest-tools flexvdi-guest-agent)
+    set(GUEST_TOOLS_TARGETS ${GUEST_TOOLS_TARGETS} flexvdi-guest-agent)
 endif ()
 
 # Build client library
@@ -178,7 +178,7 @@ if (WIN32)
     add_custom_command(OUTPUT ${CPACK_PACKAGE_FILE_NAME}.exe
                        COMMAND echo Running makensis, see makensis.log for errors
                        COMMAND makensis -Omakensis.log setup.nsi
-                       DEPENDS guest-tools vdagent.exe ${SPICE_GUEST_TOOLS})
+                       DEPENDS ${GUEST_TOOLS_TARGETS} vdagent.exe ${SPICE_GUEST_TOOLS})
     add_custom_target(package DEPENDS ${CPACK_PACKAGE_FILE_NAME}.exe)
     add_custom_command(OUTPUT virtio-win.iso
                        COMMAND wget -nc https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso)
@@ -187,8 +187,8 @@ if (WIN32)
                        COMMAND growisofs -M ${CPACK_PACKAGE_FILE_NAME}.iso
                                        -J -r -V "flexVDI Guest Tools v${FLEXVDI_VERSION}"
                                        autorun.inf ${CPACK_PACKAGE_FILE_NAME}.exe
-                       DEPENDS virtio-win.iso)
-    add_custom_target(guest_tools_iso DEPENDS package ${CPACK_PACKAGE_FILE_NAME}.iso)
+                       DEPENDS ${CPACK_PACKAGE_FILE_NAME}.exe virtio-win.iso)
+    add_custom_target(guest_tools_iso DEPENDS ${CPACK_PACKAGE_FILE_NAME}.iso)
 else (WIN32)
     set(CPACK_PACKAGE_VENDOR "Flexible Software Solutions")
     set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
