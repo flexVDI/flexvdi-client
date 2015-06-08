@@ -49,8 +49,8 @@ public:
     void handleMessage(const Connection::Ptr & src, const MessageBuffer & msgBuffer);
 
     Connection::MessageHandler asMessageHandler() {
-        using namespace std::placeholders;
-        return std::bind(&DispatcherRegistry::handleMessage, this, _1, _2);
+        return std::bind(&DispatcherRegistry::handleMessage, this,
+                         std::placeholders::_1, std::placeholders::_2);
     }
 
 private:
