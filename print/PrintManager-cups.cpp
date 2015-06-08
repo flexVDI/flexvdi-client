@@ -12,7 +12,7 @@ using namespace flexvm;
 using std::string;
 
 
-void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) {
+void PrintManager::resetPrinters() {
     cups_dest_t * dests;
     int numDests = cupsGetDests(&dests);
     for (int i = 0; i < numDests; ++i) {

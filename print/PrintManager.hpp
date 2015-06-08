@@ -8,6 +8,7 @@
 #include <memory>
 #include <fstream>
 #include <list>
+#include <boost/thread.hpp>
 #include "DispatcherRegistry.hpp"
 
 namespace flexvm {
@@ -20,6 +21,9 @@ class PrintManager : public FlexVDIComponent<PrintManager
 ,FlexVDIResetMsg
 > {
 public:
+    PrintManager();
+    ~PrintManager() { stopWorkingThread(); }
+
     typedef MessagePtr<FlexVDIPrintJobMsg> PrintJobMsgPtr;
     typedef MessagePtr<FlexVDIPrintJobDataMsg> PrintJobDataMsgPtr;
     typedef MessagePtr<FlexVDISharePrinterMsg> SharePrinterMsgPtr;
@@ -34,6 +38,7 @@ public:
 
     static bool installPrinter(const std::string & printer, const std::string & ppd);
     static bool uninstallPrinter(const std::string & printer);
+    static void resetPrinters();
 
     static const char * sharedPrinterDescription;
     static const char * sharedPrinterLocation;
@@ -47,7 +52,22 @@ private:
         ~Job() { src->close(); }
     };
 
+    struct Task {
+        enum {
+            STOPTHREAD,
+            SHARE,
+            UNSHARE,
+            RESET,
+        } type;
+        std::string printer;
+        std::string ppd;
+    };
+
+    boost::thread thread;
     std::list<Job> jobs;
+    std::list<Task> tasks;
+    boost::mutex tasksMutex;
+    boost::condition_variable hasTasks;
 
     uint32_t getNewId() const {
         if (jobs.empty()) return 1;
@@ -55,6 +75,11 @@ private:
     }
 
     void closed(const Connection::Ptr & src, const boost::system::error_code & error);
+
+    void enqueueTask(const Task & task);
+    Task dequeueTask();
+    void workingThread();
+    void stopWorkingThread();
 };
 
 }

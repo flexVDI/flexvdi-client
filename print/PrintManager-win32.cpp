@@ -110,7 +110,7 @@ static void restartSpooler() {
 }
 
 
-void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) {
+void PrintManager::resetPrinters() {
     restartSpooler();
     DWORD numPrinters;
     std::shared_ptr<PRINTER_INFO_2> printers = getPrinters(numPrinters);

@@ -24,6 +24,71 @@ namespace ph = std::placeholders;
 REGISTER_COMPONENT(PrintManager);
 
 
+PrintManager::PrintManager() {
+    thread = boost::thread(std::bind(&PrintManager::workingThread, this));
+}
+
+
+void PrintManager::workingThread() {
+    bool stop = false;
+    while (!stop) {
+        Task task = dequeueTask();
+        switch (task.type) {
+        case Task::STOPTHREAD:
+            stop = true;
+            break;
+        case Task::SHARE:
+            Log(L_DEBUG) << "Installing printer " << task.printer
+                         << (installPrinter(task.printer, task.ppd) ? " succeeded" : " failed");
+            unlink(task.ppd.c_str());
+            break;
+        case Task::UNSHARE:
+            Log(L_DEBUG) << "Uninstalling printer " << task.printer
+                         << (uninstallPrinter(task.printer) ? " succeeded" : " failed");
+            break;
+        case Task::RESET:
+            resetPrinters();
+            break;
+        }
+    }
+}
+
+
+void PrintManager::stopWorkingThread() {
+    if (thread.joinable()) {
+        enqueueTask(Task{Task::STOPTHREAD, "", ""});
+        thread.join();
+    }
+}
+
+
+void PrintManager::enqueueTask(const Task & task) {
+    {
+        boost::lock_guard<boost::mutex> lock(tasksMutex);
+        tasks.push_front(task);
+    }
+    hasTasks.notify_one();
+}
+
+
+PrintManager::Task PrintManager::dequeueTask() {
+    bool skip = false;
+    Task task;
+    do {
+        boost::unique_lock<boost::mutex> lock(tasksMutex);
+        while (tasks.empty()) {
+            hasTasks.wait(lock);
+        }
+        task = tasks.back();
+        tasks.pop_back();
+        auto skipType = task.type == Task::SHARE ? Task::UNSHARE : Task::SHARE;
+        for (auto it = tasks.begin(); it != tasks.end() && !skip; ++it)
+            skip = it->type == skipType && it->printer == task.printer;
+    } while (skip);
+    return task;
+}
+
+
 void PrintManager::handle(const Connection::Ptr & src, const PrintJobMsgPtr & msg) {
     Log(L_DEBUG) << "Ready to send a new print job";
     jobs.emplace_back(src, getNewId());
@@ -67,16 +132,18 @@ void PrintManager::handle(const Connection::Ptr & src, const SharePrinterMsgPtr 
     if (fileName.empty()) fileName = getTempFileName("fv") + ".ppd";
     std::ofstream ppdFile(fileName.c_str());
     ppdFile.write(ppdText, msg->ppdLength);
-    Log(L_DEBUG) << "Installing printer " << printer
-                 << (installPrinter(printer, fileName) ? " succeeded" : " failed");
-    unlink(fileName.c_str());
+    enqueueTask(Task{Task::SHARE, printer, fileName});
 }
 
 
 void PrintManager::handle(const Connection::Ptr & src, const UnsharePrinterMsgPtr & msg) {
     string printer(msg->printerName, msg->printerNameLength);
-    Log(L_DEBUG) << "Uninstalling printer " << printer
-                 << (uninstallPrinter(printer) ? " succeeded" : " failed");
+    enqueueTask(Task{Task::UNSHARE, printer, ""});
+}
+
+
+void PrintManager::handle(const Connection::Ptr & src, const ResetMsgPtr & msg) {
+    enqueueTask(Task{Task::RESET, "", ""});
 }
 
 
