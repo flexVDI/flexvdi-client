@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <wchar.h>
 #include <winspool.h>
+#include <shellapi.h>
 #include <poppler.h>
 #include <cairo.h>
 #include <cairo/cairo-win32.h>
@@ -470,9 +471,9 @@ static int printFile(ClientPrinter * printer, const char * pdf,
 
 
 static void openWithApp(const char * file) {
-    char command[1024];
-    snprintf(command, 1024, "start %s", file);
-    system(command);
+    wchar_t * fileW = g_utf8_to_utf16(file, -1, NULL, NULL, NULL);
+    ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
+    g_free(fileW);
 }
 
 
