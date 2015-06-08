@@ -3,6 +3,7 @@
  **/
 
 #include <fstream>
+#include <string>
 #include "FlexProviderFactory.hpp"
 #include "FlexProvider.hpp"
 #include "util.hpp"
@@ -64,12 +65,14 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, void** ppv) {
 
 
 static std::ofstream logFile;
+static const char * _getLogPath() {
+    static std::string logPath;
+    logPath = std::string(Log::getDefaultLogPath()) + "\\flexvdi_credprov.log";
+    return logPath.c_str();
+}
 static const char * getLogPath() {
-    static char logPath[1024];
-    if (sprintf_s(logPath, 1024, "%s\\credprov.log", Log::getDefaultLogPath()) == S_OK)
-        return logPath;
-    else
-        return "c:\\flexvdi_credprov.log";
+    static const char * logPath = _getLogPath();
+    return logPath;
 }
 
 
