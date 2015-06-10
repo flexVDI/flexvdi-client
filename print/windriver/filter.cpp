@@ -70,23 +70,41 @@ private:
     }
 
     void readEnv() {
-        std::unique_ptr<wchar_t[]> wbuffer;
+        unique_ptr<wchar_t[]> wbuffer;
         int size;
 
         size = GetEnvironmentVariable(L"REDMON_JOB", NULL, 0);
-        wbuffer.reset(new wchar_t[size]);
-        GetEnvironmentVariable(L"REDMON_JOB", wbuffer.get(), size);
-        jobId = stoi(wbuffer.get());
+        if (size) {
+            wbuffer.reset(new wchar_t[size]);
+            GetEnvironmentVariable(L"REDMON_JOB", wbuffer.get(), size);
+            try {
+                jobId = stoi(wbuffer.get());
+            } catch (...) {
+                jobId = -1;
+                Log(L_ERROR) << "Invalid REDMON_JOB env var";
+            }
+        } else {
+            jobId = -1;
+            Log(L_ERROR) << "REDMON_JOB env var not set";
+        }
 
         size = GetEnvironmentVariable(L"REDMON_PRINTER", NULL, 0);
-        wbuffer.reset(new wchar_t[size]);
-        GetEnvironmentVariable(L"REDMON_PRINTER", wbuffer.get(), size);
-        printerName = wbuffer.get();
+        if (size) {
+            wbuffer.reset(new wchar_t[size]);
+            GetEnvironmentVariable(L"REDMON_PRINTER", wbuffer.get(), size);
+            printerName = wbuffer.get();
+        } else {
+            Log(L_ERROR) << "REDMON_PRINTER env var not set";
+        }
 
         size = GetEnvironmentVariable(L"REDMON_DOCNAME", NULL, 0);
-        wbuffer.reset(new wchar_t[size]);
-        GetEnvironmentVariable(L"REDMON_DOCNAME", wbuffer.get(), size);
-        docName = wbuffer.get();
+        if (size) {
+            wbuffer.reset(new wchar_t[size]);
+            GetEnvironmentVariable(L"REDMON_DOCNAME", wbuffer.get(), size);
+            docName = wbuffer.get();
+        } else {
+            Log(L_ERROR) << "REDMON_DOCNAME env var not set";
+        }
     }
 
     void getJobInfo();
@@ -160,12 +178,18 @@ void GSFilter::getJobInfo() {
         DWORD needed;
         GetJob(printer, jobId, 2, NULL, 0, &needed);
         if (needed > 0) {
-            std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
+            shared_ptr<char> buffer(new char[needed], default_delete<char[]>());
             if(GetJob(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed)) {
                 jobInfo = shared_ptr<JOB_INFO_2>(buffer, (JOB_INFO_2 *)buffer.get());
+            } else {
+                LogError() << "Failed to get job " << jobId;
             }
+        } else {
+            LogError() << "Failed to get job " << jobId;
         }
         ClosePrinter(printer);
+    } else {
+        LogError() << "Cannot find printer " << printerName;
     }
 }
 
@@ -176,12 +200,14 @@ void GSFilter::getPrinterInfo() {
         DWORD needed;
         GetPrinter(printer, 2, NULL, 0, &needed);
         if (needed > 0) {
-            std::shared_ptr<char> buffer(new char[needed], std::default_delete<char[]>());
+            shared_ptr<char> buffer(new char[needed], default_delete<char[]>());
             if (GetPrinter(printer, 2, (LPBYTE)buffer.get(), needed, &needed)) {
                 printerInfo = shared_ptr<PRINTER_INFO_2>(buffer, (PRINTER_INFO_2 *)buffer.get());
             }
         }
         ClosePrinter(printer);
+    } else {
+        LogError() << "Cannot find printer " << printerName;
     }
 }
 
