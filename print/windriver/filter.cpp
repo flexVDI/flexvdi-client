@@ -44,6 +44,7 @@ private:
     wstring printerName, docName;
     int jobId;
     shared_ptr<JOB_INFO_2> jobInfo;
+    shared_ptr<DEVMODE> devMode;
     shared_ptr<PRINTER_INFO_2> printerInfo;
 
     GSFilter();
@@ -108,6 +109,7 @@ private:
     }
 
     void getJobInfo();
+    void getDevMode(HANDLE printer);
     void getPrinterInfo();
     int getPrinterCap(WORD cap, wchar_t * buffer);
     string getMedia();
@@ -147,11 +149,11 @@ int GSFilter::runFilter() {
     Log(L_DEBUG) << "Saving output to " << outFileName;
     int result = runGhostscript();
 
-    if (jobInfo->pDevMode->dmCollate == DMCOLLATE_TRUE && jobInfo->pDevMode->dmCopies > 1) {
+    if (devMode->dmCollate == DMCOLLATE_TRUE && devMode->dmCopies > 1) {
         // Update the number of pages printed
         getJobInfo();
         // The spooler performed the copies, keep just one
-        int numPages = jobInfo->PagesPrinted / jobInfo->pDevMode->dmCopies;
+        int numPages = jobInfo->PagesPrinted / devMode->dmCopies;
         extraOptions = "-dLastPage=" + to_string(numPages);
         inFileName = outFileName;
         outFileName = getTempFileName();
@@ -172,6 +174,21 @@ int GSFilter::runFilter() {
 }
 
 
+void GSFilter::getDevMode(HANDLE printer) {
+    if (jobInfo->pDevMode) {
+        devMode = shared_ptr<DEVMODE>(jobInfo, jobInfo->pDevMode);
+    } else {
+        LONG size = DocumentProperties(NULL, printer, jobInfo->pPrinterName, NULL, NULL, 0);
+        shared_ptr<char> buffer(new char[size], default_delete<char[]>());
+        devMode = shared_ptr<DEVMODE>(buffer, (DEVMODE *)buffer.get());
+        if (DocumentProperties(NULL, printer, jobInfo->pPrinterName,
+                               devMode.get(), NULL, DM_OUT_BUFFER) != IDOK) {
+            LogError() << "Cannot get DEVMODE for this job";
+        }
+    }
+}
+
+
 void GSFilter::getJobInfo() {
     HANDLE printer;
     if (OpenPrinter((wchar_t *)printerName.c_str(), &printer, NULL)) {
@@ -181,6 +198,7 @@ void GSFilter::getJobInfo() {
             shared_ptr<char> buffer(new char[needed], default_delete<char[]>());
             if(GetJob(printer, jobId, 2, (LPBYTE)buffer.get(), needed, &needed)) {
                 jobInfo = shared_ptr<JOB_INFO_2>(buffer, (JOB_INFO_2 *)buffer.get());
+                getDevMode(printer);
             } else {
                 LogError() << "Failed to get job " << jobId;
             }
@@ -202,7 +220,8 @@ void GSFilter::getPrinterInfo() {
         if (needed > 0) {
             shared_ptr<char> buffer(new char[needed], default_delete<char[]>());
             if (GetPrinter(printer, 2, (LPBYTE)buffer.get(), needed, &needed)) {
-                printerInfo = shared_ptr<PRINTER_INFO_2>(buffer, (PRINTER_INFO_2 *)buffer.get());
+                printerInfo = shared_ptr<PRINTER_INFO_2>(buffer,
+                                                         (PRINTER_INFO_2 *)buffer.get());
             }
         }
         ClosePrinter(printer);
@@ -219,7 +238,6 @@ int GSFilter::getPrinterCap(WORD cap, wchar_t * buffer) {
 
 
 string GSFilter::getMedia() {
-    DEVMODE * devMode = jobInfo->pDevMode;
     switch (devMode->dmPaperSize) {
         case DMPAPER_TABLOID: return "Tabloid";
         case DMPAPER_LEDGER: return "Ledger";
@@ -257,7 +275,6 @@ string GSFilter::getMedia() {
 
 
 int GSFilter::getMediaSource() {
-    DEVMODE * devMode = jobInfo->pDevMode;
     int source = devMode->dmDefaultSource - DMBIN_USER;
     int numSources = getPrinterCap(DC_BINNAMES, NULL);
     // FIXME: Windows introduces "Automatic selection" as first source
@@ -266,7 +283,6 @@ int GSFilter::getMediaSource() {
 
 
 int GSFilter::getMediaType() {
-    DEVMODE * devMode = jobInfo->pDevMode;
     int mediaType = devMode->dmMediaType - DMMEDIA_USER;
     int numMediaTypes = getPrinterCap(DC_MEDIATYPENAMES, NULL);
     return mediaType >= 0 && mediaType < numMediaTypes ? mediaType : 0;
@@ -274,7 +290,6 @@ int GSFilter::getMediaType() {
 
 
 string GSFilter::getJobOptions() {
-    DEVMODE * devMode = jobInfo->pDevMode;
     ostringstream oss;
     oss << "printer=\"" << toString(printerName) << "\"";
     oss << " title=\"" << toString(docName) << "\"";
