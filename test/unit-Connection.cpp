@@ -15,22 +15,18 @@ public:
     virtual bool isOpen() const { return true; }
     virtual void close() {}
     virtual void asyncRead(const asio::mutable_buffers_1 & buffers, AsyncHandler handler) {
-        if (readDone) return;
+        size_t size = asio::buffer_size(buffer);
+        if (position == size) return;
         // Write something into buffers and call handler
         if (error) {
             handler(error, 0);
         } else {
-            size_t size = asio::buffer_size(buffers);
-            if (readHeader) {
-                BOOST_REQUIRE_EQUAL(size, sizeof(FlexVDIMessageHeader));
-                *asio::buffer_cast<FlexVDIMessageHeader *>(buffers) = buffer.header();
-                readHeader = false;
-            } else {
-                BOOST_REQUIRE_EQUAL(size, buffer.header().size);
-                copy_n(buffer.getMsgData(), size, asio::buffer_cast<uint8_t *>(buffers));
-                readDone = true;
-            }
-            handler(error, size);
+            size_t read_size = asio::buffer_size(buffers);
+            BOOST_REQUIRE_LE(read_size, size - position);
+            copy_n(buffer.shareData().get() + position, read_size,
+                   asio::buffer_cast<uint8_t *>(buffers));
+            position += read_size;
+            handler(error, read_size);
         }
     }
     virtual void asyncWrite(const MessageBuffer & sendBuffer, AsyncHandler handler) {
@@ -40,12 +36,12 @@ public:
 
     void testRead() { readNextMessage(); }
 
-    MockConnection(MessageHandler h) : Connection(h), readHeader(true), readDone(false) {}
+    MockConnection(MessageHandler h) : Connection(h), position(0), garbage(0) {}
 
     boost::system::error_code error;
     MessageBuffer buffer;
-    bool readHeader;
-    bool readDone;
+    size_t position;
+    size_t garbage;
 };
 
 
@@ -57,8 +53,10 @@ struct FIXTURE {
 
     void handle(const Connection::Ptr & src, const MessageBuffer & msg) {
         BOOST_CHECK_EQUAL(src, conn);
-        BOOST_CHECK_EQUAL(msg.header().size, conn->buffer.header().size);
-        BOOST_CHECK_EQUAL(msg.header().type, conn->buffer.header().type);
+        auto data = conn->buffer.shareData();
+        FlexVDIMessageHeader * header = (FlexVDIMessageHeader *)(data.get() + conn->garbage);
+        BOOST_CHECK_EQUAL(msg.header().size, header->size);
+        BOOST_CHECK_EQUAL(msg.header().type, header->type);
         handled = true;
     }
 
@@ -109,6 +107,18 @@ BOOST_FIXTURE_TEST_CASE(Connection_readError, FIXTURE) {
     conn->testRead();
     BOOST_CHECK(!handled);
     BOOST_CHECK(handledError);
+}
+
+
+BOOST_FIXTURE_TEST_CASE(Connection_read_garbage, FIXTURE) {
+    conn->buffer = MessageBuffer(1, 10);
+    conn->garbage = 3;
+    auto data = conn->buffer.shareData();
+    FlexVDIMessageHeader * header = (FlexVDIMessageHeader *)(data.get() + conn->garbage);
+    *header = conn->buffer.header();
+    header->size = 7;
+    conn->testRead();
+    BOOST_CHECK(handled);
 }
 
 } // namespace flexvm
