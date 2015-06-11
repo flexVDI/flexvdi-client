@@ -37,11 +37,11 @@ struct FIXTURE {
     asio::windows::stream_handle sock;
 
     FIXTURE() : pipe(io, bind(&FIXTURE::handle, this, _1, _2)), sock(io) {
+        pipe.setEndpoint(pipeName);
+        pipe.open();
         h = ::CreateFileA(pipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL,
                           OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
         sock.assign(h);
-        pipe.setEndpoint(pipeName);
-        pipe.open();
     }
 #endif
     ~FIXTURE() {
