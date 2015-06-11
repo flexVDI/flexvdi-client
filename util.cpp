@@ -28,7 +28,12 @@ using namespace std::chrono;
 
 
 std::ostream * Log::out = &std::cerr;
-const char * Log::levelStr[L_MAX_LEVEL] = { "DEBUG", "INFO", "WARNING", "ERROR" };
+const char * Log::levelStr[L_MAX_LEVEL] = {
+    "   DEBUG: ",
+    "    INFO: ",
+    " WARNING: ",
+    "   ERROR: "
+};
 std::function<void(Log &, LogLevel)> Log::prefix = Log::defaultPrefix;
 
 

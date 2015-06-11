@@ -97,7 +97,7 @@ protected:
     static std::function<void(Log &, LogLevel)> prefix;
     static void logDate();
     static void defaultPrefix(Log & log, LogLevel level) {
-        log << date() << " [" << levelStr[level] << "] ";
+        log << date() << levelStr[level];
     };
 };
 
