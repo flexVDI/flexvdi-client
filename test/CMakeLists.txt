@@ -15,7 +15,7 @@ if (BUILD_GUEST)
 endif ()
 
 if (WIN32)
-    add_definitions(-DBOOST_TEST_DYN_LINK)
+    set_target_properties(unit-tests PROPERTIES LINK_FLAGS "-static")
     add_executable(testginalib testginalib.cpp)
     add_executable(read_named_pipe read_named_pipe.cpp)
     set (get_printer_ppds_sources get_printer_ppds.c
