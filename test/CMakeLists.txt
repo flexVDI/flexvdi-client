@@ -4,14 +4,13 @@ if (BUILD_GUEST)
                    unit-Connection.cpp
                    unit-LocalPipe.cpp
                    unit-DispatcherRegistry.cpp
+
+                   unit-CredentialsThread.cpp
+                   ../credentials-manager/CredentialsThread.cpp
+
                    $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
     target_link_libraries(unit-tests ${FLEXVDI_LIBRARIES}
                           ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
-
-    add_executable(send_credentials send_credentials.cpp
-                   ../credentials-manager/CredentialsThread.cpp
-                   $<TARGET_OBJECTS:util_o>)
-    target_link_libraries(send_credentials ${FLEXVDI_LIBRARIES})
 endif ()
 
 if (WIN32)
