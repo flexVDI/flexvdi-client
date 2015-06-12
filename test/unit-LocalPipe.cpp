@@ -4,6 +4,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include "LocalPipe.hpp"
+#include "TimeoutKiller.hpp"
 using namespace std;
 using namespace std::placeholders;
 namespace asio = boost::asio;
@@ -19,13 +20,15 @@ struct FIXTURE {
     asio::io_service io;
     LocalPipe pipe;
     Connection::Ptr conn;
+    TimeoutKiller timeout;
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS)
     static constexpr const char * pipeName = "/var/tmp/flexvdi_test_pipe";
     asio::local::stream_protocol::endpoint ep;
     asio::local::stream_protocol::socket sock;
 
-    FIXTURE() : pipe(io, bind(&FIXTURE::handle, this, _1, _2)), ep(pipeName), sock(io) {
+    FIXTURE() : pipe(io, bind(&FIXTURE::handle, this, _1, _2)), timeout(io, 1000),
+                ep(pipeName), sock(io) {
         ::unlink(pipeName);
         pipe.setEndpoint(pipeName);
         pipe.open();
@@ -36,7 +39,8 @@ struct FIXTURE {
     HANDLE h;
     asio::windows::stream_handle sock;
 
-    FIXTURE() : pipe(io, bind(&FIXTURE::handle, this, _1, _2)), sock(io) {
+    FIXTURE() : pipe(io, bind(&FIXTURE::handle, this, _1, _2)), timeout(io, 1000),
+                sock(io) {
         pipe.setEndpoint(pipeName);
         pipe.open();
         h = ::CreateFileA(pipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL,
@@ -77,6 +81,7 @@ BOOST_FIXTURE_TEST_CASE(LocalPipe_testWrite, FIXTURE) {
     FlexVDIMessageHeader header{ 0, 0 };
     asio::async_read<>(sock, boost::asio::buffer(&header, sizeof(header)),
                         [this] (const boost::system::error_code &, std::size_t) { io.stop(); });
+    timeout.reprogram(1000);
     io.run();
     BOOST_CHECK_EQUAL(header.type, 2);
 }

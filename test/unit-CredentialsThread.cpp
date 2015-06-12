@@ -9,6 +9,7 @@
 #include "LocalPipe.hpp"
 #include "util.hpp"
 #include "credentials-manager/CredentialsThread.hpp"
+#include "TimeoutKiller.hpp"
 using namespace std;
 namespace ph = std::placeholders;
 namespace asio = boost::asio;
@@ -24,7 +25,7 @@ struct FIXTURE : public CredentialsThread::Listener {
     MessageBuffer credentials;
     string recvUser, recvPass, recvDom;
     bool messageHandled, credentialsSent, credentialsReceived;
-    asio::deadline_timer timeout;
+    TimeoutKiller timeout;
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS)
     static constexpr const char * pipeName = "/tmp/flexvdi_pipe";
@@ -34,12 +35,11 @@ struct FIXTURE : public CredentialsThread::Listener {
 
     FIXTURE() : thread(*this), pipe(io, bind(&FIXTURE::handle, this, ph::_1, ph::_2)),
                 messageHandled(false), credentialsSent(false), credentialsReceived(false),
-                timeout(io, boost::posix_time::seconds(1)) {
+                timeout(io, 1000) {
         pipe.setEndpoint(pipeName);
         thread.setEndpoint(pipeName);
         pipe.open();
         credentials = sampleCredentials("user", "pass", "domi");
-        timeout.async_wait(bind(&FIXTURE::timedOut, this, ph::_1));
     }
 
     ~FIXTURE() {
@@ -75,17 +75,11 @@ struct FIXTURE : public CredentialsThread::Listener {
         std::copy_n(dom, domlen + 1, msg->strings + userlen + passlen + 2);
         return result;
     }
-
-    void timedOut(const boost::system::error_code & error) {
-        if (!error)
-            io.stop();
-    }
 };
 
 
 BOOST_FIXTURE_TEST_CASE(CredentialsThread_testRead, FIXTURE) {
     MessageBuffer credentials = sampleCredentials("user", "pass", "domi");
-    // TODO: Program timeout to stop io
     thread.requestCredentials();
     io.run();
     io.reset();
