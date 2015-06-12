@@ -16,17 +16,18 @@ namespace sys = boost::system;
 
 
 bool CredentialsThread::openPipe() {
+    std::string pipeName = endpointName;
 #ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
-    // TODO: configurable
-    const wchar_t * pipeName = L"\\\\.\\pipe\\flexvdi_pipe";
-    HANDLE h = CreateFile(pipeName, GENERIC_READ | GENERIC_WRITE, 0, NULL,
-                          OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+    if (pipeName[0] != '\\')
+        pipeName = "\\\\.\\pipe\\" + pipeName;
+    HANDLE h = CreateFileA(pipeName.c_str(), GENERIC_READ | GENERIC_WRITE, 0, NULL,
+                           OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     return_if(h == INVALID_HANDLE_VALUE, "Error opening pipe", false);
     pipe.assign(h);
 #else
     sys::error_code error;
-    // TODO: configurable
-    const char * pipeName = "/var/run/flexvdi_pipe";
+    if (pipeName[0] != '/')
+        pipeName = "/var/run/" + pipeName;
     asio::local::stream_protocol::endpoint ep(pipeName);
     return_if(pipe.connect(ep, error), "Error opening pipe: " << error.message(), false);
 #endif

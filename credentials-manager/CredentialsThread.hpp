@@ -6,6 +6,7 @@
 #define _CREDENTIALSTHREAD_HPP_
 
 #include <memory>
+#include <string>
 #include <boost/thread.hpp>
 #include <boost/asio.hpp>
 
@@ -19,13 +20,17 @@ public:
                                         const char * domain) = 0;
     };
 
-    CredentialsThread(Listener & l) : listener(l), pipe(io) {}
+    CredentialsThread(Listener & l) : listener(l), pipe(io), endpointName(defaultPipeName) {}
     ~CredentialsThread() { stop(); }
 
     void requestCredentials();
     void stop();
+    void setEndpoint(const std::string & name) {
+        endpointName = name;
+    }
 
 private:
+    static constexpr const char * defaultPipeName = "flexvdi_pipe";
     Listener & listener;
     boost::thread thread;
     boost::asio::io_service io;
@@ -38,6 +43,7 @@ private:
     typedef boost::asio::local::stream_protocol::socket pipe_t;
 #endif
     pipe_t pipe;
+    std::string endpointName;
 
     bool openPipe();
     void readCredentials();
