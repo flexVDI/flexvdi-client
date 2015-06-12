@@ -11,21 +11,21 @@ if (BUILD_GUEST)
                    $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
     target_link_libraries(unit-tests ${FLEXVDI_LIBRARIES}
                           ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+    if (WIN32)
+        set_target_properties(unit-tests PROPERTIES LINK_FLAGS "-static")
+        add_executable(testginalib testginalib.cpp)
+    endif ()
 endif ()
 
-if (WIN32)
-    set_target_properties(unit-tests PROPERTIES LINK_FLAGS "-static")
-    add_executable(testginalib testginalib.cpp)
-    add_executable(read_named_pipe read_named_pipe.cpp)
-    set (get_printer_ppds_sources get_printer_ppds.c
-         ../client/flexvdi-spice.c ../client/flexvdi-cmdline.c
-         ../client/printclient.c ../client/PPDGenerator.c ../client/printclient-win32.c)
-else (WIN32)
-    set (get_printer_ppds_sources get_printer_ppds.c
-         ../client/flexvdi-spice.c ../client/flexvdi-cmdline.c ../client/serialredir.c
-         ../client/printclient.c ../client/PPDGenerator.c ../client/printclient-cups.c)
-endif (WIN32)
 if (BUILD_CLIENT)
-    add_executable(get_printer_ppds ${get_printer_ppds_sources})
+    if (WIN32)
+        set (get_printer_ppds_sources ../client/printclient-win32.c)
+    else ()
+        set (get_printer_ppds_sources ../client/serialredir.c ../client/printclient-cups.c)
+    endif ()
+    add_executable(get_printer_ppds get_printer_ppds.c
+                   ../client/flexvdi-spice.c ../client/flexvdi-cmdline.c
+                   ../client/printclient.c ../client/PPDGenerator.c
+                   ${get_printer_ppds_sources})
     target_link_libraries(get_printer_ppds ${CLIENT_LIBRARIES} m)
 endif ()
