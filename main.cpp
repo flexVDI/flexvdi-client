@@ -69,7 +69,7 @@ int main(int argc, char * argv[]) {
     signal(SIGINT, removePidFile);
     signal(SIGTERM, removePidFile);
 
-    FlexVDIGuestAgent & agent = FlexVDIGuestAgent::singleton();
+    FlexVDIGuestAgent agent;
     if (endpoint) {
         Log(L_DEBUG) << "Using endpoint " << endpoint;
         agent.setVirtioEndpoint(endpoint);

@@ -16,10 +16,9 @@ namespace flexvm {
 
 class FlexVDIGuestAgent {
 public:
-    static FlexVDIGuestAgent & singleton() {
-        static FlexVDIGuestAgent instance;
-        return instance;
-    }
+    FlexVDIGuestAgent() :
+        port(io, dregistry.asMessageHandler()),
+        pipe(io, dregistry.asMessageHandler()) {}
 
     int run();
     void stop();
@@ -32,10 +31,6 @@ public:
     DispatcherRegistry & getDispatcherRegistry() { return dregistry; }
 
 private:
-    FlexVDIGuestAgent() :
-    port(io, dregistry.asMessageHandler()),
-    pipe(io, dregistry.asMessageHandler()) {}
-
     boost::asio::io_service io;
     DispatcherRegistry dregistry;
     VirtioPort port;

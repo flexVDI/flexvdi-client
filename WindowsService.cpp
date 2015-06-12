@@ -36,6 +36,7 @@ public:
 private:
     SERVICE_STATUS status;
     SERVICE_STATUS_HANDLE statusHandle;
+    FlexVDIGuestAgent agent;
 
     WindowsService() {}
     void serviceMain();
@@ -174,7 +175,7 @@ void WindowsService::serviceMain() {
     status.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(statusHandle, &status);
 
-    FlexVDIGuestAgent::singleton().run();
+    agent.run();
 
     Log(L_DEBUG) << "flexVDI service ending";
     // service was stopped
@@ -196,7 +197,7 @@ DWORD WindowsService::controlHandler(DWORD control, DWORD event_type,
         Log(L_DEBUG) << "Stop service";
         status.dwCurrentState = SERVICE_STOP_PENDING;
         SetServiceStatus(statusHandle, &status);
-        FlexVDIGuestAgent::singleton().stop();
+        agent.stop();
         break;
     case SERVICE_CONTROL_INTERROGATE:
         Log(L_DEBUG) << "Interrogate service";
