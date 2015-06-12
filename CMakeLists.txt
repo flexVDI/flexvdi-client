@@ -174,12 +174,11 @@ if (BUILD_GUEST)
                        "${PROJECT_BINARY_DIR}/autorun.inf")
         add_custom_command(OUTPUT ${SPICE_GUEST_TOOLS}
                            COMMAND wget -nc http://www.spice-space.org/download/windows/spice-guest-tools/${SPICE_GUEST_TOOLS})
-        add_custom_command(OUTPUT vdagent.exe
-                           COMMAND "${PROJECT_SOURCE_DIR}/find_win_components.sh" ${WIN_COMPONENTS_ANCESTORS})
         add_custom_command(OUTPUT ${CPACK_PACKAGE_FILE_NAME}.exe
+                           COMMAND "${PROJECT_SOURCE_DIR}/find_win_components.sh" ${WIN_COMPONENTS_ANCESTORS}
                            COMMAND echo Running makensis, see makensis.log for errors
                            COMMAND makensis -Omakensis.log setup.nsi
-                           DEPENDS ${GUEST_TOOLS_TARGETS} vdagent.exe ${SPICE_GUEST_TOOLS})
+                           DEPENDS ${GUEST_TOOLS_TARGETS} ${SPICE_GUEST_TOOLS})
         add_custom_target(package DEPENDS ${CPACK_PACKAGE_FILE_NAME}.exe)
         add_custom_command(OUTPUT virtio-win.iso
                            COMMAND wget -nc https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso)
