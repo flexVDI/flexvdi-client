@@ -3,11 +3,15 @@
  **/
 
 #include "FlexVDIGuestAgent.hpp"
+#include "FlexVDIComponent.hpp"
 #include "util.hpp"
 using namespace flexvm;
 
 int FlexVDIGuestAgent::run() {
     try {
+        auto components = FlexVDIComponentFactory::singleton().instanceComponents();
+        for (auto & comp : components)
+            comp->registerComponent(dregistry);
         port.open();
         pipe.open();
         io.run();

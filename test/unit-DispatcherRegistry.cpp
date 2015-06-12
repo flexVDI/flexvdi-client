@@ -4,6 +4,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include "DispatcherRegistry.hpp"
+#include "FlexVDIComponent.hpp"
 using namespace std;
 
 namespace flexvm {

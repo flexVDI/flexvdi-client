@@ -45,11 +45,6 @@ private:
     LocalPipe pipe;
 };
 
-
-#define REGISTER_COMPONENT(Component) \
-REGISTER_COMPONENT_WITH_DISPATCHER(Component, \
-    FlexVDIGuestAgent::singleton().getDispatcherRegistry())
-
 } // namespace flexvm
 
 #endif // _FLEXVDIAGENT_HPP_

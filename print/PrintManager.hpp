@@ -9,7 +9,7 @@
 #include <fstream>
 #include <list>
 #include <boost/thread.hpp>
-#include "DispatcherRegistry.hpp"
+#include "FlexVDIComponent.hpp"
 
 namespace flexvm {
 

@@ -6,7 +6,7 @@
 #define _CREDENTIALSMANAGER_HPP_
 
 #include <memory>
-#include "DispatcherRegistry.hpp"
+#include "FlexVDIComponent.hpp"
 
 namespace flexvm {
 
