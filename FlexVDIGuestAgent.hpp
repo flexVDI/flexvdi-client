@@ -29,9 +29,6 @@ public:
     void setLocalEndpoint(const std::string & name) {
         pipe.setEndpoint(name);
     }
-    Connection::Ptr spiceClient() {
-        return port.spiceClient();
-    }
     DispatcherRegistry & getDispatcherRegistry() { return dregistry; }
 
 private:

@@ -18,7 +18,6 @@ public:
     void setEndpoint(const std::string & name) {
         endpointName = name;
     }
-    Connection::Ptr spiceClient();
 
 private:
     static constexpr const char * defaultPortName = "es.flexvdi.guest_agent";

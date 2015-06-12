@@ -12,7 +12,6 @@
 #include <boost/locale/utf.hpp>
 #endif
 #include "PrintManager.hpp"
-#include "FlexVDIGuestAgent.hpp"
 #include "util.hpp"
 
 using namespace flexvm;
@@ -95,8 +94,9 @@ void PrintManager::handle(const Connection::Ptr & src, const PrintJobMsgPtr & ms
     Job & job = jobs.back();
     msg->id = job.id;
     src->registerErrorHandler(std::bind(&PrintManager::closed, this, ph::_1, ph::_2));
-    Connection::Ptr client = FlexVDIGuestAgent::singleton().spiceClient();
-    client->send(MessageBuffer(msg));
+    Connection::Ptr client = Connection::getNamedConnection("spice-client");
+    if (client)
+        client->send(MessageBuffer(msg));
 }
 
 
@@ -108,8 +108,9 @@ void PrintManager::handle(const Connection::Ptr & src, const PrintJobDataMsgPtr 
         return;
     }
     msg->id = job->id;
-    Connection::Ptr client = FlexVDIGuestAgent::singleton().spiceClient();
-    client->send(MessageBuffer(msg));
+    Connection::Ptr client = Connection::getNamedConnection("spice-client");
+    if (client)
+        client->send(MessageBuffer(msg));
 }
 
 
@@ -161,8 +162,9 @@ void PrintManager::closed(const Connection::Ptr & src,
     auto msg = (FlexVDIPrintJobDataMsg *)buffer.getMsgData();
     msg->id = job->id;
     msg->dataLength = 0;
-    Connection::Ptr client = FlexVDIGuestAgent::singleton().spiceClient();
-    client->send(buffer);
+    Connection::Ptr client = Connection::getNamedConnection("spice-client");
+    if (client)
+        client->send(buffer);
     jobs.erase(job);
 }
 

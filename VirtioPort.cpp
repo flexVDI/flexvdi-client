@@ -86,14 +86,10 @@ VirtioPort::VirtioPort(asio::io_service & io, Connection::MessageHandler handler
         }
         conn->retryRead();
     });
+    Connection::registerNamedConnection(conn, "spice-client");
 }
 
 
 void VirtioPort::open() {
     conn->open(endpointName);
-}
-
-
-Connection::Ptr VirtioPort::spiceClient() {
-    return conn;
 }
