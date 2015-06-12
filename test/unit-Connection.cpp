@@ -110,7 +110,7 @@ BOOST_FIXTURE_TEST_CASE(Connection_readError, FIXTURE) {
 }
 
 
-BOOST_FIXTURE_TEST_CASE(Connection_read_garbage, FIXTURE) {
+BOOST_FIXTURE_TEST_CASE(Connection_readGarbage, FIXTURE) {
     conn->buffer = MessageBuffer(1, 10);
     conn->garbage = 3;
     auto data = conn->buffer.shareData();
@@ -119,6 +119,13 @@ BOOST_FIXTURE_TEST_CASE(Connection_read_garbage, FIXTURE) {
     header->size = 7;
     conn->testRead();
     BOOST_CHECK(handled);
+}
+
+
+BOOST_FIXTURE_TEST_CASE(Connection_namedConnections, FIXTURE) {
+    Connection::registerNamedConnection(conn, "test-connection");
+    Connection::Ptr ptr = Connection::getNamedConnection("test-connection");
+    BOOST_CHECK_EQUAL(conn.get(), ptr.get());
 }
 
 } // namespace flexvm

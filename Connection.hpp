@@ -8,6 +8,7 @@
 #include <memory>
 #include <functional>
 #include <list>
+#include <map>
 #include <boost/asio.hpp>
 #include "FlexVDIProto.h"
 #include "MessageBuffer.hpp"
@@ -31,6 +32,15 @@ public:
     virtual bool isOpen() const = 0;
     virtual void close() = 0;
 
+    static void registerNamedConnection(const Ptr & conn, const std::string name) {
+        namedConnections[name] = conn;
+    }
+    static Ptr getNamedConnection(const std::string name) {
+        auto it = namedConnections.find(name);
+        if (it != namedConnections.end()) return it->second;
+        else return Ptr();
+    }
+
 protected:
     MessageHandler mHandler;
     std::list<ErrorHandler> eHandlers;
@@ -52,6 +62,7 @@ protected:
 private:
     MessageBuffer readBuffer;
     FlexVDIMessageHeader header;
+    static std::map<std::string, Ptr> namedConnections;
 
     void readCompleteHeader(Ptr This, const boost::system::error_code & error,
                             std::size_t bytes);

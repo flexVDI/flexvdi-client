@@ -11,6 +11,9 @@ namespace sys = boost::system;
 using namespace std::placeholders;
 
 
+std::map<std::string, Connection::Ptr> Connection::namedConnections;
+
+
 void Connection::readNextMessage() {
     asyncRead(asio::buffer(&header, sizeof(FlexVDIMessageHeader)),
               std::bind(&Connection::readCompleteHeader, this, shared_from_this(), _1, _2));
@@ -105,4 +108,3 @@ void Connection::writeComplete(Ptr This, const boost::system::error_code & error
         onSuccess();
     }
 }
-
