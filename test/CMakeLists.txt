@@ -6,6 +6,7 @@ if (BUILD_GUEST)
                    unit-DispatcherRegistry.cpp
 
                    unit-CredentialsThread.cpp
+                   unit-CredentialsManager.cpp
                    ../credentials-manager/CredentialsThread.cpp
 
                    $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
