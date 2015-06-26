@@ -12,11 +12,16 @@ using namespace flexvm;
 using std::string;
 
 
+static bool isFlexvdiSharedPrinter(cups_dest_t * dest) {
+    return cupsGetOption("flexvdi-shared-printer", dest->num_options, dest->options) != NULL;
+}
+
+
 void PrintManager::resetPrinters() {
     cups_dest_t * dests;
     int numDests = cupsGetDests(&dests);
     for (int i = 0; i < numDests; ++i) {
-        if (cupsGetOption("flexvdi-shared-printer", dests[i].num_options, dests[i].options)) {
+        if (isFlexvdiSharedPrinter(&dests[i])) {
             uninstallPrinter(dests[i].name);
         }
     }
@@ -58,6 +63,18 @@ static string normalizeName(const string & printer) {
             result += (char)cp;
         else result += '_';
     }
+    // If it exists and it is not a flexvdi shared printer, select alternative name
+    cups_dest_t * dest, * dests;
+    int numDests = cupsGetDests(&dests);
+    while ((dest = cupsGetDest(result.c_str(), NULL, numDests, dests))) {
+        if (!isFlexvdiSharedPrinter(dest)) {
+            result += "_flexVDI";
+        } else {
+            break;
+        }
+    }
+    cupsFreeDests(numDests, dests);
+    Log(L_DEBUG) << "Normalized name for " << printer << " is " << result;
     return result;
 }
 

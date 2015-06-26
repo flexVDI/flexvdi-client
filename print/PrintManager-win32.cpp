@@ -14,6 +14,8 @@ using std::string;
 using std::wstring;
 
 
+// A safe solution for all those Win32 API functions that require a wchar_t * where
+// a const wchar_t * is enough.
 class wsbuffer {
 public:
     wsbuffer(const wchar_t * copy) {
@@ -213,10 +215,11 @@ static bool installPrinterDriver(const wsbuffer & printer, const wsbuffer & ppd)
 }
 
 
-static bool installPrinter(const wsbuffer & printer, const wsbuffer & ppd) {
+static bool installPrinter(const wsbuffer & printer, const wsbuffer & finalName,
+                           const wsbuffer & ppd) {
     Log(L_DEBUG) << "Installing printer " << printer << " from " << ppd;
 
-    if (!installPrinterDriver(printer, ppd)) return false;
+    if (!installPrinterDriver(finalName, ppd)) return false;
     Log(L_DEBUG) << "Printer driver installed";
 
     wsbuffer comment(toWstring(PrintManager::sharedPrinterDescription).c_str());
@@ -225,7 +228,7 @@ static bool installPrinter(const wsbuffer & printer, const wsbuffer & ppd) {
     wsbuffer dataType(L"RAW");
     PRINTER_INFO_2 pinfo;
     std::fill_n((uint8_t *)&pinfo, sizeof(PRINTER_INFO_2), 0);
-    pinfo.pDriverName = pinfo.pPrinterName = printer;
+    pinfo.pDriverName = pinfo.pPrinterName = finalName;
     pinfo.pPortName = portName;
     pinfo.pComment = comment;
     pinfo.pLocation = location;
@@ -248,10 +251,35 @@ static bool installPrinter(const wsbuffer & printer, const wsbuffer & ppd) {
 }
 
 
+static std::unique_ptr<BYTE[]> getFlexvdiSharedPrinterName(HANDLE hprinter) {
+    DWORD needed = 0, type;
+    GetPrinterData(hprinter, tag, &type, NULL, 0, &needed);
+    std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
+    DWORD result = GetPrinterData(hprinter, tag, &type,
+                                  buffer.get(), needed, &needed);
+    if (needed && result == ERROR_SUCCESS && type == REG_SZ)
+        return buffer;
+    else
+        return std::unique_ptr<BYTE[]>();
+}
+
+
 bool PrintManager::installPrinter(const string & printer, const string & ppd) {
     // Just in case...
     uninstallPrinter(printer);
-    return ::installPrinter(toWstring(printer), toWstring(ppd));
+    // If it exists and it is not a flexvdi shared printer, select alternative name
+    wstring wPrinter = toWstring(printer);
+    wsbuffer finalName = wPrinter;
+    HANDLE hprinter;
+    while (OpenPrinter(finalName, &hprinter, NULL)) {
+        auto name = getFlexvdiSharedPrinterName(hprinter);
+        ClosePrinter(hprinter);
+        if (!name.get())
+            finalName += L"_flexVDI";
+        else
+            break;
+    }
+    return ::installPrinter(wPrinter, finalName, toWstring(ppd));
 }
 
 
@@ -263,14 +291,9 @@ bool PrintManager::uninstallPrinter(const string & printer) {
     for (unsigned int i = 0; i < numPrinters; ++i, ++pinfo) {
         HANDLE hprinter;
         if (OpenPrinter(pinfo->pPrinterName, &hprinter, NULL)) {
-            DWORD needed = 0, type;
-            GetPrinterData(hprinter, tag, &type, NULL, 0, &needed);
-            std::unique_ptr<BYTE[]> buffer(new BYTE[needed]);
-            wchar_t * name = (wchar_t *)buffer.get();
-            DWORD result = GetPrinterData(hprinter, tag, &type,
-                                          buffer.get(), needed, &needed);
+            auto name = getFlexvdiSharedPrinterName(hprinter);
             ClosePrinter(hprinter);
-            if (needed && result == ERROR_SUCCESS && type == REG_SZ && wPrinter == name)
+            if (name.get() && wPrinter == (wchar_t *)name.get())
                 return ::uninstallPrinter(pinfo);
         }
     }
@@ -332,7 +355,7 @@ bool installFollowMePrinting(const char * portDll, const char * ppd) {
     return installMonitor(toWstring(portDll).c_str()) &&
             addPort(portName) &&
             PrintManager::uninstallPrinter(toString(pdfPrinter)) &&
-            installPrinter(pdfPrinter, toWstring(ppd));
+            installPrinter(pdfPrinter, pdfPrinter, toWstring(ppd));
 }
 
 
