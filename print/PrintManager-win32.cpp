@@ -398,7 +398,7 @@ bool uninstallFollowMePrinting() {
     }
 
     /* Try to delete the monitor */
-    return_if(DeleteMonitor(NULL, NULL, monitorName), "DeleteMonitor failed", false);
+    return_if(!DeleteMonitor(NULL, NULL, monitorName), "DeleteMonitor failed", false);
 
     return true;
 }
