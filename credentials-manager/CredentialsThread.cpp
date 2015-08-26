@@ -68,8 +68,8 @@ void CredentialsThread::headerRead(const sys::error_code & error, std::size_t by
     }
     bufferSize = header.size;
     // Manually zero memory on buffer destruction, standard algorithms have some issues
-    buffer.reset(new uint8_t[bufferSize], [size=bufferSize](uint8_t * p) {
-        for (std::size_t i = 0; i < size; ++i) p[i] = 0;
+    buffer.reset(new uint8_t[bufferSize], [this](uint8_t * p) {
+        for (std::size_t i = 0; i < bufferSize; ++i) p[i] = 0;
         delete[] p;
     });
     asio::async_read(pipe, asio::buffer(buffer.get(), bufferSize),
