@@ -11,7 +11,8 @@ if (NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 message("${CMAKE_PROJECT_NAME} v${FLEXVDI_VERSION} ${CMAKE_BUILD_TYPE} build")
 
-# Find required packages
+
+## Find required packages
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${PROJECT_SOURCE_DIR}/cmake")
 include(FindPkgConfig)
 pkg_check_modules(spice_protocol REQUIRED spice-protocol)
@@ -19,69 +20,109 @@ include_directories(${spice_protocol_INCLUDE_DIRS})
 include(TestBigEndian)
 test_big_endian(BIG_ENDIAN)
 
-# Find client packages
-set(BUILD_CLIENT True)
+
+## Find client packages
+set(BUILD_CLIENT Yes)
+macro(check_client_module modname pkgname)
+    pkg_check_modules(${modname} ${pkgname})
+    if (NOT ${modname}_FOUND)
+        set(${modname}_FOUND_STR No)
+    else ()
+        set(CLIENT_LIBRARY_DIRS ${CLIENT_LIBRARY_DIRS} ${${modname}_LIBRARY_DIRS})
+        set(CLIENT_INCLUDE_DIRS ${CLIENT_INCLUDE_DIRS} ${${modname}_INCLUDE_DIRS})
+        set(CLIENT_LIBRARIES    ${CLIENT_LIBRARIES}    ${${modname}_LIBRARIES})
+        set(${modname}_FOUND_STR "Yes v${${modname}_VERSION}")
+    endif ()
+endmacro ()
+
+# strnlen
 include(CheckFunctionExists)
 check_function_exists(strnlen HAVE_STRNLEN)
-pkg_check_modules(spice_glib spice-client-glib-2.0)
+
+# Spice client glib
+check_client_module(spice_glib spice-client-glib-2.0)
+
+# Cairo
 if (WIN32)
-    pkg_check_modules(CAIRO cairo)
-    pkg_check_modules(POPPLER poppler-glib)
+    check_client_module(CAIRO cairo)
+endif ()
+
+# Poppler
+if (WIN32)
+    check_client_module(POPPLER poppler-glib)
+endif ()
+
+# gio-unix
+if (NOT WIN32)
+    check_client_module(gio_unix gio-unix-2.0)
+endif ()
+
+# CUPS
+if (NOT WIN32)
+    find_package(Cups)
+    if (NOT CUPS_FOUND)
+        set(CUPS_FOUND_STR No)
+    else ()
+        set(CLIENT_INCLUDE_DIRS ${CLIENT_INCLUDE_DIRS} ${CUPS_INCLUDE_DIR})
+        set(CLIENT_LIBRARIES    ${CLIENT_LIBRARIES}    ${CUPS_LIBRARIES})
+        set(CUPS_FOUND_STR "Yes v${CUPS_VERSION_STRING}")
+    endif ()
+endif ()
+
+# Client required modules
+if (WIN32)
     if (NOT spice_glib_FOUND OR NOT CAIRO_FOUND OR NOT POPPLER_FOUND)
         message("Spice client, Cairo and Poppler are needed to build the client library, skipping it.")
-        set(BUILD_CLIENT False)
-    else ()
-        set(CLIENT_LIBRARY_DIRS ${spice_glib_LIBRARY_DIRS} ${CAIRO_LIBRARY_DIRS} ${POPPLER_LIBRARY_DIRS})
-        set(CLIENT_INCLUDE_DIRS ${spice_glib_INCLUDE_DIRS} ${CAIRO_INCLUDE_DIRS} ${POPPLER_INCLUDE_DIRS})
-        set(CLIENT_LIBRARIES ${spice_glib_LIBRARIES} ${CAIRO_LIBRARIES} ${POPPLER_LIBRARIES})
+        set(BUILD_CLIENT No)
     endif ()
 else ()
-    pkg_check_modules(gio_unix gio-unix-2.0)
-    find_package(Cups)
     if (NOT spice_glib_FOUND OR NOT gio_unix_FOUND OR NOT CUPS_FOUND)
         message("Spice client, Cups and GIO-unix are needed to build the client library, skipping it.")
-        set(BUILD_CLIENT False)
-    else ()
-        set(CLIENT_LIBRARY_DIRS ${spice_glib_LIBRARY_DIRS} ${gio_unix_LIBRARY_DIRS})
-        set(CLIENT_INCLUDE_DIRS ${spice_glib_INCLUDE_DIRS} ${gio_unix_INCLUDE_DIRS} ${CUPS_INCLUDE_DIR})
-        set(CLIENT_LIBRARIES ${spice_glib_LIBRARIES} ${gio_unix_LIBRARIES} ${CUPS_LIBRARIES})
+        set(BUILD_CLIENT No)
     endif ()
 endif ()
 include_directories(${CLIENT_INCLUDE_DIRS})
 link_directories(${CLIENT_LIBRARY_DIRS})
 
-# Find guest packages
-set(BUILD_GUEST True)
+
+## Find guest packages
+set(BUILD_GUEST Yes)
+
+# Boost
 if (NOT WIN32)
     set(Boost_USE_STATIC_LIBS ON)
 endif ()
 find_package(Boost 1.49.0 COMPONENTS system thread locale unit_test_framework)
-if (WIN32)
-    if (NOT Boost_FOUND)
-        message("Boost >1.49 is needed to build the guest agent, skipping it")
-        set(BUILD_GUEST False)
-    else ()
-        set(FLEXVDI_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
-                              pthread wsock32 setupapi)
-        include_directories(${Boost_INCLUDE_DIRS})
-        link_directories(${Boost_LIBRARY_DIRS})
-    endif ()
+if (NOT Boost_FOUND)
+    message("Boost >1.49 is needed to build the guest agent, skipping it")
+    set(BUILD_GUEST No)
+    set(Boost_FOUND_STR No)
 else ()
-    set(SELINUX_MAKEFILE /usr/share/selinux/devel/Makefile)
-    if (NOT Boost_FOUND OR NOT CUPS_FOUND)
-        message("Boost >1.49 and Cups are needed to build the guest agent, skipping it")
-        set(BUILD_GUEST False)
+    set(FLEXVDI_LIBRARIES ${FLEXVDI_LIBRARIES} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY})
+    include_directories(${Boost_INCLUDE_DIRS})
+    link_directories(${Boost_LIBRARY_DIRS})
+    set(Boost_FOUND_STR "Yes v${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}")
+endif ()
+
+# Cups
+if (NOT WIN32)
+    if (NOT CUPS_FOUND)
+        message("Cups is needed to build the guest agent, skipping it")
+        set(BUILD_GUEST No)
     else ()
-        set(FLEXVDI_LIBRARIES ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY}
-                              ${CUPS_LIBRARIES} pthread)
-        include_directories(${Boost_INCLUDE_DIRS} ${CUPS_INCLUDE_DIR})
-        link_directories(${Boost_LIBRARY_DIRS})
+        set(FLEXVDI_LIBRARIES ${FLEXVDI_LIBRARIES} ${CUPS_LIBRARIES})
     endif ()
 endif ()
 
-if (NOT BUILD_CLIENT AND NOT BUILD_GUEST)
-    message(FATAL_ERROR "Not building client nor guest")
+# SELinux policy compiler
+if (NOT WIN32)
+    find_file(SELINUX_MAKEFILE Makefile
+                 /usr/share/selinux/devel
+                 /usr/share/selinux/default/include
+                 /usr/share/selinux/strict/include
+                 /etc/security/selinux/src/policy)
 endif ()
+
 
 # Build options
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
@@ -89,13 +130,50 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 if (CMAKE_BUILD_TYPE STREQUAL Release)
     set(CMAKE_EXE_LINKER_FLAGS "-s")
 endif (CMAKE_BUILD_TYPE STREQUAL Release)
+set (FLEXVDI_LIBRARIES ${FLEXVDI_LIBRARIES} pthread)
 if (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
     # WINVER = 0x0501 -> Windows XP
     add_definitions(-DWIN32 -DUNICODE -D_UNICODE -DWINVER=0x0501 -DWIN32_LEAN_AND_MEAN)
+    set (FLEXVDI_LIBRARIES ${FLEXVDI_LIBRARIES} wsock32 setupapi)
     string(REPLACE "." "," FLEXVDI_VERSION_COMA "${FLEXVDI_VERSION}")
 endif ()
+
+
+# Summary
+message("\nConfigure summary\n=================\n")
+message("Spice Protocol:         v${spice_protocol_VERSION}")
+message("Build client library:   ${BUILD_CLIENT}")
+message("  Spice client:         ${spice_glib_FOUND_STR}")
+if (WIN32)
+message("  Cairo (Print):        ${CAIRO_FOUND_STR}")
+message("  Poppler (Print):      ${POPPLER_FOUND_STR}")
+else ()
+message("  gio-unix (Serial):    ${gio_unix_FOUND_STR}")
+message("  Cups (Print):         ${CUPS_FOUND_STR}")
+endif ()
+message("Build guest tools:      ${BUILD_GUEST}")
+message("  Boost:                ${Boost_FOUND_STR}")
+message("\nUseful variables:")
+foreach (varname
+         CMAKE_CXX_FLAGS CMAKE_C_FLAGS CMAKE_BUILD_TYPE
+         Boost_INCLUDE_DIRS Boost_LIBRARY_DIRS CUPS_INCLUDE_DIR FLEXVDI_LIBRARIES
+         CAIRO_LIBRARY_DIRS CAIRO_INCLUDE_DIRS
+         POPPLER_LIBRARY_DIRS POPPLER_INCLUDE_DIRS
+         gio_unix_LIBRARY_DIRS gio_unix_INCLUDE_DIRS
+         CLIENT_LIBRARY_DIRS CLIENT_INCLUDE_DIRS CLIENT_LIBRARIES
+         SELINUX_MAKEFILE)
+    if (${varname})
+        message("${varname} = ${${varname}}")
+    endif ()
+endforeach ()
+message("")
+
+if (NOT BUILD_CLIENT AND NOT BUILD_GUEST)
+    message(FATAL_ERROR "Not building client nor guest")
+endif ()
+
 
 # Sources and objects
 configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config.h")
