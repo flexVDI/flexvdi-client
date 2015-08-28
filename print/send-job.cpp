@@ -3,19 +3,15 @@
  **/
 
 #include <fstream>
-#include <boost/asio.hpp>
 #include "send-job.hpp"
 #include "util.hpp"
 #include "FlexVDIProto.h"
-#include "MessageBuffer.hpp"
-
-#ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
-#include <windows.h>
-#endif
+#include "LocalPipeClient.hpp"
 
 using namespace std;
 using namespace flexvm;
 namespace asio = boost::asio;
+namespace sys = boost::system;
 
 
 static MessageBuffer getPrintJobMsg(const string & options) {
@@ -42,36 +38,25 @@ static MessageBuffer getPrintJobData(istream & pdfFile) {
 }
 
 
-template <class Pipe>
-static bool sendData(istream & pdfFile, Pipe & pipe, const string & options) {
-    MessageBuffer jobMsgBuffer = getPrintJobMsg(options);
-    return_if(asio::write(pipe, jobMsgBuffer) < jobMsgBuffer.size(),
-              "Error notifying print job", false);
-    while (pdfFile) {
-        MessageBuffer jobDataBuffer = getPrintJobData(pdfFile);
-        return_if(asio::write(pipe, jobDataBuffer) < jobDataBuffer.size(),
-                  "Error sending print job data", false);
-    }
-    return true;
-}
-
-
 bool flexvm::sendJob(istream & pdfFile, const string & options) {
     asio::io_service io;
-    boost::system::error_code error;
-#ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
-    HANDLE h;
-    h = ::CreateFile(L"\\\\.\\pipe\\flexvdi_pipe", GENERIC_READ | GENERIC_WRITE,
-                     0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-    return_if(h == INVALID_HANDLE_VALUE, "Failed opening pipe", false);
-    asio::windows::stream_handle pipe(io, h);
-#else
-    asio::local::stream_protocol::endpoint ep("/var/run/flexvdi_pipe");
-    asio::local::stream_protocol::socket pipe(io);
-    return_if(pipe.connect(ep, error), "Failed opening pipe", false);
-#endif
-
-    bool result = sendData(pdfFile, pipe, options);
-    pipe.close();
+    bool result = false;
+    Connection::Ptr client =
+        LocalPipeClient::create(io, [](const Connection::Ptr &, const MessageBuffer &){});
+    if (!client.get()) return false;
+    client->registerErrorHandler([&](const Connection::Ptr &, const sys::error_code & error) {
+        Log(L_ERROR) << "Error sending print job data";
+        io.stop();
+    });
+    std::function<void(void)> sendNextBlock = [&]() {
+        if (pdfFile) client->send(getPrintJobData(pdfFile), sendNextBlock);
+        else {
+            result = true;
+            io.stop();
+        }
+    };
+    client->send(getPrintJobMsg(options), sendNextBlock);
+    io.run();
+    client->close();
     return result;
 }
