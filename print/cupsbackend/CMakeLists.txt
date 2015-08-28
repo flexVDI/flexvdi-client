@@ -1,4 +1,4 @@
-add_executable(flexvdiprint flexvdiprint.cpp ../send-job.cpp $<TARGET_OBJECTS:util_o>)
+add_executable(flexvdiprint flexvdiprint.cpp ../send-job.cpp $<TARGET_OBJECTS:common_objects>)
 target_link_libraries(flexvdiprint ${FLEXVDI_LIBRARIES})
 set(GUEST_TOOLS_TARGETS ${GUEST_TOOLS_TARGETS} flexvdiprint PARENT_SCOPE)
 install(TARGETS flexvdiprint RUNTIME DESTINATION libexec/flexvdi-guest-agent)

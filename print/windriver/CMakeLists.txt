@@ -12,7 +12,7 @@ set(GUEST_TOOLS_TARGETS ${GUEST_TOOLS_TARGETS} redmon PARENT_SCOPE)
 
 # The filter program must be 32-bit
 if (WIN_BITS EQUAL 32)
-add_executable(filter WIN32 filter.cpp ../send-job.cpp $<TARGET_OBJECTS:util_o>)
+add_executable(filter WIN32 filter.cpp ../send-job.cpp $<TARGET_OBJECTS:common_objects>)
 set_target_properties(filter PROPERTIES LINK_FLAGS "-static")
 target_link_libraries(filter ${FLEXVDI_LIBRARIES} gsdll32)
 set(GUEST_TOOLS_TARGETS ${GUEST_TOOLS_TARGETS} filter PARENT_SCOPE)

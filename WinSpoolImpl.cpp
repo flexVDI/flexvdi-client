@@ -2,6 +2,8 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
+#ifdef WIN32
+
 #include <windows.h>
 #include <winspool.h>
 #include <cwchar>
@@ -76,3 +78,5 @@ extern "C" WINBOOL WINAPI DeletePrinterDriverExW(LPWSTR pName, LPWSTR pEnvironme
     }
     return FALSE;
 }
+
+#endif // WIN32

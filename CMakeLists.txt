@@ -179,8 +179,8 @@ endif ()
 configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config.h")
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-set(agent_sources FlexVDIGuestAgent.cpp DispatcherRegistry.cpp
-                  Connection.cpp VirtioPort.cpp LocalPipe.cpp)
+set(agent_sources FlexVDIGuestAgent.cpp DispatcherRegistry.cpp VirtioPort.cpp LocalPipe.cpp)
+set(common_sources util.cpp Connection.cpp LocalPipeClient.cpp WinSpoolImpl.cpp)
 
 # Build guest agent
 if (BUILD_GUEST)
@@ -189,22 +189,21 @@ if (BUILD_GUEST)
     add_subdirectory(print)
 
     add_library(agent_objects OBJECT ${agent_sources})
+    add_library(common_objects OBJECT ${common_sources})
     if (WIN32)
-        add_library(util_o OBJECT util.cpp WinSpoolImpl.cpp)
         configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.rc"
                        "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc" @ONLY)
         add_executable(flexvdi-guest-agent WindowsService.cpp
                        "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.rc"
-                       $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
+                       $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:common_objects>)
         set_target_properties(flexvdi-guest-agent PROPERTIES LINK_FLAGS "-static")
         target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
         set(SPICE_GUEST_TOOLS spice-guest-tools-0.100.exe)
         configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
                        "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
     else (WIN32)
-        add_library(util_o OBJECT util.cpp)
         add_executable(flexvdi-guest-agent main.cpp
-                       $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
+                       $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:common_objects>)
         target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
         configure_file("${PROJECT_SOURCE_DIR}/flexvdi-guest-agent.sh.in"
                        "${PROJECT_BINARY_DIR}/flexvdi-guest-agent.sh" @ONLY)

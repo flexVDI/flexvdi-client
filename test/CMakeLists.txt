@@ -9,7 +9,7 @@ if (BUILD_GUEST)
                    unit-CredentialsManager.cpp
                    ../credentials-manager/CredentialsThread.cpp
 
-                   $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:util_o>)
+                   $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:common_objects>)
     target_link_libraries(unit-tests ${FLEXVDI_LIBRARIES}
                           ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
     if (WIN32)
