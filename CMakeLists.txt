@@ -22,7 +22,9 @@ test_big_endian(BIG_ENDIAN)
 
 
 ## Find client packages
-set(BUILD_CLIENT Yes)
+if (NOT DEFINED BUILD_CLIENT)
+    set(BUILD_CLIENT Yes)
+endif ()
 macro(check_client_module modname pkgname)
     pkg_check_modules(${modname} ${pkgname})
     if (NOT ${modname}_FOUND)
@@ -86,7 +88,9 @@ link_directories(${CLIENT_LIBRARY_DIRS})
 
 
 ## Find guest packages
-set(BUILD_GUEST Yes)
+if (NOT DEFINED BUILD_GUEST)
+    set(BUILD_GUEST Yes)
+endif ()
 
 # Boost
 if (NOT WIN32)
@@ -237,7 +241,9 @@ if (BUILD_CLIENT)
 endif ()
 
 # Build tests
-add_subdirectory(test)
+if (BUILD_TESTS)
+    add_subdirectory(test)
+endif ()
 
 # Packages
 set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${FLEXVDI_VERSION}")
