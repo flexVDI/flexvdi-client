@@ -9,6 +9,16 @@
 #include <spice/macros.h>
 #include "config.h"
 
+/**
+ * How to add new message types and not break old clients:
+ * - ALWAYS add new message type constants at the end of the list, just
+ *   above FLEXVDI_MAX_MESSAGE_TYPE. Otherwise other constant values
+ *   may change. Even better, assign them a specific value. Constants
+ *   MUST be consecutive, some functions expect them that way.
+ * - NEVER change a message structure that has been commited to master branch.
+ *   Add a new message if more information is needed or to deprecate an old one.
+ **/
+
 #ifdef WORDS_BIGENDIAN
 #define BYTESWAP32(val) (uint32_t)val = SPICE_BYTESWAP32((uint32_t)val)
 #else
@@ -33,13 +43,13 @@ int marshallMessage(uint32_t type, uint8_t * data, size_t bytes);
 size_t messageSize(uint32_t type, const uint8_t * data);
 
 enum {
-    FLEXVDI_CREDENTIALS = 0,
-    FLEXVDI_ASKCREDENTIALS,
-    FLEXVDI_PRINTJOB,
-    FLEXVDI_PRINTJOBDATA,
-    FLEXVDI_SHAREPRINTER,
-    FLEXVDI_UNSHAREPRINTER,
-    FLEXVDI_RESET,
+    FLEXVDI_CREDENTIALS             = 0,
+    FLEXVDI_ASKCREDENTIALS          = 1,
+    FLEXVDI_PRINTJOB                = 2,
+    FLEXVDI_PRINTJOBDATA            = 3,
+    FLEXVDI_SHAREPRINTER            = 4,
+    FLEXVDI_UNSHAREPRINTER          = 5,
+    FLEXVDI_RESET                   = 6,
     FLEXVDI_MAX_MESSAGE_TYPE // Must be the last one
 };
 
