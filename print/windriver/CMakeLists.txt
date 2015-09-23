@@ -10,10 +10,10 @@ set_target_properties(redmon PROPERTIES
     PREFIX "")
 set(GUEST_TOOLS_TARGETS ${GUEST_TOOLS_TARGETS} redmon PARENT_SCOPE)
 
-# The filter program must be 32-bit
+# The filter program must be 32-bit, 64-bit GS lib crashes for unknown reasons
 if (WIN_BITS EQUAL 32)
-add_executable(filter WIN32 filter.cpp ../send-job.cpp $<TARGET_OBJECTS:common_objects>)
-set_target_properties(filter PROPERTIES LINK_FLAGS "-static")
-target_link_libraries(filter ${FLEXVDI_LIBRARIES} gsdll32)
-set(GUEST_TOOLS_TARGETS ${GUEST_TOOLS_TARGETS} filter PARENT_SCOPE)
+    add_executable(filter WIN32 filter.cpp ../send-job.cpp $<TARGET_OBJECTS:common_objects>)
+    set_target_properties(filter PROPERTIES LINK_FLAGS "-Wl,-enable-stdcall-fixup -static")
+    target_link_libraries(filter ${FLEXVDI_LIBRARIES} gsdll32)
+    set(GUEST_TOOLS_TARGETS ${GUEST_TOOLS_TARGETS} filter PARENT_SCOPE)
 endif (WIN_BITS EQUAL 32)
