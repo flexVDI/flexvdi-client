@@ -7,8 +7,9 @@
 
 #include <memory>
 #include <string>
-#include <boost/thread.hpp>
+#include <thread>
 #include <boost/asio.hpp>
+#include "libstdcxx-compat.hpp"
 #include "../LocalPipeClient.hpp"
 
 namespace flexvm {
@@ -33,7 +34,7 @@ public:
 
 private:
     Listener & listener;
-    boost::thread thread;
+    std::thread thread;
     boost::asio::io_service io;
     boost::system::error_code lastError;
     std::string endpointName;

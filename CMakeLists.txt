@@ -37,6 +37,17 @@ macro(check_client_module modname pkgname)
     endif ()
 endmacro ()
 
+# std::thread support in libstdc++
+set (CMAKE_REQUIRED_LIBRARIES pthread)
+set (CMAKE_REQUIRED_FLAGS -std=c++11)
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles(
+    "#include <mutex>
+     #include <thread>
+     int main() { std::mutex m; std::thread t; return 0; }"
+    HAVE_STD_THREAD
+)
+
 # strnlen
 include(CheckFunctionExists)
 check_function_exists(strnlen HAVE_STRNLEN)
@@ -96,7 +107,10 @@ endif ()
 if (NOT WIN32)
     set(Boost_USE_STATIC_LIBS ON)
 endif ()
-find_package(Boost 1.49.0 COMPONENTS system thread locale unit_test_framework)
+if (NOT HAVE_STD_THREAD)
+    set(Boost_USE_THREAD thread)
+endif ()
+find_package(Boost 1.49.0 COMPONENTS system ${Boost_USE_THREAD} unit_test_framework)
 if (NOT Boost_FOUND)
     message("Boost >1.49 is needed to build the guest agent, skipping it")
     set(BUILD_GUEST No)

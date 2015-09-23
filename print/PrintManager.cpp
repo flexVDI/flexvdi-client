@@ -9,7 +9,6 @@
 #include <winspool.h>
 #else
 #include <cups/cups.h>
-#include <boost/locale/utf.hpp>
 #endif
 #include "PrintManager.hpp"
 #include "util.hpp"
@@ -24,7 +23,7 @@ REGISTER_COMPONENT(PrintManager);
 
 
 PrintManager::PrintManager() {
-    thread = boost::thread(std::bind(&PrintManager::workingThread, this));
+    thread = std::thread(std::bind(&PrintManager::workingThread, this));
 }
 
 
@@ -63,7 +62,7 @@ void PrintManager::stopWorkingThread() {
 
 void PrintManager::enqueueTask(const Task & task) {
     {
-        boost::lock_guard<boost::mutex> lock(tasksMutex);
+        std::unique_lock<std::mutex> lock(tasksMutex);
         tasks.push_front(task);
     }
     hasTasks.notify_one();
@@ -74,7 +73,7 @@ PrintManager::Task PrintManager::dequeueTask() {
     bool skip = false;
     Task task;
     do {
-        boost::unique_lock<boost::mutex> lock(tasksMutex);
+        std::unique_lock<std::mutex> lock(tasksMutex);
         while (tasks.empty()) {
             hasTasks.wait(lock);
         }

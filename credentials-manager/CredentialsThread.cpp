@@ -49,7 +49,7 @@ void CredentialsThread::handleMessage(const Connection::Ptr &, const MessageBuff
 
 
 void CredentialsThread::requestCredentials() {
-    thread = boost::thread(std::bind(&CredentialsThread::readCredentials, this));
+    thread = std::thread(std::bind(&CredentialsThread::readCredentials, this));
 }
 
 

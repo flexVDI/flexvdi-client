@@ -8,7 +8,10 @@
 #include <memory>
 #include <fstream>
 #include <list>
-#include <boost/thread.hpp>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include "libstdcxx-compat.hpp"
 #include "FlexVDIComponent.hpp"
 
 namespace flexvm {
@@ -63,11 +66,11 @@ private:
         std::string ppd;
     };
 
-    boost::thread thread;
+    std::thread thread;
     std::list<Job> jobs;
     std::list<Task> tasks;
-    boost::mutex tasksMutex;
-    boost::condition_variable hasTasks;
+    std::mutex tasksMutex;
+    std::condition_variable hasTasks;
 
     uint32_t getNewId() const {
         if (jobs.empty()) return 1;

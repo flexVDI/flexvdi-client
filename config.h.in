@@ -3,3 +3,4 @@
 #endif
 #define FLEXVDI_VERSION_STRING "@FLEXVDI_VERSION@"
 #cmakedefine HAVE_STRNLEN 1
+#cmakedefine HAVE_STD_THREAD 1
