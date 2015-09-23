@@ -54,13 +54,25 @@ static ipp_t * newRequest(ipp_op_t op, const string & printer) {
 }
 
 
+static char utf8Decode8Bit(string::const_iterator & start) {
+    char result = *start++;
+    // Ignore multibyte chars, we are interested in just the ANSI codepage
+    if (result >= 0b11110000)
+        ++start;
+    if (result >= 0b11100000)
+        ++start;
+    if (result >= 0b11000000)
+        ++start;
+    return result;
+}
+
+
 static string normalizeName(const string & printer) {
     string result;
-    typedef boost::locale::utf::utf_traits<char> utf8;
     for (auto i = printer.begin(); i != printer.end() && result.length() < 127;) {
-        auto cp = utf8::decode(i, printer.end());
-        if (cp > ' ' && cp != '@' && cp != 127 && cp != '/' && cp != '#')
-            result += (char)cp;
+        char cp = utf8Decode8Bit(i);
+        if (cp > ' ' && cp != '@' && cp < 127 && cp != '/' && cp != '#')
+            result += cp;
         else result += '_';
     }
     // If it exists and it is not a flexvdi shared printer, select alternative name
