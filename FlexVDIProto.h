@@ -119,10 +119,10 @@ typedef struct FlexVDIResetMsg {
 #define MSG_OPERATIONS(Msg, id, extra, commands) \
 case id: do { \
     Msg * msg = (Msg *)data; \
-    size_t size = sizeof(*msg) + extra; \
-    if (op) return size; \
+    if (op) return sizeof(*msg) + extra; \
     else { \
-        if (bytes < sizeof(Msg)) return 0; \
+        if (bytes < sizeof(*msg)) return 0; \
+        size_t size = sizeof(*msg) + extra; \
         commands \
         return bytes >= size; \
     } \
