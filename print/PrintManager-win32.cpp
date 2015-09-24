@@ -308,7 +308,7 @@ static bool isMonitorInstalled() {
     std::unique_ptr<uint8_t[]> buffer(new uint8_t[needed]);
     MONITOR_INFO_1W * mi = (MONITOR_INFO_1W *)buffer.get();
     return_if(needed <= 0 || !EnumMonitors(NULL, 1, (LPBYTE)mi, needed, &needed, &returned),
-              "EnumMonitorsW failed", false);
+              "EnumMonitorsW failed, needed = " << needed, false);
     for (DWORD i = 0; i < returned; i++) {
         if (monitorName.isEqualTo(mi[i].pName)) {
             return true;

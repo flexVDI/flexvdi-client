@@ -18,21 +18,27 @@
     ${EndIf}
     Rename /REBOOTOK "$INSTDIR\redmon.dll" "${REDMON_DLL}"
     DetailPrint "Installing Follow-me Printing driver"
-    nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" install-followme-printing "${REDMON_DLL}" "$INSTDIR\printdriver\flexvdips.ppd"'
+    nsExec::ExecToStack '"$INSTDIR\flexvdi-guest-agent.exe" install-followme-printing "${REDMON_DLL}" "$INSTDIR\printdriver\flexvdips.ppd"'
     Pop $0
-    ${If} $0 = 0
+    Pop $1
+    ${If} $0 == "error"
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Could not execute guest agent"
+    ${ElseIf} $0 = 0
         DetailPrint "Follow-me Printing driver successfully installed"
         WriteRegStr HKLM "${PORT_CONFIG_KEY}" "Command" '$INSTDIR\printdriver\filter.exe'
     ${Else}
-        MessageBox MB_OK|MB_ICONEXCLAMATION "Follow-me Printing installation failed"
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Follow-me Printing installation failed: $1"
     ${EndIf}
 !macroend
 
 !macro uninstallPrintDriver
-    nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall-followme-printing'
-    DeleteRegKey HKLM "${PORT_CONFIG_KEY}"
-    ${If} $0 = 0
-        Delete /REBOOTOK "$SYSDIR\redmon.dll"
+    nsExec::ExecToStack '"$INSTDIR\flexvdi-guest-agent.exe" uninstall-followme-printing'
+    Pop $0
+    Pop $1
+    ${If} $0 == "error"
+        DetailPrint "Could not execute guest agent"
+    ${ElseIf} $0 = 0
+        Delete /REBOOTOK "${REDMON_DLL}"
     ${Else}
         DetailPrint "ERROR Printer monitor could not be removed: $1"
     ${EndIf}

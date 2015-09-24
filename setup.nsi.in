@@ -61,7 +61,6 @@ Section "!flexVDI guest agent"
     ${DisableX64FSRedirection}
     SetOutPath $INSTDIR
     SetRegView 64
-    SetAutoClose true
 
     ; Write the uninstall keys for Windows
     WriteRegStr HKLM "${UNINSTALL_KEY}"   "DisplayName" "${APPNAME}"
@@ -137,8 +136,8 @@ FunctionEnd
 
 
 Section "Uninstall"
-    SetAutoClose true
     ${DisableX64FSRedirection}
+    SetRegView 64
 
     ${If} ${IsWinXP}
         !insertmacro uninstallGina
@@ -148,14 +147,18 @@ Section "Uninstall"
 
     !insertmacro uninstallPrintDriver
 
+    ClearErrors
     DeleteRegKey HKLM "${UNINSTALL_KEY}"
-    nsExec::Exec '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
+    ${If} ${Errors}
+        DetailPrint "ERROR Uninstaller registry key could not be removed"
+    ${EndIf}
+    nsExec::ExecToStack '"$INSTDIR\flexvdi-guest-agent.exe" uninstall'
     Pop $0
+    Pop $1
     ${If} $0 = 0
         DetailPrint "Guest agent service removed"
         RMDir /r /REBOOTOK "$INSTDIR"
     ${Else}
-        Pop $0
-        MessageBox MB_OK|MB_ICONEXCLAMATION "Guest agent failed to uninstall: $0"
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Guest agent failed to uninstall: $1"
     ${EndIf}
 SectionEnd
