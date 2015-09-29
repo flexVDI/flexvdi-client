@@ -156,6 +156,9 @@ if (WIN32)
     add_definitions(-DWIN32 -DUNICODE -D_UNICODE -DWINVER=0x0501 -DWIN32_LEAN_AND_MEAN)
     set (FLEXVDI_LIBRARIES ${FLEXVDI_LIBRARIES} wsock32 setupapi)
     string(REPLACE "." "," FLEXVDI_VERSION_COMA "${FLEXVDI_VERSION}")
+    # FIXME: This is a workaround to a multiple definition of symbols in static libstdc++,
+    # MinGW-w64 GCC 5.1.0 Fedora 22
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--allow-multiple-definition")
 endif ()
 
 
