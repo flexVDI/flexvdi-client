@@ -47,7 +47,7 @@ void Connection::readCompleteHeader(Ptr This, const sys::error_code & error,
     if (error) {
         readError(error);
     } else {
-        marshallHeader(&header);
+        unmarshallHeader(&header);
         Log(L_DEBUG) << "Reading message type " << header.type <<
                         " and size " << header.size << " from connection " << this;
         if (header.size > FLEXVDI_MAX_MESSAGE_LENGTH) {
@@ -73,7 +73,7 @@ void Connection::readCompleteBody(Ptr This, const sys::error_code & error,
         readError(error);
     } else {
         // TODO Is bytes_transferred == header.size ??
-        if (!marshallMessage(header.type, readBuffer.getMsgData(), bytes)) {
+        if (!unmarshallMessage(header.type, readBuffer.getMsgData(), bytes)) {
             Log(L_WARNING) << "Message size mismatch on connection " << this;
         } else {
             mHandler(shared_from_this(), readBuffer);

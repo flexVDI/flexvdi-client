@@ -200,7 +200,7 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
         case WAIT_NEW_MESSAGE:
             // Assume headers arrive at once
             curHeader = *((FlexVDIMessageHeader *)data);
-            marshallHeader(&curHeader);
+            unmarshallHeader(&curHeader);
             data += sizeof(FlexVDIMessageHeader);
             buffer = bufpos = (uint8_t *)malloc(curHeader.size);
             bufend = bufpos + curHeader.size;
@@ -213,7 +213,7 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
             bufpos += size;
             data += size;
             if (bufpos == bufend) {
-                if (!marshallMessage(curHeader.type, buffer, curHeader.size)) {
+                if (!unmarshallMessage(curHeader.type, buffer, curHeader.size)) {
                     flexvdiLog(L_WARN, "Wrong message size on reception");
                     return;
                 }

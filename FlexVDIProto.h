@@ -39,7 +39,13 @@ static inline void marshallHeader(FlexVDIMessageHeader * header) {
     BYTESWAP32(header->size);
 }
 
+static inline void unmarshallHeader(FlexVDIMessageHeader * header) {
+    BYTESWAP32(header->type);
+    BYTESWAP32(header->size);
+}
+
 int marshallMessage(uint32_t type, uint8_t * data, size_t bytes);
+int unmarshallMessage(uint32_t type, uint8_t * data, size_t bytes);
 size_t messageSize(uint32_t type, const uint8_t * data);
 
 enum {
@@ -116,10 +122,16 @@ typedef struct FlexVDIResetMsg {
 
 #ifdef FLEXVDI_PROTO_IMPL
 
+enum {
+    OP_SIZE,
+    OP_MARSHALL,
+    OP_UNMARSHALL
+};
+
 #define MSG_OPERATIONS(Msg, id, extra, commands) \
 case id: do { \
     Msg * msg = (Msg *)data; \
-    if (op) return sizeof(*msg) + extra; \
+    if (op == OP_SIZE) return sizeof(*msg) + extra; \
     else { \
         if (bytes < sizeof(*msg)) return 0; \
         size_t size = sizeof(*msg) + extra; \
@@ -129,7 +141,7 @@ case id: do { \
 } while (0)
 
 #define MSG_OPERATIONS_EMPTY(Msg, id) \
-case id: return op ? sizeof(Msg) : TRUE
+case id: return op == OP_SIZE ? sizeof(Msg) : TRUE
 
 size_t msgOp(uint32_t type, int op, uint8_t * data, size_t bytes) {
     switch (type) {
@@ -166,12 +178,17 @@ size_t msgOp(uint32_t type, int op, uint8_t * data, size_t bytes) {
 
 
 size_t messageSize(uint32_t type, const uint8_t * data) {
-    return msgOp(type, TRUE, (uint8_t *)data, 0);
+    return msgOp(type, OP_SIZE, (uint8_t *)data, 0);
 }
 
 
 int marshallMessage(uint32_t type, uint8_t * data, size_t bytes) {
-    return msgOp(type, FALSE, data, bytes);
+    return msgOp(type, OP_MARSHALL, data, bytes);
+}
+
+
+int unmarshallMessage(uint32_t type, uint8_t * data, size_t bytes) {
+    return msgOp(type, OP_UNMARSHALL, data, bytes);
 }
 #endif
 
