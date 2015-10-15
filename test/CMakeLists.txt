@@ -1,3 +1,5 @@
+set_directory_properties(PROPERTIES EXCLUDE_FROM_ALL True)
+
 if (BUILD_GUEST)
     add_executable(unit-tests unit-main.cpp
                    unit-MessageBuffer.cpp

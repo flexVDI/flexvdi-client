@@ -258,9 +258,7 @@ if (BUILD_CLIENT)
 endif ()
 
 # Build tests
-if (BUILD_TESTS)
-    add_subdirectory(test)
-endif ()
+add_subdirectory(test)
 
 # Packages
 set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${FLEXVDI_VERSION}")
