@@ -219,7 +219,6 @@ if (BUILD_GUEST)
                        $<TARGET_OBJECTS:agent_objects> $<TARGET_OBJECTS:common_objects>)
         set_target_properties(flexvdi-guest-agent PROPERTIES LINK_FLAGS "-static")
         target_link_libraries(flexvdi-guest-agent ${FLEXVDI_LIBRARIES})
-        set(SPICE_GUEST_TOOLS spice-guest-tools-0.100.exe)
         configure_file("${PROJECT_SOURCE_DIR}/setup.nsi.in"
                        "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
     else (WIN32)
@@ -270,16 +269,25 @@ if (BUILD_GUEST)
     if (WIN32)
         configure_file("${PROJECT_SOURCE_DIR}/autorun.inf.in"
                        "${PROJECT_BINARY_DIR}/autorun.inf")
-        add_custom_command(OUTPUT ${SPICE_GUEST_TOOLS}
-                           COMMAND wget -nc http://www.spice-space.org/download/windows/spice-guest-tools/${SPICE_GUEST_TOOLS})
+        add_custom_command(OUTPUT virtio-win.iso
+                           COMMAND wget -nc https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso)
+        add_custom_target(virtio_win_iso DEPENDS virtio-win.iso)
+        add_custom_command(OUTPUT spice-nsis
+                           COMMAND git clone git://anongit.freedesktop.org/spice/spice-nsis)
+        add_custom_target(spice_nsis_repo DEPENDS spice-nsis)
+        add_custom_command(OUTPUT spice-guest-tools.exe
+                           COMMAND "${PROJECT_SOURCE_DIR}/configure-spice-nsis.sh" ${WIN_COMPONENTS_ANCESTORS}
+                           COMMAND echo Running makensis, see spice-nsis.log for errors
+                           COMMAND makensis -Ospice-nsis.log -X'!AddPluginDir spice-nsis' spice-nsis/spice-guest-tools.nsis
+                           COMMAND mv spice-nsis/spice-guest-tools*.exe spice-guest-tools.exe
+                           DEPENDS virtio_win_iso spice_nsis_repo)
+        add_custom_target(spice_guest_tools_installer DEPENDS spice-guest-tools.exe)
         add_custom_command(OUTPUT ${CPACK_PACKAGE_FILE_NAME}.exe
                            COMMAND "${PROJECT_SOURCE_DIR}/find_win_components.sh" ${WIN_COMPONENTS_ANCESTORS}
                            COMMAND echo Running makensis, see makensis.log for errors
                            COMMAND makensis -Omakensis.log setup.nsi
-                           DEPENDS ${GUEST_TOOLS_TARGETS} ${SPICE_GUEST_TOOLS})
-        add_custom_target(package DEPENDS ${CPACK_PACKAGE_FILE_NAME}.exe)
-        add_custom_command(OUTPUT virtio-win.iso
-                           COMMAND wget -nc https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso)
+                           DEPENDS ${GUEST_TOOLS_TARGETS} ${PROJECT_BINARY_DIR}/setup.nsi spice_guest_tools_installer)
+        add_custom_target(installer DEPENDS ${CPACK_PACKAGE_FILE_NAME}.exe)
         add_custom_command(OUTPUT ${CPACK_PACKAGE_FILE_NAME}.iso
                            COMMAND cp virtio-win.iso ${CPACK_PACKAGE_FILE_NAME}.iso
                            COMMAND growisofs -M ${CPACK_PACKAGE_FILE_NAME}.iso

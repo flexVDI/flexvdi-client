@@ -94,13 +94,9 @@ SectionEnd
 Section "!SPICE guest tools"
     SectionIn RO
     SetOutPath $INSTDIR
-    File "@SPICE_GUEST_TOOLS@"
-    ExecWait '"$INSTDIR\@SPICE_GUEST_TOOLS@"'
-    Delete "$INSTDIR\@SPICE_GUEST_TOOLS@"
-    File /oname=vdagent32.exe "win32/vdagent.exe"
-    File /oname=vdagent64.exe "win64/vdagent.exe"
-    Rename /REBOOTOK "$INSTDIR\vdagent32.exe" "$PROGRAMFILES32\SPICE Guest Tools\32\vdagent.exe"
-    Rename /REBOOTOK "$INSTDIR\vdagent64.exe" "$PROGRAMFILES32\SPICE Guest Tools\64\vdagent.exe"
+    File "spice-guest-tools.exe"
+    ExecWait '"$INSTDIR\spice-guest-tools.exe"'
+    Delete "$INSTDIR\spice-guest-tools.exe"
 SectionEnd
 
 
