@@ -134,8 +134,10 @@ case id: do { \
     if (op == OP_SIZE) return sizeof(*msg) + extra; \
     else { \
         if (bytes < sizeof(*msg)) return 0; \
-        size_t size = sizeof(*msg) + extra; \
+        size_t size = 0; \
+        if (op == OP_MARSHALL) size = sizeof(*msg) + extra; \
         commands \
+        if (op == OP_UNMARSHALL) size = sizeof(*msg) + extra; \
         return bytes >= size; \
     } \
 } while (0)
