@@ -1,6 +1,8 @@
 set (sources flexvdi-spice.c flexvdi-cmdline.c printclient.c PPDGenerator.c)
 if (WIN32)
     set (sources ${sources} printclient-win32.c)
+    add_executable(print-pdf WIN32 print-with-poppler.c)
+    target_link_libraries(print-pdf ${CLIENT_LIBRARIES})
 else ()
     set (sources ${sources} serialredir.c printclient-cups.c)
 endif ()

@@ -1,14 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <glib.h>
-#include <glib/gstdio.h>
+/**
+ * Copyright Flexible Software Solutions S.L. 2014
+ **/
+
 #include <windows.h>
-#include <wchar.h>
 #include <winspool.h>
 #include <shellapi.h>
-#include <poppler.h>
-#include <cairo.h>
-#include <cairo/cairo-win32.h>
 #include "printclient.h"
 #include "PPDGenerator.h"
 #include "flexvdi-spice.h"
@@ -37,21 +33,6 @@ int flexvdiSpiceGetPrinterList(GSList ** printerList) {
 }
 
 
-static PRINTER_INFO_2 * getPrinterInfo(HANDLE printer) {
-    PRINTER_INFO_2 * pinfo = NULL;
-    DWORD needed = 0;
-    GetPrinter(printer, 2, NULL, 0, &needed);
-    if (needed > 0) {
-        pinfo = (PRINTER_INFO_2 *)g_malloc(needed);
-        if (!GetPrinter(printer, 2, (LPBYTE)pinfo, needed, &needed)) {
-            g_free(pinfo);
-            pinfo = NULL;
-        }
-    }
-    return pinfo;
-}
-
-
 typedef struct ClientPrinter {
     wchar_t * name;
     HANDLE handle;
@@ -63,25 +44,27 @@ static void deleteClientPrinter(ClientPrinter * printer) {
     g_free(printer->name);
     ClosePrinter(printer->handle);
     g_free(printer->pinfo);
+    g_free(printer);
 }
 
 
-static ClientPrinter * newClientPrinter(const char * nameUtf8) {
+static ClientPrinter * newClientPrinter(wchar_t * name) {
+    DWORD needed = 0;
     ClientPrinter * printer = g_malloc0(sizeof(ClientPrinter));
     if (printer) {
-        printer->name = g_utf8_to_utf16(nameUtf8, -1, NULL, NULL, NULL);
+        printer->name = name;
         if (OpenPrinter(printer->name, &printer->handle, NULL)) {
-            printer->pinfo = getPrinterInfo(printer->handle);
-            if (!printer->pinfo) {
-                deleteClientPrinter(printer);
-                printer = NULL;
+            GetPrinter(printer, 2, NULL, 0, &needed);
+            if (needed > 0) {
+                printer->pinfo = g_malloc(needed);
+                if (GetPrinter(printer, 2, (LPBYTE) printer->pinfo, needed, &needed)) {
+                    return printer;
+                }
             }
-        } else {
-            deleteClientPrinter(printer);
-            printer = NULL;
         }
+        deleteClientPrinter(printer);
     }
-    return printer;
+    return NULL;
 }
 
 
@@ -224,11 +207,18 @@ static void getMediaTypes(ClientPrinter * printer, PPDGenerator * ppd) {
 }
 
 
+static wchar_t * asUtf16(char * utf8) {
+    wchar_t * result = g_utf8_to_utf16(utf8, -1, NULL, NULL, NULL);
+    g_free(utf8);
+    return result;
+}
+
+
 char * getPPDFile(const char * printer) {
     PPDGenerator * ppd = newPPDGenerator(printer);
     char * result = NULL;
 
-    ClientPrinter * cprinter = newClientPrinter(printer);
+    ClientPrinter * cprinter = newClientPrinter(asUtf16(g_strdup(printer)));
     if (cprinter) {
         ppdSetColor(ppd, getPrinterCap(cprinter, DC_COLORDEVICE, NULL));
         ppdSetDuplex(ppd, getPrinterCap(cprinter, DC_DUPLEX, NULL));
@@ -245,256 +235,29 @@ char * getPPDFile(const char * printer) {
 }
 
 
-static LONG findBestPaperMatch(ClientPrinter * printer, double width, double length) {
-    int i, numPaperSizes = getPrinterCap(printer, DC_PAPERNAMES, NULL);
-    int bestMatch = 0;
-    if (numPaperSizes > 0) {
-        WORD paperIds[numPaperSizes];
-        POINT paperSizes[numPaperSizes];
-        getPrinterCap(printer, DC_PAPERS, (wchar_t *)paperIds);
-        getPrinterCap(printer, DC_PAPERSIZE, (wchar_t *)paperSizes);
-        double minError = -1;
-        for (i = 0; i < numPaperSizes; ++i) {
-            POINT p = paperSizes[i];
-            double error = abs(width - p.x)*(length < p.y ? length : p.y) +
-                           abs(length - p.y)*(width < p.x ? width : p.x);
-            if (minError < 0.0 || minError > error) {
-                minError = error;
-                bestMatch = paperIds[i];
-            }
-        }
-        if (minError > 1000000.0) bestMatch = 0;
-        flexvdiLog(L_DEBUG, "Best match is paper %d with error %f\n", bestMatch, minError);
-    }
-    return bestMatch;
-}
-
-
-static void getMediaSizeOptionFromFile(ClientPrinter * printer, const char * pdf,
-                                       DEVMODE * options) {
-    PopplerDocument * document = NULL;
-    GError *error = NULL;
-    gchar * uri = g_filename_to_uri(pdf, NULL, &error);
-    double width, length;
-    if (uri) {
-        document = poppler_document_new_from_file(uri, NULL, &error);
-        g_free(uri);
-    }
-    if (document) {
-        PopplerPage * page = poppler_document_get_page(document, 0);
-        if (page) {
-            poppler_page_get_size(page, &width, &length);
-            g_object_unref(page);
-            width *= 254.0 / 72.0;
-            length *= 254.0 / 72.0;
-            options->dmFields |= DM_PAPERSIZE | DM_SCALE | DM_ORIENTATION;
-            options->dmScale = 100;
-            options->dmOrientation = DMORIENT_PORTRAIT;
-            options->dmPaperSize = findBestPaperMatch(printer, width, length);
-            if (!options->dmPaperSize) {
-                options->dmFields |= DM_PAPERLENGTH | DM_PAPERWIDTH;
-                options->dmPaperWidth = width;
-                options->dmPaperLength = length;
-                flexvdiLog(L_INFO, "Pagesize set to %fx%f\n", width, length);
-            } else {
-                flexvdiLog(L_INFO, "Pagesize set to %d\n", options->dmPaperSize);
-            }
-        }
-        g_object_unref(document);
-    }
-}
-
-
-static void getMediaSourceOption(ClientPrinter * printer, char * jobOptions,
-                                 DEVMODE * options) {
-    char * media_source = getJobOption(jobOptions, "media-source");
-    int value = 0;
-    if (media_source) {
-        value = atoi(media_source);
-        g_free(media_source);
-    }
-    int numTrays = getPrinterCap(printer, DC_BINNAMES, NULL);
-    if (value < 0 || value >= numTrays) value = 0;
-    options->dmFields |= DM_DEFAULTSOURCE;
-    options->dmDefaultSource = DMBIN_USER + value;
-}
-
-
-static void getMediaTypeOption(ClientPrinter * printer, char * jobOptions,
-                               DEVMODE * options) {
-    char * media_type = getJobOption(jobOptions, "media-type");
-    int value = 0;
-    if (media_type) {
-        value = atoi(media_type);
-        g_free(media_type);
-    }
-    int numMediaTypes = getPrinterCap(printer, DC_MEDIATYPENAMES, NULL);
-    if (value < 0 || value >= numMediaTypes) value = 0;
-    options->dmFields |= DM_MEDIATYPE;
-    options->dmMediaType = DMMEDIA_USER + value;
-}
-
-
-static void getDuplexOption(char * jobOptions, DEVMODE * options) {
-    char * sides = getJobOption(jobOptions, "sides");
-    if (sides) {
-        options->dmFields |= DM_DUPLEX;
-        if (!strcmp(sides, "two-sided-short-edge"))
-            options->dmDuplex = DMDUP_HORIZONTAL;
-        else if (!strcmp(sides, "two-sided-long-edge"))
-            options->dmDuplex = DMDUP_VERTICAL;
-        else options->dmDuplex = DMDUP_SIMPLEX;
-        g_free(sides);
-    }
-}
-
-
-static void getCollateOption(char * jobOptions, DEVMODE * options) {
-    char * nocollate = getJobOption(jobOptions, "noCollate");
-    if (nocollate) {
-        options->dmFields |= DM_COLLATE;
-        options->dmCollate = DMCOLLATE_FALSE;
-        g_free(nocollate);
-    } else {
-        char * collate = getJobOption(jobOptions, "Collate");
-        if (collate) {
-            options->dmFields |= DM_COLLATE;
-            options->dmCollate = DMCOLLATE_TRUE;
-            g_free(collate);
-        }
-    }
-}
-
-
-static void getResolutionOption(char * jobOptions, DEVMODE * options) {
-    char * resolution = getJobOption(jobOptions, "Resolution");
-    if (resolution) {
-        int value = atoi(resolution);
-        options->dmFields |= DM_PRINTQUALITY | DM_YRESOLUTION;
-        options->dmPrintQuality = options->dmYResolution = value;
-        g_free(resolution);
-    }
-}
-
-
-static DEVMODE * jobOptionsToWindows(ClientPrinter * printer, const char * pdf,
-                                     char * jobOptions) {
-    char * copies = getJobOption(jobOptions, "copies"),
-         * color = getJobOption(jobOptions, "color");
-    DEVMODE * options = getDocumentProperties(printer);
-    if (options) {
-        getMediaSizeOptionFromFile(printer, pdf, options);
-        getMediaSourceOption(printer, jobOptions, options);
-        getMediaTypeOption(printer, jobOptions, options);
-        getDuplexOption(jobOptions, options);
-        getCollateOption(jobOptions, options);
-        getResolutionOption(jobOptions, options);
-        options->dmFields |= DM_COPIES;
-        options->dmCopies = copies ? atoi(copies) : 1;
-        options->dmFields |= DM_COLOR;
-        options->dmColor = color ? DMCOLOR_COLOR : DMCOLOR_MONOCHROME;
-    }
-    g_free(color);
-    g_free(copies);
-    return options;
-}
-
-
-static int printFile(ClientPrinter * printer, const char * pdf,
-                     const wchar_t * title, DEVMODE * options) {
-    // TODO: get media size from pdf file
-    PopplerDocument * document = NULL;
-    GError *error = NULL;
-
-    flexvdiLog(L_INFO, "Printing %s\n", pdf);
-    gchar * uri = g_filename_to_uri(pdf, NULL, &error);
-    if (uri) {
-        document = poppler_document_new_from_file(uri, NULL, &error);
-        g_free(uri);
-    }
-    if (!document) {
-        flexvdiLog(L_ERROR, "%s\n", error->message);
-        return FALSE;
-    }
-
-    HDC dc = CreateDC(NULL, printer->name, NULL, options);
-    if (!dc) {
-        flexvdiLog(L_ERROR, "Could not create DC\n");
-        return FALSE;
-    }
-
-
-    cairo_status_t status;
-    cairo_surface_t * surface = cairo_win32_printing_surface_create(dc);
-    cairo_t * cr = cairo_create(surface);
-    int result = TRUE;
-    if ((status = cairo_surface_status(surface))) {
-        flexvdiLog(L_ERROR, "Failed to start printing :%s\n", cairo_status_to_string(status));
-        result = FALSE;
-    } else if ((status = cairo_status(cr))) {
-        flexvdiLog(L_ERROR, "Failed to start printing :%s\n", cairo_status_to_string(status));
-        result = FALSE;
-    } else {
-        cairo_surface_set_fallback_resolution(surface, options->dmYResolution,
-                                              options->dmYResolution);
-        double scale, xOffset = 0.0, yOffset = 0.0;
-        scale = options->dmYResolution / 72.0;
-        getPaperMargins(printer, options->dmPaperSize, &xOffset, &yOffset);
-        cairo_scale(cr, scale, scale);
-        cairo_translate(cr, -xOffset, -yOffset);
-        DOCINFO docinfo = { sizeof (DOCINFO), title, NULL, NULL, 0 };
-        StartDoc(dc, &docinfo);
-        int i, num_pages = poppler_document_get_n_pages(document);
-        for (i = 0; i < num_pages; i++) {
-            StartPage(dc);
-            PopplerPage * page = poppler_document_get_page (document, i);
-            if (!page) {
-                flexvdiLog(L_ERROR, "poppler fail: page not found\n");
-                result = FALSE;
-                break;
-            }
-            poppler_page_render_for_printing(page, cr);
-            cairo_surface_show_page(surface);
-            g_object_unref(page);
-            EndPage(dc);
-        }
-        EndDoc(dc);
-    }
-
-    cairo_destroy(cr);
-    cairo_surface_finish(surface);
-    cairo_surface_destroy(surface);
-    g_object_unref(document);
-    DeleteDC(dc);
-    return result;
-}
-
-
-static void openWithApp(const char * file) {
-    wchar_t * fileW = g_utf8_to_utf16(file, -1, NULL, NULL, NULL);
-    ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
-    g_free(fileW);
-}
-
-
 void printJob(PrintJob * job) {
-    char * printerUtf8 = getJobOption(job->options, "printer");
-    ClientPrinter * printer = newClientPrinter(printerUtf8);
-    char * titleUtf8 = getJobOption(job->options, "title");
-    wchar_t * title = g_utf8_to_utf16(titleUtf8, -1, NULL, NULL, NULL);
-    int result = FALSE;
-
-    if (printer) {
-        DEVMODE * options = jobOptionsToWindows(printer, job->name, job->options);
-        if (options) {
-            result = printFile(printer, job->name, title ? title : L"", options);
-            g_free(options);
-        }
-        deleteClientPrinter(printer);
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+    wchar_t * cmdLine = asUtf16(g_strdup_printf("print-pdf \"%s\" \"%s\"",
+                                                job->name, job->options));
+    DWORD exitCode = 1;
+    BOOL result = FALSE;
+    if (CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        // Wait until child process exits.
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        result = GetExitCodeProcess(pi.hProcess, &exitCode) && !exitCode;
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
     }
+    g_free(cmdLine);
 
-    if (!result) openWithApp(job->name);
-    g_free(title);
-    g_free(printerUtf8);
-    g_free(titleUtf8);
+    if (!result) {
+        wchar_t * fileW = asUtf16(job->name);
+        ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
+        g_free(fileW);
+    }
 }
+
