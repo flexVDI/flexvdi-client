@@ -1,6 +1,0 @@
-LIBRARY REDMON
-EXPORTS
-    DllEntryPoint
-    DllMain
-    InitializePrintMonitor2
-    InitializePrintMonitorUI

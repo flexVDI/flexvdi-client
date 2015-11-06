@@ -12,7 +12,7 @@
 #include "flexvdi-cmdline.h"
 #include "spice-client.h"
 #define FLEXVDI_PROTO_IMPL
-#include "FlexVDIProto.h"
+#include "flexdp.h"
 #include "printclient.h"
 #include "serialredir.h"
 

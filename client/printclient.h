@@ -6,7 +6,7 @@
 #define _PRINTCLIENT_H_
 
 #include <stddef.h>
-#include "FlexVDIProto.h"
+#include "flexdp.h"
 
 typedef struct PrintJob {
     int fileHandle;

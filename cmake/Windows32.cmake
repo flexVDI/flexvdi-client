@@ -26,8 +26,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
 # Adjust paths for pkg-config
-set(ENV{PKG_CONFIG_LIBDIR} "")
+set(ENV{PKG_CONFIG_PATH} "")
 foreach (_DIR IN LISTS CMAKE_FIND_ROOT_PATH)
-    set(ENV{PKG_CONFIG_LIBDIR} "$ENV{PKG_CONFIG_LIBDIR}:${_DIR}/lib/pkgconfig")
-    set(ENV{PKG_CONFIG_LIBDIR} "$ENV{PKG_CONFIG_LIBDIR}:${_DIR}/share/pkgconfig")
+    set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${_DIR}/lib/pkgconfig")
+    set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:${_DIR}/share/pkgconfig")
 endforeach (_DIR)
