@@ -2,6 +2,7 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
+#include <string.h>
 #include <windows.h>
 #include <winspool.h>
 #include <shellapi.h>
@@ -54,10 +55,10 @@ static ClientPrinter * newClientPrinter(wchar_t * name) {
     if (printer) {
         printer->name = name;
         if (OpenPrinter(printer->name, &printer->handle, NULL)) {
-            GetPrinter(printer, 2, NULL, 0, &needed);
+            GetPrinter(printer->handle, 2, NULL, 0, &needed);
             if (needed > 0) {
                 printer->pinfo = g_malloc(needed);
-                if (GetPrinter(printer, 2, (LPBYTE) printer->pinfo, needed, &needed)) {
+                if (GetPrinter(printer->handle, 2, (LPBYTE) printer->pinfo, needed, &needed)) {
                     return printer;
                 }
             }
@@ -241,17 +242,21 @@ void printJob(PrintJob * job) {
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
-    wchar_t * cmdLine = asUtf16(g_strdup_printf("print-pdf \"%s\" \"%s\"",
-                                                job->name, job->options));
+    size_t envSize = strlen(job->options) + 13; // "JOBOPTIONS=...\0\0"
+    char env[envSize];
+    g_snprintf(env, envSize, "JOBOPTIONS=%s", job->options);
+    env[envSize - 1] = '\0';
+    wchar_t * cmdLine = asUtf16(g_strdup_printf("print-pdf \"%s\"", job->name));
     DWORD exitCode = 1;
     BOOL result = FALSE;
-    if (CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    if (CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, 0, env, NULL, &si, &pi)) {
         // Wait until child process exits.
         WaitForSingleObject(pi.hProcess, INFINITE);
         result = GetExitCodeProcess(pi.hProcess, &exitCode) && !exitCode;
+        flexvdiLog(L_DEBUG, "CreateProcess succeeded with code %d", exitCode);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
-    }
+    } else flexvdiLog(L_WARN, "CreateProcess failed");
     g_free(cmdLine);
 
     if (!result) {

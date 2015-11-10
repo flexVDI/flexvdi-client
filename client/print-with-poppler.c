@@ -1,5 +1,19 @@
 /**
  * Copyright Flexible Software Solutions S.L. 2014
+ * Author: Javier Celaya <javier.celaya@flexvdi.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  **/
 
 #include <stdlib.h>
@@ -9,14 +23,6 @@
 #include <shellapi.h>
 #include <poppler.h>
 #include <cairo/cairo-win32.h>
-
-
-static void flexvdiLog(GLogLevelFlags level, const char * format, ...) {
-    va_list args;
-    va_start(args, format);
-    g_logv(G_LOG_DOMAIN, level, format, args);
-    va_end(args);
-}
 
 
 typedef struct ClientPrinter {
@@ -40,10 +46,10 @@ static ClientPrinter * newClientPrinter(wchar_t * name) {
     if (printer) {
         printer->name = name;
         if (OpenPrinter(printer->name, &printer->hnd, NULL)) {
-            GetPrinter(printer, 2, NULL, 0, &needed);
+            GetPrinter(printer->hnd, 2, NULL, 0, &needed);
             if (needed > 0) {
                 printer->pinfo = g_malloc(needed);
-                if (GetPrinter(printer, 2, (LPBYTE) printer->pinfo, needed, &needed)) {
+                if (GetPrinter(printer->hnd, 2, (LPBYTE)printer->pinfo, needed, &needed)) {
                     return printer;
                 }
             }
@@ -128,7 +134,7 @@ static LONG findBestPaperMatch(ClientPrinter * printer, double width, double len
         if (minError > 1000000.0) {
             bestMatch = 0;
         }
-        flexvdiLog(G_LOG_LEVEL_DEBUG, "Best match is paper %d with error %f\n", bestMatch, minError);
+        g_debug("Best match is paper %d with error %f", bestMatch, minError);
     }
     return bestMatch;
 }
@@ -159,9 +165,9 @@ static void getMediaSizeOptionFromFile(ClientPrinter * printer, const char * pdf
                 options->dmFields |= DM_PAPERLENGTH | DM_PAPERWIDTH;
                 options->dmPaperWidth = width;
                 options->dmPaperLength = length;
-                flexvdiLog(G_LOG_LEVEL_INFO, "Pagesize set to %fx%f\n", width, length);
+                g_info("Pagesize set to %fx%f", width, length);
             } else {
-                flexvdiLog(G_LOG_LEVEL_INFO, "Pagesize set to %d\n", options->dmPaperSize);
+                g_info("Pagesize set to %d", options->dmPaperSize);
             }
         }
         g_object_unref(document);
@@ -218,6 +224,8 @@ static void getMediaSourceOption(ClientPrinter * printer, char * jobOptions,
                                  DEVMODE * options) {
     int mediaSource = getIntJobOption(jobOptions, "media-source", 0);
     if (mediaSource < 0 || mediaSource >= getPrinterCap(printer, DC_BINNAMES, NULL)) {
+        g_debug("Media source %d outside [0,%d)",
+                   mediaSource, getPrinterCap(printer, DC_BINNAMES, NULL));
         mediaSource = 0;
     }
     options->dmFields |= DM_DEFAULTSOURCE;
@@ -229,6 +237,8 @@ static void getMediaTypeOption(ClientPrinter * printer, char * jobOptions,
                                DEVMODE * options) {
     int mediaType = getIntJobOption(jobOptions, "media-type", 0);
     if (mediaType < 0 || mediaType >= getPrinterCap(printer, DC_MEDIATYPENAMES, NULL)) {
+        g_debug("Media type %d outside [0,%d)",
+                   mediaType, getPrinterCap(printer, DC_MEDIATYPENAMES, NULL));
         mediaType = 0;
     }
     options->dmFields |= DM_MEDIATYPE;
@@ -305,20 +315,20 @@ static int printFile(ClientPrinter * printer, const char * pdf,
     PopplerDocument * document = NULL;
     GError * error = NULL;
 
-    flexvdiLog(G_LOG_LEVEL_INFO, "Printing %s\n", pdf);
+    g_info("Printing %s", pdf);
     gchar * uri = g_filename_to_uri(pdf, NULL, &error);
     if (uri) {
         document = poppler_document_new_from_file(uri, NULL, &error);
         g_free(uri);
     }
     if (!document) {
-        flexvdiLog(G_LOG_LEVEL_ERROR, "%s\n", error->message);
+        g_error("%s", error->message);
         return FALSE;
     }
 
     HDC dc = CreateDC(NULL, printer->name, NULL, options);
     if (!dc) {
-        flexvdiLog(G_LOG_LEVEL_ERROR, "Could not create DC\n");
+        g_error("Could not create DC");
         return FALSE;
     }
 
@@ -327,10 +337,10 @@ static int printFile(ClientPrinter * printer, const char * pdf,
     cairo_t * cr = cairo_create(surface);
     int result = TRUE;
     if ((status = cairo_surface_status(surface))) {
-        flexvdiLog(G_LOG_LEVEL_ERROR, "Failed to start printing :%s\n", cairo_status_to_string(status));
+        g_error("Failed to start printing: %s", cairo_status_to_string(status));
         result = FALSE;
     } else if ((status = cairo_status(cr))) {
-        flexvdiLog(G_LOG_LEVEL_ERROR, "Failed to start printing :%s\n", cairo_status_to_string(status));
+        g_error("Failed to start printing: %s", cairo_status_to_string(status));
         result = FALSE;
     } else {
         cairo_surface_set_fallback_resolution(surface, options->dmYResolution,
@@ -347,7 +357,7 @@ static int printFile(ClientPrinter * printer, const char * pdf,
             StartPage(dc);
             PopplerPage * page = poppler_document_get_page(document, i);
             if (!page) {
-                flexvdiLog(G_LOG_LEVEL_ERROR, "poppler fail: page not found\n");
+                g_error("poppler fail: page not found");
                 result = FALSE;
                 break;
             }
@@ -369,6 +379,7 @@ static int printFile(ClientPrinter * printer, const char * pdf,
 
 
 static wchar_t * asUtf16(char * utf8) {
+    if (!utf8) utf8 = g_strdup("");
     wchar_t * result = g_utf8_to_utf16(utf8, -1, NULL, NULL, NULL);
     g_free(utf8);
     return result;
@@ -376,13 +387,19 @@ static wchar_t * asUtf16(char * utf8) {
 
 
 int main(int argc, char * argv[]) {
-    if (argc != 3)
+    if (argc != 2) {
+        g_warning("Incorrect number of arguments (%d)", argc);
         return 1;
-    char * name = argv[1], * options = argv[2];
+    }
+    DWORD optionsSize = GetEnvironmentVariableA("JOBOPTIONS", NULL, 0);
+    char * name = argv[1], options[optionsSize];
+    GetEnvironmentVariableA("JOBOPTIONS", options, optionsSize);
 
+    g_debug("Printing file %s with options %s", name, options);
     ClientPrinter * printer = newClientPrinter(asUtf16(getJobOption(options, "printer")));
-    if (!printer)
+    if (!printer) {
         return 1;
+    }
 
     int result = FALSE;
     DEVMODE * dm = jobOptionsToDevMode(printer, name, options);
