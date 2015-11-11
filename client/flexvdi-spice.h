@@ -10,7 +10,6 @@
 #include <stdarg.h>
 #include <glib.h>
 #include <gio/gio.h>
-#include "config.h"
 
 // strnlen is not defined in MinGW32
 #ifndef HAVE_STRNLEN

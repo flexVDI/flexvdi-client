@@ -18,6 +18,9 @@ include(FindPkgConfig)
 include(CheckFunctionExists)
 include(TestBigEndian)
 test_big_endian(BIG_ENDIAN)
+if (BIG_ENDIAN)
+    add_definitions(-DWORDS_BIGENDIAN)
+endif ()
 macro(check_client_module modname pkgname)
     pkg_check_modules(${modname} ${pkgname})
     include_directories(${${modname}_INCLUDE_DIRS})
@@ -26,6 +29,9 @@ macro(check_client_module modname pkgname)
 endmacro ()
 
 check_function_exists(strnlen HAVE_STRNLEN)
+if (HAVE_STRNLEN)
+    add_definitions(-DHAVE_STRNLEN)
+endif ()
 check_client_module(flexdp "flexdp >= 2.2.1")
 check_client_module(spice_glib spice-client-glib-2.0)
 
@@ -83,10 +89,6 @@ foreach (varname
     endif ()
 endforeach ()
 message("")
-
-# Sources and objects
-configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config.h")
-include_directories(${PROJECT_BINARY_DIR})
 
 # Build client library
 add_subdirectory(client)
