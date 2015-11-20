@@ -28,6 +28,7 @@ macro(check_client_module modname pkgname)
         link_directories(${${modname}_LIBRARY_DIRS})
         set(CLIENT_LIBRARIES ${CLIENT_LIBRARIES} ${${modname}_LIBRARIES})
         set(${modname}_VERSION_STR v${${modname}_VERSION})
+        set(REQUIRED_PKGS "${REQUIRED_PKGS}, ${pkgname}")
     else ()
         set(${modname}_VERSION_STR No)
     endif ()
@@ -64,7 +65,7 @@ endif ()
 if (NOT flexdp_FOUND OR NOT spice_glib_FOUND)
     message(FATAL_ERROR "flexDP and Spice client are needed to build the client library.")
 endif ()
-
+string(SUBSTRING "${REQUIRED_PKGS}" 2 -1 REQUIRED_PKGS)
 
 ## Build options
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")

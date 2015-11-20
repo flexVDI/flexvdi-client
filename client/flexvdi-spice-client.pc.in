@@ -7,6 +7,6 @@ Name: flexvdi-spice-client
 Description: flexVDI extensions plugin for the SPICE client
 Version: @FLEXVDI_VERSION@
 
-Requires: glib-2.0
+Requires: @REQUIRED_PKGS@
 Libs: -L${libdir} -lflexvdi-spice-client
 Cflags: -I${includedir}
