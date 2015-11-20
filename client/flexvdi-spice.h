@@ -39,9 +39,11 @@ void sendMessageFinish(GObject * source_object, GAsyncResult * res, GError ** er
 void flexvdiSpiceSendCredentials(const char * username, const char * password,
                                 const char * domain);
 
+#ifdef WITH_PRINTING
 // Print Client API
 int flexvdiSpiceGetPrinterList(GSList ** printerList);
 int flexvdiSpiceSharePrinter(const char * printer);
 int flexvdiSpiceUnsharePrinter(const char * printer);
+#endif
 
 #endif /* _FLEXVDI_SPICE_H_ */

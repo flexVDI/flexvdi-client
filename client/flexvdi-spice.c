@@ -14,8 +14,9 @@
 #define FLEXVDI_PROTO_IMPL
 #include "flexdp.h"
 #include "printclient.h"
+#ifdef WITH_SERIALREDIR
 #include "serialredir.h"
-
+#endif
 
 typedef struct flexvdi_port {
     SpicePortChannel * channel;
@@ -159,7 +160,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
             g_object_unref(port.cancellable);
             port.cancellable = NULL;
         }
-#ifndef WIN32
+#ifdef WITH_SERIALREDIR
     } else {
         serialPortOpened(channel);
 #endif
@@ -169,19 +170,21 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
 
 static void handleMessage(uint32_t type, uint8_t * msg) {
     switch(type) {
+#ifdef WITH_PRINTING
     case FLEXVDI_PRINTJOB:
         handlePrintJob((FlexVDIPrintJobMsg *)msg);
         break;
     case FLEXVDI_PRINTJOBDATA:
         handlePrintJobData((FlexVDIPrintJobDataMsg *)msg);
         break;
+#endif
     }
 }
 
 
 static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
     if (pchannel != port.channel) {
-#ifndef WIN32
+#ifdef WITH_SERIALREDIR
         serialPortData(pchannel, data, size);
 #endif
         return;
@@ -241,7 +244,7 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel) {
     if (SPICE_IS_PORT_CHANNEL(channel)) {
         if (SPICE_PORT_CHANNEL(channel) == port.channel) {
             port.channel = NULL;
-#ifndef WIN32
+#ifdef WITH_SERIALREDIR
         } else {
             serialChannelDestroy(SPICE_PORT_CHANNEL(channel));
 #endif
@@ -257,7 +260,9 @@ void flexvdi_port_register_session(gpointer session) {
                      G_CALLBACK(channel_destroy), NULL);
     //     g_signal_connect(session, "notify::migration-state",
     //                      G_CALLBACK(migration_state), port);
+#ifdef WITH_PRINTING
     initPrintClient();
+#endif
 }
 
 
@@ -287,27 +292,39 @@ int flexvdi_send_credentials(const gchar *username, const gchar *password,
 
 
 int flexvdi_get_printer_list(GSList ** printer_list) {
+#ifdef WITH_PRINTING
     return flexvdiSpiceGetPrinterList(printer_list);
+#else
+    return FALSE;
+#endif
 }
 
 
 int flexvdi_share_printer(const char * printer) {
+#ifdef WITH_PRINTING
     if (port.connected) {
         return flexvdiSpiceSharePrinter(printer);
     } else {
         flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
         return FALSE;
     }
+#else
+    return FALSE;
+#endif
 }
 
 
 int flexvdi_unshare_printer(const char * printer) {
+#ifdef WITH_PRINTING
     if (port.connected) {
         return flexvdiSpiceUnsharePrinter(printer);
     } else {
         flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
         return FALSE;
     }
+#else
+    return FALSE;
+#endif
 }
 
 
