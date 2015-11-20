@@ -13,7 +13,9 @@
 #include "spice-client.h"
 #define FLEXVDI_PROTO_IMPL
 #include "flexdp.h"
+#ifdef WITH_PRINTING
 #include "printclient.h"
+#endif
 #ifdef WITH_SERIALREDIR
 #include "serialredir.h"
 #endif
@@ -279,6 +281,34 @@ void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data) {
 }
 
 
+void flexvdiSpiceSendCredentials(const char * username, const char * password,
+                                 const char * domain) {
+    uint8_t * buf;
+    size_t bufSize, i;
+    FlexVDICredentialsMsg msgTemp, * msg;
+    msgTemp.userLength = username ? strnlen(username, 1024) : 0;
+    msgTemp.passLength = password ? strnlen(password, 1024) : 0;
+    msgTemp.domainLength = domain ? strnlen(domain, 1024) : 0;
+    bufSize = sizeof(msgTemp) + msgTemp.userLength +
+    msgTemp.passLength + msgTemp.domainLength + 3;
+    buf = getMsgBuffer(bufSize);
+    if (!buf) {
+        flexvdiLog(L_WARN, "Unable to reserve memory for credentials message");
+        return;
+    }
+    msg = (FlexVDICredentialsMsg *)buf;
+    i = 0;
+    memcpy(msg, &msgTemp, sizeof(msgTemp));
+    memcpy(msg->strings, username, msgTemp.userLength);
+    msg->strings[i += msgTemp.userLength] = '\0';
+    memcpy(&msg->strings[++i], password, msgTemp.passLength);
+    msg->strings[i += msgTemp.passLength] = '\0';
+    memcpy(&msg->strings[++i], domain, msgTemp.domainLength);
+    msg->strings[i += msgTemp.domainLength] = '\0';
+    sendMessage(FLEXVDI_CREDENTIALS, buf);
+}
+
+
 int flexvdi_send_credentials(const gchar *username, const gchar *password,
                              const gchar *domain) {
     if (port.connected) {
@@ -325,32 +355,4 @@ int flexvdi_unshare_printer(const char * printer) {
 #else
     return FALSE;
 #endif
-}
-
-
-void flexvdiSpiceSendCredentials(const char * username, const char * password,
-                                 const char * domain) {
-    uint8_t * buf;
-    size_t bufSize, i;
-    FlexVDICredentialsMsg msgTemp, * msg;
-    msgTemp.userLength = username ? strnlen(username, 1024) : 0;
-    msgTemp.passLength = password ? strnlen(password, 1024) : 0;
-    msgTemp.domainLength = domain ? strnlen(domain, 1024) : 0;
-    bufSize = sizeof(msgTemp) + msgTemp.userLength +
-                msgTemp.passLength + msgTemp.domainLength + 3;
-    buf = getMsgBuffer(bufSize);
-    if (!buf) {
-        flexvdiLog(L_WARN, "Unable to reserve memory for credentials message");
-        return;
-    }
-    msg = (FlexVDICredentialsMsg *)buf;
-    i = 0;
-    memcpy(msg, &msgTemp, sizeof(msgTemp));
-    memcpy(msg->strings, username, msgTemp.userLength);
-    msg->strings[i += msgTemp.userLength] = '\0';
-    memcpy(&msg->strings[++i], password, msgTemp.passLength);
-    msg->strings[i += msgTemp.passLength] = '\0';
-    memcpy(&msg->strings[++i], domain, msgTemp.domainLength);
-    msg->strings[i += msgTemp.domainLength] = '\0';
-    sendMessage(FLEXVDI_CREDENTIALS, buf);
 }

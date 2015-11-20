@@ -12,6 +12,9 @@ else ()
     endif ()
 endif ()
 
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/flexvdi-port.h.in"
+               "${CMAKE_CURRENT_BINARY_DIR}/flexvdi-port.h")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DG_LOG_DOMAIN=\"flexvdi\")
 add_library(client_objects OBJECT ${client_sources})
 set_target_properties(client_objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
@@ -23,6 +26,6 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/flexvdi-spice-client.pc.in"
 install(TARGETS flexvdi-spice-client RUNTIME DESTINATION bin
                                      ARCHIVE DESTINATION lib
                                      LIBRARY DESTINATION lib)
-install(FILES flexvdi-port.h DESTINATION include)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/flexvdi-port.h" DESTINATION include)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/flexvdi-spice-client.pc"
         DESTINATION lib/pkgconfig)

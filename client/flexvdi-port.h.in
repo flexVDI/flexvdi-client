@@ -7,6 +7,9 @@
 
 #include <glib.h>
 
+#cmakedefine WITH_PRINTING
+#cmakedefine WITH_SERIALREDIR
+
 void flexvdi_port_register_session(gpointer session);
 GOptionGroup * flexvdi_get_option_group(void);
 int flexvdi_is_agent_connected(void);
