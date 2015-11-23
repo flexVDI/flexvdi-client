@@ -13,10 +13,10 @@
 #include "spice-client.h"
 #define FLEXVDI_PROTO_IMPL
 #include "flexdp.h"
-#ifdef WITH_PRINTING
+#ifdef ENABLE_PRINTING
 #include "printclient.h"
 #endif
-#ifdef WITH_SERIALREDIR
+#ifdef ENABLE_SERIALREDIR
 #include "serialredir.h"
 #endif
 
@@ -162,7 +162,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
             g_object_unref(port.cancellable);
             port.cancellable = NULL;
         }
-#ifdef WITH_SERIALREDIR
+#ifdef ENABLE_SERIALREDIR
     } else {
         serialPortOpened(channel);
 #endif
@@ -172,7 +172,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
 
 static void handleMessage(uint32_t type, uint8_t * msg) {
     switch(type) {
-#ifdef WITH_PRINTING
+#ifdef ENABLE_PRINTING
     case FLEXVDI_PRINTJOB:
         handlePrintJob((FlexVDIPrintJobMsg *)msg);
         break;
@@ -186,7 +186,7 @@ static void handleMessage(uint32_t type, uint8_t * msg) {
 
 static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
     if (pchannel != port.channel) {
-#ifdef WITH_SERIALREDIR
+#ifdef ENABLE_SERIALREDIR
         serialPortData(pchannel, data, size);
 #endif
         return;
@@ -246,7 +246,7 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel) {
     if (SPICE_IS_PORT_CHANNEL(channel)) {
         if (SPICE_PORT_CHANNEL(channel) == port.channel) {
             port.channel = NULL;
-#ifdef WITH_SERIALREDIR
+#ifdef ENABLE_SERIALREDIR
         } else {
             serialChannelDestroy(SPICE_PORT_CHANNEL(channel));
 #endif
@@ -262,7 +262,7 @@ void flexvdi_port_register_session(gpointer session) {
                      G_CALLBACK(channel_destroy), NULL);
     //     g_signal_connect(session, "notify::migration-state",
     //                      G_CALLBACK(migration_state), port);
-#ifdef WITH_PRINTING
+#ifdef ENABLE_PRINTING
     initPrintClient();
 #endif
 }
@@ -322,7 +322,7 @@ int flexvdi_send_credentials(const gchar *username, const gchar *password,
 
 
 int flexvdi_get_printer_list(GSList ** printer_list) {
-#ifdef WITH_PRINTING
+#ifdef ENABLE_PRINTING
     return flexvdiSpiceGetPrinterList(printer_list);
 #else
     return FALSE;
@@ -331,7 +331,7 @@ int flexvdi_get_printer_list(GSList ** printer_list) {
 
 
 int flexvdi_share_printer(const char * printer) {
-#ifdef WITH_PRINTING
+#ifdef ENABLE_PRINTING
     if (port.connected) {
         return flexvdiSpiceSharePrinter(printer);
     } else {
@@ -345,7 +345,7 @@ int flexvdi_share_printer(const char * printer) {
 
 
 int flexvdi_unshare_printer(const char * printer) {
-#ifdef WITH_PRINTING
+#ifdef ENABLE_PRINTING
     if (port.connected) {
         return flexvdiSpiceUnsharePrinter(printer);
     } else {
