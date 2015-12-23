@@ -20,10 +20,19 @@
 #include "serialredir.h"
 #endif
 
+typedef enum {
+    WAIT_NEW_MESSAGE,
+    WAIT_DATA,
+} WaitState;
+
+
 typedef struct flexvdi_port {
     SpicePortChannel * channel;
     gboolean connected;
     GCancellable * cancellable;
+    WaitState state;
+    FlexVDIMessageHeader curHeader;
+    uint8_t * buffer, * bufpos, * bufend;
 } flexvdi_port;
 
 
@@ -130,6 +139,13 @@ void sendMessageFinish(GObject * source_object, GAsyncResult * res, GError ** er
 }
 
 
+static void preparePortBuffer(size_t size) {
+    g_free(port.buffer);
+    port.buffer = port.bufpos = (uint8_t *)g_malloc(size);
+    port.bufend = port.bufpos + size;
+}
+
+
 static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
     gchar *name = NULL;
     gboolean opened = FALSE;
@@ -140,7 +156,10 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
             port.connected = TRUE;
             port.channel = SPICE_PORT_CHANNEL(channel);
             port.cancellable = g_cancellable_new();
-            uint8_t * buf = getMsgBuffer(0);
+            port.buffer = NULL;
+            preparePortBuffer(sizeof(FlexVDIMessageHeader));
+            port.state = WAIT_NEW_MESSAGE;
+            uint8_t * buf = getMsgBuffer(sizeof(FlexVDIResetMsg));
             if (buf) {
                 sendMessage(FLEXVDI_RESET, buf);
             }
@@ -184,6 +203,15 @@ static void handleMessage(uint32_t type, uint8_t * msg) {
 }
 
 
+static void prepareOneByte() {
+    size_t i;
+    uint8_t * p = port.buffer;
+    for (i = 0; i < sizeof(FlexVDIMessageHeader) - 1; ++i)
+        p[i] = p[i + 1];
+    port.bufpos = &p[i];
+}
+
+
 static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
     if (pchannel != port.channel) {
 #ifdef ENABLE_SERIALREDIR
@@ -192,40 +220,43 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
         return;
     }
 
-    static enum {
-        WAIT_NEW_MESSAGE,
-        WAIT_DATA,
-    } state = WAIT_NEW_MESSAGE;
-    static FlexVDIMessageHeader curHeader;
-    static uint8_t * buffer, * bufpos, * bufend;
-
     void * end = data + size;
     while (data < end) {
-        switch (state) {
+        // Fill the buffer
+        size = end - data;
+        if (port.bufend - port.bufpos < size)
+            size = port.bufend - port.bufpos;
+        memcpy(port.bufpos, data, size);
+        port.bufpos += size;
+        data += size;
+        if (port.bufpos < port.bufend) return; // Data consumed, buffer not filled
+        switch (port.state) {
         case WAIT_NEW_MESSAGE:
-            // Assume headers arrive at once
-            curHeader = *((FlexVDIMessageHeader *)data);
-            unmarshallHeader(&curHeader);
-            data += sizeof(FlexVDIMessageHeader);
-            buffer = bufpos = (uint8_t *)malloc(curHeader.size);
-            bufend = bufpos + curHeader.size;
-            state = WAIT_DATA;
+            port.curHeader = *((FlexVDIMessageHeader *)port.buffer);
+            unmarshallHeader(&port.curHeader);
+            if (port.curHeader.size > FLEXVDI_MAX_MESSAGE_LENGTH) {
+                flexvdiLog(L_WARN, "Oversized message (%u > %u)",
+                           port.curHeader.size, FLEXVDI_MAX_MESSAGE_LENGTH);
+                prepareOneByte();
+            } else if (port.curHeader.type >= FLEXVDI_MAX_MESSAGE_TYPE) {
+                flexvdiLog(L_WARN, "Unknown message type %d", port.curHeader.type);
+                prepareOneByte();
+            } else {
+                preparePortBuffer(port.curHeader.size);
+                port.state = WAIT_DATA;
+            }
             break;
         case WAIT_DATA:
-            size = end - data;
-            if (bufend - bufpos < size) size = bufend - bufpos;
-            memcpy(bufpos, data, size);
-            bufpos += size;
-            data += size;
-            if (bufpos == bufend) {
-                if (!unmarshallMessage(curHeader.type, buffer, curHeader.size)) {
-                    flexvdiLog(L_WARN, "Wrong message size on reception");
-                    return;
-                }
-                handleMessage(curHeader.type, buffer);
-                free(buffer);
-                state = WAIT_NEW_MESSAGE;
+            flexvdiLog(L_DEBUG, "Received message type %u, size %u",
+                       port.curHeader.type, port.curHeader.size);
+            if (!unmarshallMessage(port.curHeader.type, port.buffer, port.curHeader.size)) {
+                flexvdiLog(L_WARN, "Wrong message size on reception (%u)",
+                           port.curHeader.size);
+            } else {
+                handleMessage(port.curHeader.type, port.buffer);
             }
+            preparePortBuffer(sizeof(FlexVDIMessageHeader));
+            port.state = WAIT_NEW_MESSAGE;
             break;
         }
     }
