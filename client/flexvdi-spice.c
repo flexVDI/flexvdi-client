@@ -221,7 +221,7 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
     }
 
     void * end = data + size;
-    while (data < end) {
+    while (data < end || port.buffer == port.bufend) { // Special case: read 0 bytes
         // Fill the buffer
         size = end - data;
         if (port.bufend - port.bufpos < size)
