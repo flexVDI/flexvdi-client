@@ -299,6 +299,10 @@ void flexvdi_port_register_session(gpointer session) {
 }
 
 
+void flexvdi_cleanup() {
+}
+
+
 int flexvdi_is_agent_connected(void) {
     return port.connected;
 }
