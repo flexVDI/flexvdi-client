@@ -4,9 +4,9 @@ set(CMAKE_SYSTEM_NAME Windows)
 set(WIN_ARCH x86_64)
 set(WIN_BITS 64)
 
-set(CMAKE_C_COMPILER   /usr/bin/${WIN_ARCH}-w64-mingw32-gcc)
-set(CMAKE_CXX_COMPILER /usr/bin/${WIN_ARCH}-w64-mingw32-g++)
-set(CMAKE_RC_COMPILER  /usr/bin/${WIN_ARCH}-w64-mingw32-windres)
+set(CMAKE_C_COMPILER   ${WIN_ARCH}-w64-mingw32-gcc)
+set(CMAKE_CXX_COMPILER ${WIN_ARCH}-w64-mingw32-g++)
+set(CMAKE_RC_COMPILER  ${WIN_ARCH}-w64-mingw32-windres)
 
 # Find the system root
 execute_process(COMMAND ${CMAKE_C_COMPILER} -print-sysroot
@@ -16,6 +16,7 @@ execute_process(COMMAND find "${MINGW_SYSROOT}" -name lib
 string(REPLACE "/lib" "" MINGW_SYSROOT "${MINGW_SYSROOT}")
 set(CMAKE_FIND_ROOT_PATH
     /usr/local/${WIN_ARCH}-w64-mingw32
+    $ENV{CERBERO_PREFIX}
     "${MINGW_SYSROOT}")
 
 # Adjust the default behaviour of the FIND_XXX() commands:
