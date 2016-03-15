@@ -163,12 +163,6 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
             if (buf) {
                 sendMessage(FLEXVDI_RESET, buf);
             }
-            const gchar * username = getUsernameOption(),
-                    * password = getPasswordOption(),
-                    * domain = getDomainOption();
-            if (username && password) {
-                flexvdi_send_credentials(username, password, domain ? domain : "");
-            }
             GSList * it;
             for (it = connectionHandlers; it != NULL; it = g_slist_next(it)) {
                 ConnectionHandler * handler = (ConnectionHandler *)it->data;
@@ -313,46 +307,6 @@ void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data) {
     h->cb = cb;
     h->data = data;
     connectionHandlers = g_slist_prepend(connectionHandlers, h);
-}
-
-
-void flexvdiSpiceSendCredentials(const char * username, const char * password,
-                                 const char * domain) {
-    uint8_t * buf;
-    size_t bufSize, i;
-    FlexVDICredentialsMsg msgTemp, * msg;
-    msgTemp.userLength = username ? strnlen(username, 1024) : 0;
-    msgTemp.passLength = password ? strnlen(password, 1024) : 0;
-    msgTemp.domainLength = domain ? strnlen(domain, 1024) : 0;
-    bufSize = sizeof(msgTemp) + msgTemp.userLength +
-    msgTemp.passLength + msgTemp.domainLength + 3;
-    buf = getMsgBuffer(bufSize);
-    if (!buf) {
-        flexvdiLog(L_WARN, "Unable to reserve memory for credentials message");
-        return;
-    }
-    msg = (FlexVDICredentialsMsg *)buf;
-    i = 0;
-    memcpy(msg, &msgTemp, sizeof(msgTemp));
-    memcpy(msg->strings, username, msgTemp.userLength);
-    msg->strings[i += msgTemp.userLength] = '\0';
-    memcpy(&msg->strings[++i], password, msgTemp.passLength);
-    msg->strings[i += msgTemp.passLength] = '\0';
-    memcpy(&msg->strings[++i], domain, msgTemp.domainLength);
-    msg->strings[i += msgTemp.domainLength] = '\0';
-    sendMessage(FLEXVDI_CREDENTIALS, buf);
-}
-
-
-int flexvdi_send_credentials(const gchar *username, const gchar *password,
-                             const gchar *domain) {
-    if (port.connected) {
-        flexvdiSpiceSendCredentials(username, password, domain);
-        return TRUE;
-    } else {
-        flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
-        return FALSE;
-    }
 }
 
 
