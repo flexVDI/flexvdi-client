@@ -8,11 +8,11 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include "flexvdi-spice.h"
-#include "flexvdi-port.h"
 #include "flexvdi-cmdline.h"
 #include "spice-client.h"
 #define FLEXVDI_PROTO_IMPL
 #include "flexdp.h"
+#include "flexvdi-port.h"
 #ifdef ENABLE_PRINTING
 #include "printclient.h"
 #endif
@@ -192,8 +192,27 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
 }
 
 
+static FlexVDICapabilitiesMsg agentCapabilities;
+
+
+int flexvdi_agent_supports_capability(int cap) {
+    return supportsCapability(&agentCapabilities, cap);
+}
+
+
+static void handleCapabilitiesMsg(FlexVDICapabilitiesMsg * msg) {
+    memcpy(&agentCapabilities, msg, sizeof(FlexVDICapabilitiesMsg));
+    flexvdiLog(L_DEBUG, "flexVDI guest agent capabilities: %08x %08x %08x %08x",
+               agentCapabilities.caps[3], agentCapabilities.caps[2],
+               agentCapabilities.caps[1], agentCapabilities.caps[0]);
+}
+
+
 static void handleMessage(uint32_t type, uint8_t * msg) {
     switch(type) {
+    case FLEXVDI_CAPABILITIES:
+        handleCapabilitiesMsg((FlexVDICapabilitiesMsg *)msg);
+        break;
 #ifdef ENABLE_PRINTING
     case FLEXVDI_PRINTJOB:
         handlePrintJob((FlexVDIPrintJobMsg *)msg);
@@ -290,6 +309,9 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel) {
 
 
 void flexvdi_port_register_session(gpointer session) {
+    memset(agentCapabilities.caps, 0, sizeof(agentCapabilities));
+    // For backwards compatibility assume the agent supports printing
+    setCapability(&agentCapabilities, FLEXVDI_CAP_PRINTING);
     g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), NULL);
     g_signal_connect(session, "channel-destroy",
