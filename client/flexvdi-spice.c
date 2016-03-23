@@ -163,6 +163,15 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
             if (buf) {
                 sendMessage(FLEXVDI_RESET, buf);
             }
+            buf = getMsgBuffer(sizeof(FlexVDICapabilitiesMsg));
+            if (buf) {
+                FlexVDICapabilitiesMsg * capMsg = (FlexVDICapabilitiesMsg *)buf;
+                capMsg->caps[0] = capMsg->caps[1] = capMsg->caps[2] = capMsg->caps[3] = 0;
+#ifdef ENABLE_PRINTING
+                setCapability(capMsg, FLEXVDI_CAP_PRINTING);
+#endif
+                sendMessage(FLEXVDI_CAPABILITIES, buf);
+            }
             GSList * it;
             for (it = connectionHandlers; it != NULL; it = g_slist_next(it)) {
                 ConnectionHandler * handler = (ConnectionHandler *)it->data;
