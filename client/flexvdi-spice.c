@@ -172,11 +172,6 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
 #endif
                 sendMessage(FLEXVDI_CAPABILITIES, buf);
             }
-            GSList * it;
-            for (it = connectionHandlers; it != NULL; it = g_slist_next(it)) {
-                ConnectionHandler * handler = (ConnectionHandler *)it->data;
-                handler->cb(handler->data);
-            }
         } else {
             flexvdiLog(L_INFO, "flexVDI guest agent disconnected\n");
             port.connected = FALSE;
@@ -205,6 +200,11 @@ static void handleCapabilitiesMsg(FlexVDICapabilitiesMsg * msg) {
     flexvdiLog(L_DEBUG, "flexVDI guest agent capabilities: %08x %08x %08x %08x",
                agentCapabilities.caps[3], agentCapabilities.caps[2],
                agentCapabilities.caps[1], agentCapabilities.caps[0]);
+    GSList * it;
+    for (it = connectionHandlers; it != NULL; it = g_slist_next(it)) {
+        ConnectionHandler * handler = (ConnectionHandler *)it->data;
+        handler->cb(handler->data);
+    }
 }
 
 
