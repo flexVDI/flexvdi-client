@@ -118,7 +118,7 @@ endforeach ()
 message("")
 
 # Build client library
-add_subdirectory(client)
+add_subdirectory(src)
 
 # Build tests
 add_subdirectory(test)

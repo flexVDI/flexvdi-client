@@ -4,8 +4,8 @@
 
 #include <stdio.h>
 #include <glib.h>
-#include "client/printclient.h"
-#include "client/flexvdi-spice.h"
+#include "src/printclient.h"
+#include "src/flexvdi-spice.h"
 
 
 int main(int argc, char * argv[]) {
