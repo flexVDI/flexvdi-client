@@ -8,5 +8,6 @@
 #include <glib.h>
 
 const gchar ** getSerialPortParams();
+gboolean getDisablePrinting();
 
 #endif /* _FLEXVDICMDLINE_H */

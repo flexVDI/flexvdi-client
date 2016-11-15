@@ -9,11 +9,17 @@
 #include "flexvdi-cmdline.h"
 #include "flexvdi-spice.h"
 
-static const gchar ** serialParams;
+static const gchar ** serialParams = NULL;
+static gboolean disablePrinting = 0;
 
 
 const gchar ** getSerialPortParams() {
     return serialParams;
+}
+
+
+gboolean getDisablePrinting() {
+    return disablePrinting;
 }
 
 
@@ -23,6 +29,8 @@ static const GOptionEntry cmdline_entries[] = {
       "Add serial port redirection. "
       "The Nth use of this option is attached to channel serialredirN. "
       "Example: /dev/ttyS0,9600,8N1", "<device,speed,mode>" },
+    { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, &disablePrinting,
+      "Disable printing support", NULL },
     { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
