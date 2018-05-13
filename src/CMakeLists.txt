@@ -1,5 +1,5 @@
 set(client_sources
-    main.c flexvdi-client-app.c
+    main.c flexvdi-client-app.c flexvdi-client-win.c
     flexvdi-spice.c flexvdi-cmdline.c)
 if (WIN32)
     if (ENABLE_PRINTING)
