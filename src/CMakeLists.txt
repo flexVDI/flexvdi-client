@@ -21,6 +21,15 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/flexvdi-port.h.in"
                "${CMAKE_CURRENT_BINARY_DIR}/flexvdi-port.h")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_definitions(-DG_LOG_DOMAIN=\"flexvdi\")
+
+set(resources_c "${CMAKE_CURRENT_BINARY_DIR}/resources.c")
+set(client_sources ${client_sources} ${resources_c})
+add_custom_command(OUTPUT ${resources_c}
+                   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+                   COMMAND glib-compile-resources
+                   ARGS --target=${resources_c} --generate-source flexvdi-client.gresource.xml
+                   DEPENDS flexvdi-client.gresource.xml window.ui)
+
 add_library(client_objects OBJECT ${client_sources})
 set_target_properties(client_objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
 add_executable(flexvdi-client $<TARGET_OBJECTS:client_objects>)

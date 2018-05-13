@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <template class="ClientAppWindow" parent="GtkApplicationWindow">
+        <property name="title" translatable="yes">flexVDI Client</property>
+        <property name="default-width">800</property>
+        <property name="default-height">600</property>
+        <property name="resizable">False</property>
+        <property name="window-position">GTK_WIN_POS_CENTER</property>
+        <child type="titlebar">
+            <object class="GtkHeaderBar" id="header">
+                <property name="visible">True</property>
+                <property name="show-close-button">True</property>
+                <child>
+                    <object class="GtkLabel" id="lines_label">
+                        <property name="visible">False</property>
+                        <property name="label" translatable="yes">flexVDI Logo</property>
+                    </object>
+                    <packing>
+                        <property name="pack-type">start</property>
+                    </packing>
+                </child>
+                <child>
+                    <object class="GtkButton" id="gears">
+                        <property name="visible">True</property>
+                        <style>
+                            <class name="image-button"/>
+                        </style>
+                    </object>
+                    <packing>
+                        <property name="pack-type">end</property>
+                    </packing>
+                </child>
+            </object>
+        </child>
+        <child>
+            <object class="GtkBox" id="content_box">
+                <property name="visible">True</property>
+                <property name="orientation">vertical</property>
+                <child>
+                <object class="GtkStack" id="stack">
+                    <property name="visible">True</property>
+                </object>
+                </child>
+            </object>
+        </child>
+    </template>
+</interface>
