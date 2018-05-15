@@ -6,6 +6,8 @@ add_custom_command(OUTPUT ${resources_c}
                    DEPENDS
                         flexvdi-client.gresource.xml
                         window.ui
+                        images/icon.png
+                        images/logo-flexVDI-toolbar.png
                   )
 
 add_library(resource_objects OBJECT ${resources_c})

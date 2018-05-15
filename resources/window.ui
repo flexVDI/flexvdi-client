@@ -6,14 +6,15 @@
         <property name="default-height">600</property>
         <property name="resizable">False</property>
         <property name="window-position">GTK_WIN_POS_CENTER</property>
+        <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>
         <child type="titlebar">
             <object class="GtkHeaderBar" id="header">
                 <property name="visible">True</property>
                 <property name="show-close-button">True</property>
                 <child>
-                    <object class="GtkLabel" id="lines_label">
-                        <property name="visible">False</property>
-                        <property name="label" translatable="yes">flexVDI Logo</property>
+                    <object class="GtkImage" id="logo">
+                        <property name="visible">True</property>
+                        <property name="resource">/com/flexvdi/client/images/logo-flexVDI-toolbar.png</property>
                     </object>
                     <packing>
                         <property name="pack-type">start</property>
