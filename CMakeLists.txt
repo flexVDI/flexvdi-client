@@ -117,6 +117,9 @@ foreach (varname
 endforeach ()
 message("")
 
+# Build resources
+add_subdirectory(resources)
+
 # Build client library
 add_subdirectory(src)
 
