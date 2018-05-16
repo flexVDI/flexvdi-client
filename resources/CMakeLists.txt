@@ -9,6 +9,7 @@ add_custom_command(OUTPUT ${resources_c}
                         images/icon.png
                         images/logo-flexVDI-toolbar.png
                         images/button-settings.png
+                        images/logo-client.png
                   )
 
 add_library(resource_objects OBJECT ${resources_c})
