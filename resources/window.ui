@@ -9,6 +9,7 @@
         <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>
         <child type="titlebar">
             <object class="GtkHeaderBar" id="header">
+                <property name="name">header</property>
                 <property name="visible">True</property>
                 <property name="show-close-button">True</property>
                 <child>
@@ -33,16 +34,24 @@
         </child>
         <child>
             <object class="GtkBox" id="content_box">
+                <property name="name">content-box</property>
                 <property name="visible">True</property>
                 <property name="orientation">vertical</property>
                 <child>
-                    <object class="GtkLabel" id="status">
+                    <object class="GtkBox">
                         <property name="visible">True</property>
-                        <property name="label">Status</property>
-                        <property name="xalign">0</property>
-                        <property name="hexpand">True</property>
-                        <property name="margin">10</property>
-                        <property name="margin-left">20</property>
+                        <property name="orientation">horizontal</property>
+                        <property name="name">status</property>
+                        <child>
+                            <object class="GtkLabel" id="status">
+                                <property name="visible">True</property>
+                                <property name="label">Status</property>
+                                <property name="xalign">0</property>
+                                <property name="hexpand">True</property>
+                                <property name="margin">10</property>
+                                <property name="margin-left">20</property>
+                            </object>
+                        </child>
                     </object>
                     <packing>
                         <property name="pack-type">start</property>
@@ -52,6 +61,7 @@
                     <object class="GtkImage" id="logo-client">
                         <property name="visible">True</property>
                         <property name="resource">/com/flexvdi/client/images/logo-client.png</property>
+                        <property name="margin">20</property>
                     </object>
                     <packing>
                         <property name="pack-type">start</property>
@@ -69,6 +79,7 @@
                         <property name="margin">20</property>
                         <child>
                             <object class="GtkLabel" id="info">
+                                <property name="name">info</property>
                                 <property name="visible">True</property>
                                 <property name="label">Info</property>
                                 <property name="xalign">0</property>
@@ -79,6 +90,7 @@
                         </child>
                         <child>
                             <object class="GtkLabel" id="version">
+                                <property name="name">version</property>
                                 <property name="visible">True</property>
                                 <property name="label">v3.0.0</property>
                                 <property name="xalign">1</property>

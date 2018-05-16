@@ -1,0 +1,29 @@
+* {
+    font-family: Lato;
+    font-style: normal;
+    font-size: x-large;
+    color: #000;
+}
+
+#header {
+    background-image: linear-gradient(to right, #00a1c1 60%, #356879 100%);;
+}
+
+#content-box {
+    background-color: #fff;
+}
+
+#status {
+    background-color: rgba(0, 0, 0, 0.7)
+}
+
+#status label {
+    font-style: italic;
+    font-size: 80%;
+    color: #fff;
+}
+
+#info, #version {
+    font-size: 70%;
+    color: #bbb;
+}

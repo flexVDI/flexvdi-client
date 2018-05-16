@@ -6,6 +6,7 @@ add_custom_command(OUTPUT ${resources_c}
                    DEPENDS
                         flexvdi-client.gresource.xml
                         window.ui
+                        style.css
                         images/icon.png
                         images/logo-flexVDI-toolbar.png
                         images/button-settings.png

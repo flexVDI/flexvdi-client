@@ -21,7 +21,7 @@ static void client_app_class_init(ClientAppClass * class) {
 }
 
 ClientApp * client_app_new(void) {
-    return g_object_new (CLIENT_APP_TYPE,
+    return g_object_new(CLIENT_APP_TYPE,
                         "application-id", "com.flexvdi.client",
                         "flags", G_APPLICATION_NON_UNIQUE,
                         NULL);

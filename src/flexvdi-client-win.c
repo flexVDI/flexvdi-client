@@ -10,6 +10,11 @@ struct _ClientAppWindow {
 G_DEFINE_TYPE(ClientAppWindow, client_app_window, GTK_TYPE_APPLICATION_WINDOW);
 
 static void client_app_window_init(ClientAppWindow * win) {
+    GtkCssProvider * css_provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_resource(css_provider, "/com/flexvdi/client/style.css");
+    GdkScreen * screen = gtk_widget_get_screen(GTK_WIDGET(win));
+    gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider),
+                                              GTK_STYLE_PROVIDER_PRIORITY_USER + 1);
     gtk_widget_init_template(GTK_WIDGET(win));
 }
 
