@@ -23,9 +23,7 @@
                 <child>
                     <object class="GtkButton" id="gears">
                         <property name="visible">True</property>
-                        <style>
-                            <class name="image-button"/>
-                        </style>
+                        <property name="image">gears-icon</property>
                     </object>
                     <packing>
                         <property name="pack-type">end</property>
@@ -45,4 +43,8 @@
             </object>
         </child>
     </template>
+    <object class="GtkImage" id="gears-icon">
+        <property name="visible">True</property>
+        <property name="resource">/com/flexvdi/client/images/button-settings.png</property>
+    </object>
 </interface>

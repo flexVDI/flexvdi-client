@@ -4,5 +4,6 @@
         <file preprocess="xml-stripblanks">window.ui</file>
         <file>images/icon.png</file>
         <file>images/logo-flexVDI-toolbar.png</file>
+        <file>images/button-settings.png</file>
     </gresource>
 </gresources>

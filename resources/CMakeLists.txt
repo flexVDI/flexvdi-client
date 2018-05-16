@@ -8,6 +8,7 @@ add_custom_command(OUTPUT ${resources_c}
                         window.ui
                         images/icon.png
                         images/logo-flexVDI-toolbar.png
+                        images/button-settings.png
                   )
 
 add_library(resource_objects OBJECT ${resources_c})
