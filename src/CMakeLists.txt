@@ -20,7 +20,7 @@ endif ()
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/flexvdi-port.h.in"
                "${CMAKE_CURRENT_BINARY_DIR}/flexvdi-port.h")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-add_definitions(-DG_LOG_DOMAIN=\"flexvdi\")
+add_definitions(-DG_LOG_DOMAIN=\"flexvdi\" -DVERSION_STRING=\"${FLEXVDI_VERSION}\")
 
 add_library(client_objects OBJECT ${client_sources})
 set_target_properties(client_objects PROPERTIES POSITION_INDEPENDENT_CODE 1)

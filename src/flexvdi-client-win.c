@@ -5,6 +5,7 @@
 
 struct _ClientAppWindow {
     GtkApplicationWindow parent;
+    GtkLabel * version;
 };
 
 G_DEFINE_TYPE(ClientAppWindow, client_app_window, GTK_TYPE_APPLICATION_WINDOW);
@@ -16,11 +17,14 @@ static void client_app_window_init(ClientAppWindow * win) {
     gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_USER + 1);
     gtk_widget_init_template(GTK_WIDGET(win));
+
+    gtk_label_set_text(win->version, "version " VERSION_STRING);
 }
 
 static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_set_template_from_resource(GTK_WIDGET_CLASS(class),
                                                 "/com/flexvdi/client/window.ui");
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, version);
 }
 
 ClientAppWindow * client_app_window_new(ClientApp * app) {
