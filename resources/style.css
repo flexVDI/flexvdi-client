@@ -6,7 +6,8 @@
 }
 
 #header {
-    background-image: linear-gradient(to right, #00a1c1 60%, #356879 100%);;
+    background-image: linear-gradient(to right, #00a1c1 60%, #356879 100%);
+    border: 0;
 }
 
 #content-box {
@@ -14,7 +15,7 @@
 }
 
 #status {
-    background-color: rgba(0, 0, 0, 0.7)
+    background-image: linear-gradient(to top, #444 95%, #000 100%);
 }
 
 #status label {
