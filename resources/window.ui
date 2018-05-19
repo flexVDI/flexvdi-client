@@ -1,176 +1,176 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-    <template class="ClientAppWindow" parent="GtkApplicationWindow">
-        <property name="title" translatable="yes">flexVDI Client</property>
-        <property name="default-width">800</property>
-        <property name="default-height">600</property>
-        <property name="resizable">False</property>
-        <property name="window-position">GTK_WIN_POS_CENTER</property>
-        <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>
-        <child type="titlebar">
-            <object class="GtkHeaderBar" id="header">
-                <property name="name">header</property>
-                <property name="visible">True</property>
-                <property name="show-close-button">True</property>
-                <child>
-                    <object class="GtkImage" id="logo">
-                        <property name="visible">True</property>
-                        <property name="resource">/com/flexvdi/client/images/logo-flexVDI-toolbar.png</property>
-                    </object>
-                    <packing>
-                        <property name="pack-type">start</property>
-                    </packing>
-                </child>
-                <child>
-                    <object class="GtkButton" id="gears">
-                        <property name="visible">True</property>
-                        <property name="image">gears-icon</property>
-                        <style>
-                            <class name="titlebutton"/>
-                        </style>
-                    </object>
-                    <packing>
-                        <property name="pack-type">end</property>
-                    </packing>
-                </child>
-            </object>
+  <template class="ClientAppWindow" parent="GtkApplicationWindow">
+    <property name="title" translatable="yes">flexVDI Client</property>
+    <property name="default-width">800</property>
+    <property name="default-height">600</property>
+    <property name="resizable">False</property>
+    <property name="window-position">GTK_WIN_POS_CENTER</property>
+    <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>
+    <child type="titlebar">
+      <object class="GtkHeaderBar" id="header">
+        <property name="name">header</property>
+        <property name="visible">True</property>
+        <property name="show-close-button">True</property>
+        <child>
+          <object class="GtkImage" id="logo">
+            <property name="visible">True</property>
+            <property name="resource">/com/flexvdi/client/images/logo-flexVDI-toolbar.png</property>
+          </object>
+          <packing>
+            <property name="pack-type">start</property>
+          </packing>
         </child>
         <child>
-            <object class="GtkBox" id="content_box">
-                <property name="name">content-box</property>
-                <property name="visible">True</property>
-                <property name="orientation">vertical</property>
-                <child>
-                    <object class="GtkBox">
-                        <property name="visible">True</property>
-                        <property name="orientation">horizontal</property>
-                        <property name="name">status</property>
-                        <child>
-                            <object class="GtkLabel" id="status">
-                                <property name="visible">True</property>
-                                <property name="label">Status</property>
-                                <property name="xalign">0</property>
-                                <property name="hexpand">True</property>
-                                <property name="margin">10</property>
-                                <property name="margin-left">20</property>
-                            </object>
-                        </child>
-                    </object>
-                    <packing>
-                        <property name="pack-type">start</property>
-                    </packing>
-                </child>
-                <child>
-                    <object class="GtkImage" id="logo-client">
-                        <property name="visible">True</property>
-                        <property name="resource">/com/flexvdi/client/images/logo-client.png</property>
-                        <property name="margin">20</property>
-                    </object>
-                    <packing>
-                        <property name="pack-type">start</property>
-                    </packing>
-                </child>
-                <child>
-                    <object class="GtkStack" id="stack">
-                        <property name="visible">True</property>
-                        <property name="homogeneous">True</property>
-                        <property name="transition-duration">200</property>
-                        <property name="transition-type">GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT</property>
-                        <property name="margin-left">50</property>
-                        <property name="margin-right">50</property>
-                        <property name="vexpand">True</property>
-                        <property name="valign">GTK_ALIGN_CENTER</property>
-                        <child>
-                            <object class="GtkGrid">
-                                <property name="name">settings</property>
-                                <property name="visible">True</property>
-                                <property name="row_spacing">10</property>
-                                <property name="column_spacing">10</property>
-                                <child>
-                                    <object class="GtkLabel">
-                                        <property name="visible">True</property>
-                                        <property name="halign">GTK_ALIGN_END</property>
-                                        <property name="label" translatable="yes">Connection address:</property>
-                                    </object>
-                                    <packing>
-                                        <property name="left_attach">0</property>
-                                        <property name="top_attach">0</property>
-                                    </packing>
-                                </child>
-                                <child>
-                                    <object class="GtkEntry">
-                                        <property name="visible">True</property>
-                                        <property name="name">address</property>
-                                        <property name="hexpand">True</property>
-                                        <property name="placeholder-text" translatable="yes">name/IP : port</property>
-                                    </object>
-                                    <packing>
-                                        <property name="left_attach">1</property>
-                                        <property name="top_attach">0</property>
-                                    </packing>
-                                </child>
-                                <child>
-                                    <object class="GtkLabel">
-                                        <property name="visible">True</property>
-                                        <property name="halign">GTK_ALIGN_END</property>
-                                        <property name="label" translatable="yes">Fullscreen:</property>
-                                    </object>
-                                    <packing>
-                                        <property name="left_attach">0</property>
-                                        <property name="top_attach">1</property>
-                                    </packing>
-                                </child>
-                                <child>
-                                    <object class="GtkCheckButton">
-                                        <property name="visible">True</property>
-                                        <property name="name">fullscreen</property>
-                                    </object>
-                                    <packing>
-                                        <property name="left_attach">1</property>
-                                        <property name="top_attach">1</property>
-                                    </packing>
-                                </child>
-                            </object>
-                        </child>
-                    </object>
-                </child>
-                <child>
-                    <object class="GtkBox">
-                        <property name="visible">True</property>
-                        <property name="orientation">horizontal</property>
-                        <property name="margin">20</property>
-                        <child>
-                            <object class="GtkLabel" id="info">
-                                <property name="name">info</property>
-                                <property name="visible">True</property>
-                                <property name="label">Info</property>
-                                <property name="xalign">0</property>
-                            </object>
-                            <packing>
-                                <property name="pack-type">start</property>
-                            </packing>
-                        </child>
-                        <child>
-                            <object class="GtkLabel" id="version">
-                                <property name="name">version</property>
-                                <property name="visible">True</property>
-                                <property name="label">v3.0.0</property>
-                                <property name="xalign">1</property>
-                            </object>
-                            <packing>
-                                <property name="pack-type">end</property>
-                            </packing>
-                        </child>
-                    </object>
-                    <packing>
-                        <property name="pack-type">end</property>
-                    </packing>
-                </child>
-            </object>
+          <object class="GtkButton" id="gears">
+            <property name="visible">True</property>
+            <property name="image">gears-icon</property>
+            <style>
+              <class name="titlebutton"/>
+            </style>
+          </object>
+          <packing>
+            <property name="pack-type">end</property>
+          </packing>
         </child>
-    </template>
-    <object class="GtkImage" id="gears-icon">
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox" id="content_box">
+        <property name="name">content-box</property>
         <property name="visible">True</property>
-        <property name="resource">/com/flexvdi/client/images/button-settings.png</property>
-    </object>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="orientation">horizontal</property>
+            <property name="name">status</property>
+            <child>
+              <object class="GtkLabel" id="status">
+                <property name="visible">True</property>
+                <property name="label">Status</property>
+                <property name="xalign">0</property>
+                <property name="hexpand">True</property>
+                <property name="margin">10</property>
+                <property name="margin-left">20</property>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="pack-type">start</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkImage" id="logo-client">
+            <property name="visible">True</property>
+            <property name="resource">/com/flexvdi/client/images/logo-client.png</property>
+            <property name="margin">20</property>
+          </object>
+          <packing>
+            <property name="pack-type">start</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkStack" id="stack">
+            <property name="visible">True</property>
+            <property name="homogeneous">True</property>
+            <property name="transition-duration">200</property>
+            <property name="transition-type">GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT</property>
+            <property name="margin-left">50</property>
+            <property name="margin-right">50</property>
+            <property name="vexpand">True</property>
+            <property name="valign">GTK_ALIGN_CENTER</property>
+            <child>
+              <object class="GtkGrid">
+                <property name="name">settings</property>
+                <property name="visible">True</property>
+                <property name="row_spacing">10</property>
+                <property name="column_spacing">10</property>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="visible">True</property>
+                    <property name="halign">GTK_ALIGN_END</property>
+                    <property name="label" translatable="yes">Connection address:</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">0</property>
+                    <property name="top_attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkEntry">
+                    <property name="visible">True</property>
+                    <property name="name">address</property>
+                    <property name="hexpand">True</property>
+                    <property name="placeholder-text" translatable="yes">name/IP : port</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="top_attach">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="visible">True</property>
+                    <property name="halign">GTK_ALIGN_END</property>
+                    <property name="label" translatable="yes">Fullscreen:</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">0</property>
+                    <property name="top_attach">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkCheckButton">
+                    <property name="visible">True</property>
+                    <property name="name">fullscreen</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="top_attach">1</property>
+                  </packing>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="orientation">horizontal</property>
+            <property name="margin">20</property>
+            <child>
+              <object class="GtkLabel" id="info">
+                <property name="name">info</property>
+                <property name="visible">True</property>
+                <property name="label">Info</property>
+                <property name="xalign">0</property>
+              </object>
+              <packing>
+                <property name="pack-type">start</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="version">
+                <property name="name">version</property>
+                <property name="visible">True</property>
+                <property name="label">v3.0.0</property>
+                <property name="xalign">1</property>
+              </object>
+              <packing>
+                <property name="pack-type">end</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="pack-type">end</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </template>
+  <object class="GtkImage" id="gears-icon">
+    <property name="visible">True</property>
+    <property name="resource">/com/flexvdi/client/images/button-settings.png</property>
+  </object>
 </interface>
