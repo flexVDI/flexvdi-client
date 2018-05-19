@@ -7,24 +7,34 @@ gchar * discover_terminal_id();
 
 struct _ClientApp {
     GtkApplication parent;
+    ClientAppWindow * main_window;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
 
+static void client_app_configure(ClientApp * app) {
+    client_app_window_set_status(app->main_window,
+        "Please, provide the manager's address (and port, if it is not 443)");
+    client_app_window_set_central_widget(app->main_window, "settings");
+}
+
 static void client_app_init(ClientApp * app) {}
 
-static void client_app_activate(GApplication *app) {
-    ClientAppWindow * win = client_app_window_new(CLIENT_APP(app));
-    gtk_window_present(GTK_WINDOW(win));
+static void client_app_activate(GApplication *gapp) {
+    ClientApp * app = CLIENT_APP(gapp);
+    app->main_window = client_app_window_new(app);
+    gtk_window_present(GTK_WINDOW(app->main_window));
 
     gchar * tid = discover_terminal_id();
     if (tid[0] == '\0') {
         // TODO: Random terminal id
     }
     gchar * text = g_strconcat("Terminal ID: ", tid, NULL);
-    client_app_window_set_info(win, text);
+    client_app_window_set_info(app->main_window, text);
     g_free(tid);
     g_free(text);
+
+    client_app_configure(app);
 }
 
 static void client_app_class_init(ClientAppClass * class) {

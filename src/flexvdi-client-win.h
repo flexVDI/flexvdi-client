@@ -10,6 +10,8 @@ G_DECLARE_FINAL_TYPE(ClientAppWindow, client_app_window, CLIENT, APP_WINDOW, Gtk
 
 ClientAppWindow * client_app_window_new(ClientApp * app);
 void client_app_window_set_info(ClientAppWindow * win, const gchar * text);
+void client_app_window_set_status(ClientAppWindow * win, const gchar * text);
+void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * name);
 
 
 #endif /* _FLEXVDICLIENTWIN_H */

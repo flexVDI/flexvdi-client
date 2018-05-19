@@ -7,6 +7,8 @@ struct _ClientAppWindow {
     GtkApplicationWindow parent;
     GtkLabel * version;
     GtkLabel * info;
+    GtkLabel * status;
+    GtkStack * stack;
 };
 
 G_DEFINE_TYPE(ClientAppWindow, client_app_window, GTK_TYPE_APPLICATION_WINDOW);
@@ -27,10 +29,20 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
                                                 "/com/flexvdi/client/window.ui");
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, version);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, info);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, status);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, stack);
 }
 
 void client_app_window_set_info(ClientAppWindow * win, const gchar * text) {
     gtk_label_set_text(win->info, text);
+}
+
+void client_app_window_set_status(ClientAppWindow * win, const gchar * text) {
+    gtk_label_set_text(win->status, text);
+}
+
+void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * name) {
+    gtk_stack_set_visible_child_name(win->stack, name);
 }
 
 ClientAppWindow * client_app_window_new(ClientApp * app) {
