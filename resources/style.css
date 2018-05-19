@@ -2,7 +2,7 @@
     font-family: Lato;
     font-style: normal;
     font-size: x-large;
-    color: #000;
+    color: #444;
 }
 
 #header {
@@ -27,4 +27,8 @@
 #info, #version {
     font-size: 70%;
     color: #bbb;
+}
+
+entry:focus {
+    border-color: #00a1c1;
 }
