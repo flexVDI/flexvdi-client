@@ -73,6 +73,65 @@
                 <child>
                     <object class="GtkStack" id="stack">
                         <property name="visible">True</property>
+                        <property name="homogeneous">True</property>
+                        <property name="transition-duration">200</property>
+                        <property name="transition-type">GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT</property>
+                        <property name="margin-left">50</property>
+                        <property name="margin-right">50</property>
+                        <property name="vexpand">True</property>
+                        <property name="valign">GTK_ALIGN_CENTER</property>
+                        <child>
+                            <object class="GtkGrid">
+                                <property name="name">settings</property>
+                                <property name="visible">True</property>
+                                <property name="row_spacing">10</property>
+                                <property name="column_spacing">10</property>
+                                <child>
+                                    <object class="GtkLabel">
+                                        <property name="visible">True</property>
+                                        <property name="halign">GTK_ALIGN_END</property>
+                                        <property name="label" translatable="yes">Connection address:</property>
+                                    </object>
+                                    <packing>
+                                        <property name="left_attach">0</property>
+                                        <property name="top_attach">0</property>
+                                    </packing>
+                                </child>
+                                <child>
+                                    <object class="GtkEntry">
+                                        <property name="visible">True</property>
+                                        <property name="name">address</property>
+                                        <property name="hexpand">True</property>
+                                        <property name="placeholder-text" translatable="yes">name/IP : port</property>
+                                    </object>
+                                    <packing>
+                                        <property name="left_attach">1</property>
+                                        <property name="top_attach">0</property>
+                                    </packing>
+                                </child>
+                                <child>
+                                    <object class="GtkLabel">
+                                        <property name="visible">True</property>
+                                        <property name="halign">GTK_ALIGN_END</property>
+                                        <property name="label" translatable="yes">Fullscreen:</property>
+                                    </object>
+                                    <packing>
+                                        <property name="left_attach">0</property>
+                                        <property name="top_attach">1</property>
+                                    </packing>
+                                </child>
+                                <child>
+                                    <object class="GtkCheckButton">
+                                        <property name="visible">True</property>
+                                        <property name="name">fullscreen</property>
+                                    </object>
+                                    <packing>
+                                        <property name="left_attach">1</property>
+                                        <property name="top_attach">1</property>
+                                    </packing>
+                                </child>
+                            </object>
+                        </child>
                     </object>
                 </child>
                 <child>
