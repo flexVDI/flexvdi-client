@@ -3,6 +3,8 @@
 #include "flexvdi-client-app.h"
 #include "flexvdi-client-win.h"
 
+gchar * discover_terminal_id();
+
 struct _ClientApp {
     GtkApplication parent;
 };
@@ -14,7 +16,15 @@ static void client_app_init(ClientApp * app) {}
 static void client_app_activate(GApplication *app) {
     ClientAppWindow * win = client_app_window_new(CLIENT_APP(app));
     gtk_window_present(GTK_WINDOW(win));
-    client_app_window_set_info(win, "Terminal ID: ");
+
+    gchar * tid = discover_terminal_id();
+    if (tid[0] == '\0') {
+        // TODO: Random terminal id
+    }
+    gchar * text = g_strconcat("Terminal ID: ", tid, NULL);
+    client_app_window_set_info(win, text);
+    g_free(tid);
+    g_free(text);
 }
 
 static void client_app_class_init(ClientAppClass * class) {
