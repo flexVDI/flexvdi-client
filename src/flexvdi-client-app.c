@@ -14,6 +14,7 @@ static void client_app_init(ClientApp * app) {}
 static void client_app_activate(GApplication *app) {
     ClientAppWindow * win = client_app_window_new(CLIENT_APP(app));
     gtk_window_present(GTK_WINDOW(win));
+    client_app_window_set_info(win, "Terminal ID: ");
 }
 
 static void client_app_class_init(ClientAppClass * class) {
