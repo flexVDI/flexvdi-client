@@ -32,3 +32,37 @@
 entry:focus {
     border-color: #00a1c1;
 }
+
+button {
+    background-image: none;
+    box-shadow: none;
+    text-shadow: none;
+}
+
+#header button {
+    border: none;
+}
+
+#header button:hover {
+    border: none;
+    box-shadow: none;
+    -gtk-icon-effect: none;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+stack button {
+    background-color: #00a1c1;
+    border-color: transparent;
+}
+
+stack button:hover {
+    background-color: #5db9cc;
+}
+
+stack button:focus {
+    border-color: rgba(255, 208, 0, 0.5);
+}
+
+stack button label {
+    color: #ffffff;
+}
