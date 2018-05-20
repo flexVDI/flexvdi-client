@@ -11,7 +11,6 @@
 #include <gio/gunixoutputstream.h>
 #include "spice-client.h"
 #include "flexvdi-spice.h"
-#include "flexvdi-cmdline.h"
 #include "spice-util.h"
 
 
@@ -225,7 +224,7 @@ static void openSerial(SerialPort * serial) {
 
 static void allocSerialPorts() {
     numPorts = 0;
-    const gchar ** serialParams = getSerialPortParams();
+    const gchar ** serialParams = NULL; //getSerialPortParams();
     if (serialParams) {
         while (serialParams[numPorts]) ++numPorts;
         serialPorts = g_malloc0(sizeof(SerialPort) * numPorts);
@@ -245,7 +244,7 @@ void serialPortOpened(SpiceChannel * channel) {
             SerialPort * serial = &serialPorts[portNumber];
             serial->cancellable = g_cancellable_new();
             serial->channel = SPICE_PORT_CHANNEL(channel);
-            parseSerialParams(serial, getSerialPortParams()[portNumber]);
+            //parseSerialParams(serial, getSerialPortParams()[portNumber]);
             openSerial(serial);
         }
     }

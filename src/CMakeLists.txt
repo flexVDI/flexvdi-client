@@ -1,6 +1,6 @@
 set(client_sources
     main.c flexvdi-client-app.c flexvdi-client-win.c
-    flexvdi-spice.c flexvdi-cmdline.c)
+    flexvdi-spice.c configuration.c)
 if (WIN32)
     if (ENABLE_PRINTING)
         set(client_sources ${client_sources} printclient.c PPDGenerator.c printclient-win32.c)

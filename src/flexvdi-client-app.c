@@ -1,12 +1,14 @@
 #include <gtk/gtk.h>
 
 #include "flexvdi-client-app.h"
+#include "configuration.h"
 #include "flexvdi-client-win.h"
 
 gchar * discover_terminal_id();
 
 struct _ClientApp {
     GtkApplication parent;
+    ClientConf * conf;
     ClientAppWindow * main_window;
 };
 
@@ -18,7 +20,11 @@ static void client_app_configure(ClientApp * app) {
     client_app_window_set_central_widget(app->main_window, "settings");
 }
 
-static void client_app_init(ClientApp * app) {}
+static void client_app_init(ClientApp * app) {
+    app->conf = client_conf_new();
+    g_application_add_main_option_entries(G_APPLICATION(app),
+        client_conf_get_cmdline_entries(app->conf));
+}
 
 static void client_app_activate(GApplication *gapp) {
     ClientApp * app = CLIENT_APP(gapp);

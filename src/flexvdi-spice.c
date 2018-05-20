@@ -8,7 +8,6 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include "flexvdi-spice.h"
-#include "flexvdi-cmdline.h"
 #include "spice-client.h"
 #define FLEXVDI_PROTO_IMPL
 #include "flexdp.h"
@@ -200,9 +199,9 @@ static void handleCapabilitiesMsg(FlexVDICapabilitiesMsg * msg) {
     flexvdiLog(L_DEBUG, "flexVDI guest agent capabilities: %08x %08x %08x %08x",
                agentCapabilities.caps[3], agentCapabilities.caps[2],
                agentCapabilities.caps[1], agentCapabilities.caps[0]);
-    if (getDisablePrinting()) {
-        resetCapability(&agentCapabilities, FLEXVDI_CAP_PRINTING);
-    }
+    // if (getDisablePrinting()) {
+    //     resetCapability(&agentCapabilities, FLEXVDI_CAP_PRINTING);
+    // }
     GSList * it;
     for (it = connectionHandlers; it != NULL; it = g_slist_next(it)) {
         ConnectionHandler * handler = (ConnectionHandler *)it->data;
