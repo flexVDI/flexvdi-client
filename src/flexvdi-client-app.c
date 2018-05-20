@@ -54,6 +54,8 @@ static void client_app_activate(GApplication *gapp) {
     g_free(tid);
     g_free(text);
 
+    client_app_window_set_config(app->main_window, app->conf);
+
     client_app_configure(app);
 }
 

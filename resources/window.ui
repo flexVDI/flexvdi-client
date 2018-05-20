@@ -97,7 +97,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkEntry">
+                  <object class="GtkEntry" id="host">
                     <property name="visible">True</property>
                     <property name="name">address</property>
                     <property name="hexpand">True</property>
