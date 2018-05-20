@@ -8,7 +8,7 @@ struct _ClientConf {
     GObject parent;
     GOptionEntry * cmdline_entries;
     gboolean version;
-    const gchar * host;
+    gchar * host;
     gint port;
     const gchar ** serial_params;
     gboolean disable_printing;
@@ -82,6 +82,7 @@ static void client_conf_dispose(GObject * obj) {
 static void client_conf_finalize(GObject * obj) {
     ClientConf * conf = CLIENT_CONF(obj);
     g_free(conf->cmdline_entries);
+    g_free(conf->host);
     g_free(conf->serial_params);
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
 }
