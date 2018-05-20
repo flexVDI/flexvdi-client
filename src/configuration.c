@@ -7,6 +7,7 @@
 struct _ClientConf {
     GObject parent;
     GOptionEntry * cmdline_entries;
+    gboolean version;
     const gchar * host;
     gint port;
     const gchar ** serial_params;
@@ -17,6 +18,10 @@ G_DEFINE_TYPE(ClientConf, client_conf, G_TYPE_OBJECT);
 
 GOptionEntry * client_conf_get_cmdline_entries(ClientConf * conf) {
     return conf->cmdline_entries;
+}
+
+gboolean client_conf_show_version(ClientConf * conf) {
+    return conf->version;
 }
 
 const gchar * client_conf_get_host(ClientConf * conf) {
@@ -37,6 +42,8 @@ gboolean client_conf_get_disable_printing(ClientConf * conf) {
 
 static const GOptionEntry cmdline_entries[] = {
     // { long_name, short_name, flags, arg, arg_data, description, arg_description },
+    { "version", 0, 0, G_OPTION_ARG_NONE, NULL,
+      "Show version and exit", NULL },
     { "host", 'h', 0, G_OPTION_ARG_STRING, NULL,
       "Connection host address", NULL },
     { "port", 'p', 0, G_OPTION_ARG_INT, NULL,
@@ -51,6 +58,7 @@ static const GOptionEntry cmdline_entries[] = {
 };
 
 static void client_conf_init(ClientConf * conf) {
+    conf->version = FALSE;
     conf->host = NULL;
     conf->port = 443;
     conf->serial_params = NULL;
@@ -58,6 +66,7 @@ static void client_conf_init(ClientConf * conf) {
     conf->cmdline_entries = g_memdup(cmdline_entries, sizeof(cmdline_entries));
 
     int i = 0;
+    conf->cmdline_entries[i++].arg_data = &conf->version;
     conf->cmdline_entries[i++].arg_data = &conf->host;
     conf->cmdline_entries[i++].arg_data = &conf->port;
     conf->cmdline_entries[i++].arg_data = &conf->serial_params;

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <gtk/gtk.h>
 
 #include "flexvdi-client-app.h"
@@ -20,10 +21,23 @@ static void client_app_configure(ClientApp * app) {
     client_app_window_set_central_widget(app->main_window, "settings");
 }
 
+static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {
+    ClientApp * app = CLIENT_APP(gapp);
+    if (client_conf_show_version(app->conf)) {
+        printf("flexVDI Client v" VERSION_STRING "\n"
+               "Copyright (C) 2018 Flexible Software Solutions S.L.\n");
+        return 0;
+    }
+
+    return -1;
+}
+
 static void client_app_init(ClientApp * app) {
     app->conf = client_conf_new();
     g_application_add_main_option_entries(G_APPLICATION(app),
         client_conf_get_cmdline_entries(app->conf));
+    g_signal_connect(app, "handle-local-options",
+        G_CALLBACK(client_app_handle_options), NULL);
 }
 
 static void client_app_activate(GApplication *gapp) {
