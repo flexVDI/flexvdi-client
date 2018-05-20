@@ -16,6 +16,7 @@ GOptionEntry * client_conf_get_cmdline_entries(ClientConf * conf);
 gboolean client_conf_show_version(ClientConf * conf);
 const gchar * client_conf_get_host(ClientConf * conf);
 gint client_conf_get_port(ClientConf * conf);
+gboolean client_conf_get_fullscreen(ClientConf * conf);
 const gchar ** client_conf_get_serial_params(ClientConf * conf);
 gboolean client_conf_get_disable_printing(ClientConf * conf);
 

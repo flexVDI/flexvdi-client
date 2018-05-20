@@ -10,6 +10,7 @@ struct _ClientConf {
     gboolean version;
     gchar * host;
     gint port;
+    gboolean fullscreen;
     const gchar ** serial_params;
     gboolean disable_printing;
 };
@@ -32,6 +33,10 @@ gint client_conf_get_port(ClientConf * conf) {
     return conf->port;
 }
 
+gboolean client_conf_get_fullscreen(ClientConf * conf) {
+    return conf->fullscreen;
+}
+
 const gchar ** client_conf_get_serial_params(ClientConf * conf) {
     return conf->serial_params;
 }
@@ -48,6 +53,8 @@ static const GOptionEntry cmdline_entries[] = {
       "Connection host address", NULL },
     { "port", 'p', 0, G_OPTION_ARG_INT, NULL,
       "Connection port (default 443)", NULL },
+    { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, NULL,
+      "Show desktop in fullscreen mode", NULL },
     { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, NULL,
       "Add serial port redirection. "
       "The Nth use of this option is attached to channel serialredirN. "
@@ -61,6 +68,7 @@ static void client_conf_init(ClientConf * conf) {
     conf->version = FALSE;
     conf->host = NULL;
     conf->port = 443;
+    conf->fullscreen = FALSE;
     conf->serial_params = NULL;
     conf->disable_printing = FALSE;
     conf->cmdline_entries = g_memdup(cmdline_entries, sizeof(cmdline_entries));
@@ -69,6 +77,7 @@ static void client_conf_init(ClientConf * conf) {
     conf->cmdline_entries[i++].arg_data = &conf->version;
     conf->cmdline_entries[i++].arg_data = &conf->host;
     conf->cmdline_entries[i++].arg_data = &conf->port;
+    conf->cmdline_entries[i++].arg_data = &conf->fullscreen;
     conf->cmdline_entries[i++].arg_data = &conf->serial_params;
     conf->cmdline_entries[i++].arg_data = &conf->disable_printing;
 }

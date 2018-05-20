@@ -11,6 +11,7 @@ struct _ClientAppWindow {
     GtkLabel * status;
     GtkStack * stack;
     GtkEntry * host;
+    GtkCheckButton * fullscreen;
 };
 
 G_DEFINE_TYPE(ClientAppWindow, client_app_window, GTK_TYPE_APPLICATION_WINDOW);
@@ -42,6 +43,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, status);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, stack);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, host);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, fullscreen);
 }
 
 void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {
@@ -56,6 +58,8 @@ void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {
             g_free(host_str);
         }
     }
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(win->fullscreen),
+        client_conf_get_fullscreen(win->conf));
 }
 
 void client_app_window_set_info(ClientAppWindow * win, const gchar * text) {
