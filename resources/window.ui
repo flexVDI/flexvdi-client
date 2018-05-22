@@ -64,7 +64,7 @@
           <object class="GtkImage" id="logo-client">
             <property name="visible">True</property>
             <property name="resource">/com/flexvdi/client/images/logo-client.png</property>
-            <property name="margin">20</property>
+            <property name="margin">40</property>
           </object>
           <packing>
             <property name="pack-type">start</property>
@@ -149,7 +149,7 @@
                     <property name="visible">True</property>
                     <property name="name">username</property>
                     <property name="placeholder-text" translatable="yes">username</property>
-                    <property name="primary-icon-name">user-available</property>
+                    <property name="primary-icon-name">user</property>
                   </object>
                 </child>
                 <child>
@@ -158,7 +158,7 @@
                     <property name="name">password</property>
                     <property name="placeholder-text" translatable="yes">password</property>
                     <property name="caps-lock-warning">True</property>
-                    <property name="primary-icon-name">dialog-password</property>
+                    <property name="primary-icon-name">lock</property>
                     <property name="visibility">False</property>
                   </object>
                 </child>

@@ -7,5 +7,7 @@
         <file>images/logo-flexVDI-toolbar.png</file>
         <file>images/button-settings.png</file>
         <file>images/logo-client.png</file>
+        <file>icons/16x16/emblems/user.png</file>
+        <file>icons/16x16/emblems/lock.png</file>
     </gresource>
 </gresources>
