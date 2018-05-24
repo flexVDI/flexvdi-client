@@ -53,9 +53,8 @@ void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {
         if (client_conf_get_port(win->conf) == 443) {
             gtk_entry_set_text(win->host, host);
         } else {
-            gchar * host_str = g_strdup_printf("%s:%d", host, client_conf_get_port(win->conf));
+            g_autofree gchar * host_str = g_strdup_printf("%s:%d", host, client_conf_get_port(win->conf));
             gtk_entry_set_text(win->host, host_str);
-            g_free(host_str);
         }
     }
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(win->fullscreen),

@@ -51,14 +51,12 @@ static void client_app_activate(GApplication *gapp) {
     app->main_window = client_app_window_new(app);
     gtk_window_present(GTK_WINDOW(app->main_window));
 
-    gchar * tid = discover_terminal_id();
+    g_autofree gchar * tid = discover_terminal_id();
     if (tid[0] == '\0') {
         // TODO: Random terminal id
     }
-    gchar * text = g_strconcat("Terminal ID: ", tid, NULL);
+    g_autofree gchar * text = g_strconcat("Terminal ID: ", tid, NULL);
     client_app_window_set_info(app->main_window, text);
-    g_free(tid);
-    g_free(text);
 
     client_app_window_set_config(app->main_window, app->conf);
 
