@@ -21,6 +21,12 @@ static void client_app_configure(ClientApp * app) {
     client_app_window_set_central_widget(app->main_window, "settings");
 }
 
+static void client_app_show_login(ClientApp * app) {
+    client_app_window_set_status(app->main_window,
+        "Fill in your credential");
+    client_app_window_set_central_widget(app->main_window, "login");
+}
+
 static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {
     ClientApp * app = CLIENT_APP(gapp);
     if (client_conf_show_version(app->conf)) {
@@ -56,7 +62,10 @@ static void client_app_activate(GApplication *gapp) {
 
     client_app_window_set_config(app->main_window, app->conf);
 
-    client_app_configure(app);
+    if (client_conf_get_host(app->conf) != NULL)
+        client_app_show_login(app);
+    else
+        client_app_configure(app);
 }
 
 static void client_app_class_init(ClientAppClass * class) {
