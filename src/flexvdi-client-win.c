@@ -12,9 +12,22 @@ struct _ClientAppWindow {
     GtkStack * stack;
     GtkEntry * host;
     GtkCheckButton * fullscreen;
+    GtkButton * login;
 };
 
+enum {
+    CLIENT_APP_LOGIN_BUTTON_PRESSED = 0,
+    CLIENT_APP_LAST_SIGNAL
+};
+
+static guint signals[CLIENT_APP_LAST_SIGNAL];
+
 G_DEFINE_TYPE(ClientAppWindow, client_app_window, GTK_TYPE_APPLICATION_WINDOW);
+
+static void login_button_pressed_handler(GtkButton * button, gpointer user_data) {
+    ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
+    g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
+}
 
 static void client_app_window_init(ClientAppWindow * win) {
     GtkCssProvider * css_provider = gtk_css_provider_new();
@@ -25,6 +38,7 @@ static void client_app_window_init(ClientAppWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
 
     gtk_label_set_text(win->version, "version " VERSION_STRING);
+    g_signal_connect(win->login, "clicked", G_CALLBACK(login_button_pressed_handler), win);
 }
 
 static void client_app_window_dispose(GObject * obj) {
@@ -44,6 +58,17 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, stack);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, host);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, fullscreen);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, login);
+
+    signals[CLIENT_APP_LOGIN_BUTTON_PRESSED] =
+        g_signal_new("login-button-pressed",
+                     CLIENT_APP_WINDOW_TYPE,
+                     G_SIGNAL_RUN_FIRST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
 }
 
 void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {

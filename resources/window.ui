@@ -163,7 +163,7 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton" id="login-btn">
+                  <object class="GtkButton" id="login">
                     <property name="visible">True</property>
                     <property name="name">login-btn</property>
                     <property name="label">login</property>

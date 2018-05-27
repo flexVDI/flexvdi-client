@@ -38,6 +38,10 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
     return -1;
 }
 
+static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
+    printf("Login\n");
+}
+
 static void client_app_init(ClientApp * app) {
     app->conf = client_conf_new();
     g_application_add_main_option_entries(G_APPLICATION(app),
@@ -46,7 +50,7 @@ static void client_app_init(ClientApp * app) {
         G_CALLBACK(client_app_handle_options), NULL);
 }
 
-static void client_app_activate(GApplication *gapp) {
+static void client_app_activate(GApplication * gapp) {
     ClientApp * app = CLIENT_APP(gapp);
     app->main_window = client_app_window_new(app);
     gtk_window_present(GTK_WINDOW(app->main_window));
@@ -59,6 +63,8 @@ static void client_app_activate(GApplication *gapp) {
     client_app_window_set_info(app->main_window, text);
 
     client_app_window_set_config(app->main_window, app->conf);
+    g_signal_connect(app->main_window, "login-button-pressed",
+        G_CALLBACK(login_button_pressed_handler), NULL);
 
     if (client_conf_get_host(app->conf) != NULL)
         client_app_show_login(app);
