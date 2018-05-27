@@ -7,6 +7,7 @@
 struct _ClientConf {
     GObject parent;
     GOptionEntry * cmdline_entries;
+    GKeyFile * file;
     gboolean version;
     gchar * host;
     gint port;
@@ -64,6 +65,43 @@ static const GOptionEntry cmdline_entries[] = {
     { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
+static void client_conf_load(ClientConf * conf) {
+    GError * error = NULL;
+    g_autofree gchar * config_filename = g_build_filename(
+        g_get_user_config_dir(),
+        "flexVDI Client",
+        "settings.ini",
+        NULL
+    );
+
+    if (!g_key_file_load_from_file(conf->file, config_filename,
+            G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
+        if (!g_error_matches(error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+            g_warning("Error loading settings file: %s", error->message);
+        return;
+    }
+
+    gchar * host_val = g_key_file_get_string(conf->file, "General", "host", NULL);
+    if (host_val != NULL)
+        conf->host = host_val;
+
+    gint port_val = g_key_file_get_integer(conf->file, "General", "port", NULL);
+    if (port_val != 0)
+        conf->port = port_val;
+
+    gboolean fs_val = g_key_file_get_boolean(conf->file, "General", "fullscreen", &error);
+    if (!error)
+        conf->fullscreen = fs_val;
+    else
+        g_error_free(error);
+
+    gboolean print_val = g_key_file_get_boolean(conf->file, "General", "disable_printing", &error);
+    if (!error)
+        conf->disable_printing = print_val;
+    else
+        g_error_free(error);
+}
+
 static void client_conf_init(ClientConf * conf) {
     conf->version = FALSE;
     conf->host = NULL;
@@ -72,6 +110,8 @@ static void client_conf_init(ClientConf * conf) {
     conf->serial_params = NULL;
     conf->disable_printing = FALSE;
     conf->cmdline_entries = g_memdup(cmdline_entries, sizeof(cmdline_entries));
+    conf->file = g_key_file_new();
+    client_conf_load(conf);
 
     int i = 0;
     conf->cmdline_entries[i++].arg_data = &conf->version;
@@ -82,23 +122,17 @@ static void client_conf_init(ClientConf * conf) {
     conf->cmdline_entries[i++].arg_data = &conf->disable_printing;
 }
 
-static void client_conf_dispose(GObject * obj) {
-    //ClientConf * conf = CLIENT_CONF(obj);
-    //g_clear_object(&conf->something);
-    G_OBJECT_CLASS(client_conf_parent_class)->dispose(obj);
-}
-
 static void client_conf_finalize(GObject * obj) {
     ClientConf * conf = CLIENT_CONF(obj);
     g_free(conf->cmdline_entries);
     g_free(conf->host);
     g_free(conf->serial_params);
+    g_key_file_free(conf->file);
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
 }
 
 static void client_conf_class_init(ClientConfClass * class) {
     GObjectClass * object_class = G_OBJECT_CLASS(class);
-    object_class->dispose = client_conf_dispose;
     object_class->finalize = client_conf_finalize;
 }
 
