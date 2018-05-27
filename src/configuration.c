@@ -14,6 +14,7 @@ struct _ClientConf {
     gboolean fullscreen;
     const gchar ** serial_params;
     gboolean disable_printing;
+    gchar * terminal_id;
 };
 
 G_DEFINE_TYPE(ClientConf, client_conf, G_TYPE_OBJECT);
@@ -44,6 +45,19 @@ const gchar ** client_conf_get_serial_params(ClientConf * conf) {
 
 gboolean client_conf_get_disable_printing(ClientConf * conf) {
     return conf->disable_printing;
+}
+
+gchar * discover_terminal_id();
+
+const gchar * client_conf_get_terminal_id(ClientConf * conf) {
+    if (!conf->terminal_id) {
+        conf->terminal_id = discover_terminal_id();
+        if (conf->terminal_id[0] == '\0') {
+            // TODO: Random terminal id
+        }
+        // TODO: Save terminal id
+    }
+    return conf->terminal_id;
 }
 
 static const GOptionEntry cmdline_entries[] = {
@@ -81,6 +95,10 @@ static void client_conf_load(ClientConf * conf) {
         return;
     }
 
+    gchar * tid_val = g_key_file_get_string(conf->file, "General", "terminal_id", NULL);
+    if (tid_val != NULL)
+        conf->terminal_id = tid_val;
+
     gchar * host_val = g_key_file_get_string(conf->file, "General", "host", NULL);
     if (host_val != NULL)
         conf->host = host_val;
@@ -109,6 +127,7 @@ static void client_conf_init(ClientConf * conf) {
     conf->fullscreen = FALSE;
     conf->serial_params = NULL;
     conf->disable_printing = FALSE;
+    conf->terminal_id = NULL;
     conf->cmdline_entries = g_memdup(cmdline_entries, sizeof(cmdline_entries));
     conf->file = g_key_file_new();
     client_conf_load(conf);
