@@ -117,7 +117,7 @@ void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * n
 }
 
 void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gboolean sensitive) {
-    gtk_widget_set_sensitive(gtk_stack_get_visible_child(win->stack), sensitive);
+    gtk_widget_set_sensitive(GTK_WIDGET(win->stack), sensitive);
 }
 
 ClientAppWindow * client_app_window_new(ClientApp * app) {
