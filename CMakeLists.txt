@@ -46,6 +46,8 @@ check_client_module(spice_gtk spice-client-gtk-3.0)
 check_client_module(glib glib-2.0)
 check_client_module(gobject gobject-2.0)
 check_client_module(gio gio-2.0)
+check_client_module(libsoup libsoup-2.4)
+check_client_module(json json-glib-1.0)
 
 if (WIN32)
     check_client_module(CAIRO cairo)
@@ -109,6 +111,8 @@ foreach (varname
          CAIRO_LIBRARY_DIRS CAIRO_INCLUDE_DIRS
          POPPLER_LIBRARY_DIRS POPPLER_INCLUDE_DIRS
          gio_unix_LIBRARY_DIRS gio_unix_INCLUDE_DIRS
+         libsoup_LIBRARY_DIRS libsoup_INCLUDE_DIRS
+         json_LIBRARY_DIRS json_INCLUDE_DIRS
          CLIENT_LIBRARY_DIRS CLIENT_INCLUDE_DIRS CLIENT_LIBRARIES
          )
     if (${varname})
