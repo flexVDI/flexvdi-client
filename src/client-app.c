@@ -63,6 +63,12 @@ static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_d
     client_app_configure(CLIENT_APP(user_data));
 }
 
+static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
+    if (event->key.keyval == GDK_KEY_F3)
+        client_app_configure(CLIENT_APP(user_data));
+    return FALSE;
+}
+
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
     printf("Login\n");
 }
@@ -87,6 +93,8 @@ static void client_app_activate(GApplication * gapp) {
     client_app_window_set_config(app->main_window, app->conf);
     g_signal_connect(app->main_window, "config-button-pressed",
         G_CALLBACK(config_button_pressed_handler), app);
+    g_signal_connect(app->main_window, "key-press-event",
+        G_CALLBACK(key_event_handler), app);
     g_signal_connect(app->main_window, "login-button-pressed",
         G_CALLBACK(login_button_pressed_handler), NULL);
 
