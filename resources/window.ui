@@ -130,6 +130,20 @@
                     <property name="top_attach">1</property>
                   </packing>
                 </child>
+                <child>
+                  <object class="GtkButton" id="save">
+                    <property name="visible">True</property>
+                    <property name="name">save-btn</property>
+                    <property name="label" translatable="yes">save config</property>
+                    <property name="halign">GTK_ALIGN_START</property>
+                    <property name="hexpand">False</property>
+                    <property name="width-request">250</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">1</property>
+                    <property name="top_attach">2</property>
+                  </packing>
+                </child>
               </object>
               <packing>
                 <property name="name">settings</property>
