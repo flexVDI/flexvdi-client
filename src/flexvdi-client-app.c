@@ -4,11 +4,13 @@
 #include "flexvdi-client-app.h"
 #include "configuration.h"
 #include "flexvdi-client-win.h"
+#include "client-request.h"
 
 struct _ClientApp {
     GtkApplication parent;
     ClientConf * conf;
     ClientAppWindow * main_window;
+    ClientRequest * current_request;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -19,10 +21,26 @@ static void client_app_configure(ClientApp * app) {
     client_app_window_set_central_widget(app->main_window, "settings");
 }
 
+static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+    g_autoptr(GError) error = NULL;
+    JsonNode * root = client_request_get_result(req, &error);
+    if (error) {
+        g_warning("Request failed: %s", error->message);
+    }
+}
+
 static void client_app_show_login(ClientApp * app) {
     client_app_window_set_status(app->main_window,
-        "Fill in your credential");
+        "Fill in your credentials");
     client_app_window_set_central_widget(app->main_window, "login");
+    client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+    g_clear_object(&app->current_request);
+    g_autofree gchar * req_body = g_strdup_printf(
+        "{\"hwaddress\": \"%s\"}", client_conf_get_terminal_id(app->conf));
+    app->current_request = client_request_new_with_data(app->conf,
+        "/vdi/authmode", req_body, authmode_request_cb, app);
 }
 
 static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {

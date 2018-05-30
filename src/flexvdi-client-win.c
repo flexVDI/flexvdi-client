@@ -98,6 +98,10 @@ void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * n
     gtk_stack_set_visible_child_name(win->stack, name);
 }
 
+void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gboolean sensitive) {
+    gtk_widget_set_sensitive(gtk_stack_get_visible_child(win->stack), sensitive);
+}
+
 ClientAppWindow * client_app_window_new(ClientApp * app) {
     return g_object_new(CLIENT_APP_WINDOW_TYPE, "application", app, NULL);
 }
