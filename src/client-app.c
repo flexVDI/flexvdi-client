@@ -19,6 +19,11 @@ static void client_app_configure(ClientApp * app) {
     client_app_window_set_status(app->main_window,
         "Please, provide the manager's address (and port, if it is not 443)");
     client_app_window_set_central_widget(app->main_window, "settings");
+    client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+    if (app->current_request) {
+        client_request_cancel(app->current_request);
+        g_clear_object(&app->current_request);
+    }
 }
 
 static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
@@ -54,6 +59,10 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
     return -1;
 }
 
+static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
+    client_app_configure(CLIENT_APP(user_data));
+}
+
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
     printf("Login\n");
 }
@@ -76,6 +85,8 @@ static void client_app_activate(GApplication * gapp) {
     client_app_window_set_info(app->main_window, text);
 
     client_app_window_set_config(app->main_window, app->conf);
+    g_signal_connect(app->main_window, "config-button-pressed",
+        G_CALLBACK(config_button_pressed_handler), app);
     g_signal_connect(app->main_window, "login-button-pressed",
         G_CALLBACK(login_button_pressed_handler), NULL);
 
