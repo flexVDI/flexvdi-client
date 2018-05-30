@@ -1,7 +1,6 @@
 #include <gtk/gtk.h>
 
-#include "flexvdi-client-app.h"
-#include "flexvdi-client-win.h"
+#include "client-win.h"
 
 struct _ClientAppWindow {
     GtkApplicationWindow parent;

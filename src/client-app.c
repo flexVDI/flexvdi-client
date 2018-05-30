@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <gtk/gtk.h>
 
-#include "flexvdi-client-app.h"
+#include "client-app.h"
 #include "configuration.h"
-#include "flexvdi-client-win.h"
+#include "client-win.h"
 #include "client-request.h"
 
 struct _ClientApp {

@@ -2,7 +2,7 @@
 #define _FLEXVDICLIENTWIN_H
 
 #include <gtk/gtk.h>
-#include "flexvdi-client-app.h"
+#include "client-app.h"
 #include "configuration.h"
 
 
