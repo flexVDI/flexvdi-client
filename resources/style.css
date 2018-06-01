@@ -24,6 +24,10 @@
     color: #fff;
 }
 
+#status label.error {
+    color: #ff5b00;
+}
+
 #info, #version {
     font-size: 70%;
     color: #bbb;

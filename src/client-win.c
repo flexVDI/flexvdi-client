@@ -122,8 +122,14 @@ void client_app_window_set_info(ClientAppWindow * win, const gchar * text) {
     gtk_label_set_text(win->info, text);
 }
 
-void client_app_window_set_status(ClientAppWindow * win, const gchar * text) {
+void client_app_window_set_status(ClientAppWindow * win, gboolean error, const gchar * text) {
     gtk_label_set_text(win->status, text);
+    GtkStyleContext * style = gtk_widget_get_style_context(GTK_WIDGET(win->status));
+    if (error) {
+        gtk_style_context_add_class(style, "error");
+    } else {
+        gtk_style_context_remove_class(style, "error");
+    }
 }
 
 void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * name) {

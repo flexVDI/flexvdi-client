@@ -16,7 +16,7 @@ struct _ClientApp {
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
 
 static void client_app_configure(ClientApp * app) {
-    client_app_window_set_status(app->main_window,
+    client_app_window_set_status(app->main_window, FALSE,
         "Please, provide the manager's address (and port, if it is not 443)");
     client_app_window_set_central_widget(app->main_window, "settings");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
@@ -32,12 +32,14 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
     g_autoptr(GError) error = NULL;
     JsonNode * root = client_request_get_result(req, &error);
     if (error) {
+        client_app_window_set_status(app->main_window, TRUE,
+            "Failed to contact server");
         g_warning("Request failed: %s", error->message);
     }
 }
 
 static void client_app_show_login(ClientApp * app) {
-    client_app_window_set_status(app->main_window,
+    client_app_window_set_status(app->main_window, FALSE,
         "Fill in your credentials");
     client_app_window_set_central_widget(app->main_window, "login");
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
