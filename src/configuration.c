@@ -38,9 +38,9 @@ gint client_conf_get_port(ClientConf * conf) {
 gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path) {
     if (!conf->host) return NULL;
     if (!conf->port)
-        return g_strdup_printf("https://%s/%s", conf->host, path);
+        return g_strdup_printf("https://%s%s", conf->host, path);
     else
-        return g_strdup_printf("https://%s:%d/%s", conf->host, conf->port, path);
+        return g_strdup_printf("https://%s:%d%s", conf->host, conf->port, path);
 }
 
 gboolean client_conf_get_fullscreen(ClientConf * conf) {
