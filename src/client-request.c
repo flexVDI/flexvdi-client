@@ -65,6 +65,12 @@ JsonNode * client_request_get_result(ClientRequest * req, GError ** error) {
 static void request_parsed_cb(GObject * source_object, GAsyncResult * res, gpointer user_data) {
     ClientRequest * req = CLIENT_REQUEST(user_data);
     json_parser_load_from_stream_finish(req->parser, res, &req->error);
+    if (!req->error) {
+        g_autoptr(JsonGenerator) gen = json_generator_new();
+        json_generator_set_root(gen, json_parser_get_root(req->parser));
+        g_autofree gchar * response = json_generator_to_data(gen, NULL);
+        g_debug("request response:\n%s", response);
+    }
     req->cb(req, req->user_data);
 }
 
@@ -76,7 +82,7 @@ static void request_finished_cb(GObject * object, GAsyncResult * result, gpointe
     } else {
         req->parser = json_parser_new();
         json_parser_load_from_stream_async(req->parser, stream, req->cancel_mgr_request,
-                                        request_parsed_cb, req);
+                                           request_parsed_cb, req);
     }
 }
 
@@ -87,6 +93,7 @@ ClientRequest * client_request_new(ClientConf * conf, const gchar * path,
     req->user_data = user_data;
     g_autofree gchar * uri = client_conf_get_connection_uri(conf, path);
     SoupMessage * msg = soup_message_new("GET", uri);
+    g_debug("GET request to %s", uri);
     soup_session_send_async(soup, msg, req->cancel_mgr_request,
                             request_finished_cb, req);
     return req;
@@ -99,6 +106,7 @@ ClientRequest * client_request_new_with_data(ClientConf * conf, const gchar * pa
     req->user_data = user_data;
     g_autofree gchar * uri = client_conf_get_connection_uri(conf, path);
     SoupMessage * msg = soup_message_new("POST", uri);
+    g_debug("POST request to %s, body:\n%s", uri, post_data);
     soup_message_set_request(msg, "text/json", SOUP_MEMORY_COPY, post_data, strlen(post_data));
     soup_session_send_async(soup, msg, req->cancel_mgr_request,
                             request_finished_cb, req);
