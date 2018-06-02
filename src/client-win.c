@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <gtk/gtk.h>
 
 #include "client-win.h"
@@ -27,13 +28,16 @@ static guint signals[CLIENT_APP_LAST_SIGNAL];
 
 G_DEFINE_TYPE(ClientAppWindow, client_app_window, GTK_TYPE_APPLICATION_WINDOW);
 
+static void save_config(ClientAppWindow * win);
+
 static void button_pressed_handler(GtkButton * button, gpointer user_data) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
     if (button == win->config)
         g_signal_emit(win, signals[CLIENT_APP_CONFIG_BUTTON_PRESSED], 0);
-    else if (button == win->save)
+    else if (button == win->save) {
+        save_config(win);
         g_signal_emit(win, signals[CLIENT_APP_SAVE_BUTTON_PRESSED], 0);
-    else if (button == win->login)
+    } else if (button == win->login)
         g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
 }
 
@@ -103,8 +107,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
                      0);
 }
 
-void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {
-    win->conf = g_object_ref(conf);
+static void load_config(ClientAppWindow * win) {
     const gchar * host = client_conf_get_host(win->conf);
     if (host) {
         if (client_conf_get_port(win->conf) == 443) {
@@ -116,6 +119,26 @@ void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {
     }
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(win->fullscreen),
         client_conf_get_fullscreen(win->conf));
+}
+
+static void save_config(ClientAppWindow * win) {
+    const gchar * host_port = gtk_entry_get_text(win->host);
+    char ** tokens = g_strsplit(host_port, ":", 2);
+    client_conf_set_host(win->conf, tokens[0]);
+    int port = 443;
+    if (tokens[1]) {
+        port = atoi(tokens[1]);
+        if (port < 1 || port > 65535) port = 443;
+    }
+    client_conf_set_port(win->conf, port);
+    client_conf_set_fullscreen(win->conf,
+        gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(win->fullscreen)));
+    g_strfreev(tokens);
+}
+
+void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {
+    win->conf = g_object_ref(conf);
+    load_config(win);
 }
 
 void client_app_window_set_info(ClientAppWindow * win, const gchar * text) {

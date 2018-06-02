@@ -68,6 +68,18 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
     return conf->terminal_id;
 }
 
+void client_conf_set_host(ClientConf * conf, const gchar * host) {
+    conf->host = g_strdup(host);
+}
+
+void client_conf_set_port(ClientConf * conf, gint port) {
+    conf->port = port;
+}
+
+void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
+    conf->fullscreen = fs;
+}
+
 static const GOptionEntry cmdline_entries[] = {
     // { long_name, short_name, flags, arg, arg_data, description, arg_description },
     { "version", 0, 0, G_OPTION_ARG_NONE, NULL,

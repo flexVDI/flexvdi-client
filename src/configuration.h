@@ -22,5 +22,8 @@ const gchar ** client_conf_get_serial_params(ClientConf * conf);
 gboolean client_conf_get_disable_printing(ClientConf * conf);
 const gchar * client_conf_get_terminal_id(ClientConf * conf);
 
+void client_conf_set_host(ClientConf * conf, const gchar * host);
+void client_conf_set_port(ClientConf * conf, gint port);
+void client_conf_set_fullscreen(ClientConf * conf, gboolean fs);
 
 #endif /* _CONFIGURATION_H */

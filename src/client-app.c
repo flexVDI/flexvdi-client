@@ -28,13 +28,14 @@ static void client_app_configure(ClientApp * app) {
 
 static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
-    client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
     g_autoptr(GError) error = NULL;
     JsonNode * root = client_request_get_result(req, &error);
     if (error) {
         client_app_window_set_status(app->main_window, TRUE,
             "Failed to contact server");
         g_warning("Request failed: %s", error->message);
+    } else {
+        client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
     }
 }
 
