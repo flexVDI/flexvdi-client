@@ -47,8 +47,6 @@ static void client_request_class_init(ClientRequestClass * class) {
 void client_request_cancel(ClientRequest * req) {
     if (req->cancel_mgr_request) {
         g_cancellable_cancel(req->cancel_mgr_request);
-        g_object_unref(req->cancel_mgr_request);
-        req->cancel_mgr_request = g_cancellable_new();
     }
 }
 
@@ -65,6 +63,8 @@ JsonNode * client_request_get_result(ClientRequest * req, GError ** error) {
 static void request_parsed_cb(GObject * source_object, GAsyncResult * res, gpointer user_data) {
     ClientRequest * req = CLIENT_REQUEST(user_data);
     json_parser_load_from_stream_finish(req->parser, res, &req->error);
+    if (g_error_matches(req->error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+        return;
     if (!req->error) {
         g_autoptr(JsonGenerator) gen = json_generator_new();
         json_generator_set_root(gen, json_parser_get_root(req->parser));
@@ -77,7 +77,9 @@ static void request_parsed_cb(GObject * source_object, GAsyncResult * res, gpoin
 static void request_finished_cb(GObject * object, GAsyncResult * result, gpointer user_data) {
 	ClientRequest * req = CLIENT_REQUEST(user_data);
 	GInputStream * stream = soup_session_send_finish(SOUP_SESSION(object), result, &req->error);
-	if (req->error) {
+    if (g_error_matches(req->error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+        return;
+    if (req->error) {
         req->cb(req, req->user_data);
     } else {
         req->parser = json_parser_new();
