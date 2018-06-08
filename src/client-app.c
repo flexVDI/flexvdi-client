@@ -35,13 +35,15 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
             "Failed to contact server");
         g_warning("Request failed: %s", error->message);
     } else {
+        client_app_window_set_status(app->main_window, FALSE,
+            "Fill in your credentials");
         client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
     }
 }
 
 static void client_app_show_login(ClientApp * app) {
     client_app_window_set_status(app->main_window, FALSE,
-        "Fill in your credentials");
+        "Contacting server...");
     client_app_window_set_central_widget(app->main_window, "login");
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
     g_clear_object(&app->current_request);
