@@ -63,11 +63,16 @@ JsonNode * client_request_get_result(ClientRequest * req, GError ** error) {
     }
 }
 
-static void request_parsed_cb(GObject * source_object, GAsyncResult * res, gpointer user_data) {
-    ClientRequest * req = CLIENT_REQUEST(user_data);
-    json_parser_load_from_stream_finish(req->parser, res, &req->error);
-    if (g_error_matches(req->error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+static void request_parsed_cb(GObject * object, GAsyncResult * res, gpointer user_data) {
+    GError * error = NULL;
+    json_parser_load_from_stream_finish(JSON_PARSER(object), res, &error);
+    if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+        g_debug("Request cancelled");
         return;
+    }
+
+    ClientRequest * req = CLIENT_REQUEST(user_data);
+    req->error = error;
     if (!req->error) {
         g_autoptr(JsonGenerator) gen = json_generator_new();
         json_generator_set_root(gen, json_parser_get_root(req->parser));
@@ -78,10 +83,15 @@ static void request_parsed_cb(GObject * source_object, GAsyncResult * res, gpoin
 }
 
 static void request_finished_cb(GObject * object, GAsyncResult * result, gpointer user_data) {
-	ClientRequest * req = CLIENT_REQUEST(user_data);
-	GInputStream * stream = soup_session_send_finish(SOUP_SESSION(object), result, &req->error);
-    if (g_error_matches(req->error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    GError * error = NULL;
+    GInputStream * stream = soup_session_send_finish(SOUP_SESSION(object), result, &error);
+    if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+        g_debug("Request cancelled");
         return;
+    }
+
+    ClientRequest * req = CLIENT_REQUEST(user_data);
+    req->error = error;
     if (req->error) {
         req->cb(req, req->user_data);
     } else {
