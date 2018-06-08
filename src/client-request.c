@@ -37,7 +37,10 @@ static void client_request_finalize(GObject * obj) {
 }
 
 static void client_request_class_init(ClientRequestClass * class) {
-    soup = soup_session_new_with_options("ssl-strict", FALSE, NULL);
+    soup = soup_session_new_with_options(
+        "ssl-strict", FALSE,
+        "timeout", 5,
+        NULL);
 
     GObjectClass * object_class = G_OBJECT_CLASS(class);
     object_class->dispose = client_request_dispose;
