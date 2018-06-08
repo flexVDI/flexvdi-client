@@ -15,42 +15,10 @@ struct _ClientApp {
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
 
-static void client_app_configure(ClientApp * app) {
-    client_app_window_set_status(app->main_window, FALSE,
-        "Please, provide the manager's address (and port, if it is not 443)");
-    client_app_window_set_central_widget(app->main_window, "settings");
-    client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
-    if (app->current_request) {
-        client_request_cancel(app->current_request);
-        g_clear_object(&app->current_request);
-    }
-}
+static void client_app_activate(GApplication * gapp);
 
-static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
-    ClientApp * app = CLIENT_APP(user_data);
-    g_autoptr(GError) error = NULL;
-    JsonNode * root = client_request_get_result(req, &error);
-    if (error) {
-        client_app_window_set_status(app->main_window, TRUE,
-            "Failed to contact server");
-        g_warning("Request failed: %s", error->message);
-    } else {
-        client_app_window_set_status(app->main_window, FALSE,
-            "Fill in your credentials");
-        client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
-    }
-}
-
-static void client_app_show_login(ClientApp * app) {
-    client_app_window_set_status(app->main_window, FALSE,
-        "Contacting server...");
-    client_app_window_set_central_widget(app->main_window, "login");
-    client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
-    g_clear_object(&app->current_request);
-    g_autofree gchar * req_body = g_strdup_printf(
-        "{\"hwaddress\": \"%s\"}", client_conf_get_terminal_id(app->conf));
-    app->current_request = client_request_new_with_data(app->conf,
-        "/vdi/authmode", req_body, authmode_request_cb, app);
+static void client_app_class_init(ClientAppClass * class) {
+    G_APPLICATION_CLASS(class)->activate = client_app_activate;
 }
 
 static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {
@@ -64,24 +32,6 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
     return -1;
 }
 
-static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    client_app_configure(CLIENT_APP(user_data));
-}
-
-static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
-    if (event->key.keyval == GDK_KEY_F3)
-        client_app_configure(CLIENT_APP(user_data));
-    return FALSE;
-}
-
-static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    client_app_show_login(CLIENT_APP(user_data));
-}
-
-static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    printf("Login\n");
-}
-
 static void client_app_init(ClientApp * app) {
     app->conf = client_conf_new();
     g_application_add_main_option_entries(G_APPLICATION(app),
@@ -89,6 +39,21 @@ static void client_app_init(ClientApp * app) {
     g_signal_connect(app, "handle-local-options",
         G_CALLBACK(client_app_handle_options), NULL);
 }
+
+ClientApp * client_app_new(void) {
+    return g_object_new(CLIENT_APP_TYPE,
+                        "application-id", "com.flexvdi.client",
+                        "flags", G_APPLICATION_NON_UNIQUE,
+                        NULL);
+}
+
+static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
+static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data);
+static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
+static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
+
+static void client_app_configure(ClientApp * app);
+static void client_app_show_login(ClientApp * app);
 
 static void client_app_activate(GApplication * gapp) {
     ClientApp * app = CLIENT_APP(gapp);
@@ -115,13 +80,60 @@ static void client_app_activate(GApplication * gapp) {
         client_app_configure(app);
 }
 
-static void client_app_class_init(ClientAppClass * class) {
-    G_APPLICATION_CLASS(class)->activate = client_app_activate;
+static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
+    client_app_configure(CLIENT_APP(user_data));
 }
 
-ClientApp * client_app_new(void) {
-    return g_object_new(CLIENT_APP_TYPE,
-                        "application-id", "com.flexvdi.client",
-                        "flags", G_APPLICATION_NON_UNIQUE,
-                        NULL);
+static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
+    if (event->key.keyval == GDK_KEY_F3)
+        client_app_configure(CLIENT_APP(user_data));
+    return FALSE;
+}
+
+static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
+    client_app_show_login(CLIENT_APP(user_data));
+}
+
+static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
+    printf("Login\n");
+}
+
+static void client_app_configure(ClientApp * app) {
+    client_app_window_set_status(app->main_window, FALSE,
+        "Please, provide the manager's address (and port, if it is not 443)");
+    client_app_window_set_central_widget(app->main_window, "settings");
+    client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+    if (app->current_request) {
+        client_request_cancel(app->current_request);
+        g_clear_object(&app->current_request);
+    }
+}
+
+static void authmode_request_cb(ClientRequest * req, gpointer user_data);
+
+static void client_app_show_login(ClientApp * app) {
+    client_app_window_set_status(app->main_window, FALSE,
+        "Contacting server...");
+    client_app_window_set_central_widget(app->main_window, "login");
+    client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+    g_clear_object(&app->current_request);
+    g_autofree gchar * req_body = g_strdup_printf(
+        "{\"hwaddress\": \"%s\"}", client_conf_get_terminal_id(app->conf));
+    app->current_request = client_request_new_with_data(app->conf,
+        "/vdi/authmode", req_body, authmode_request_cb, app);
+}
+
+static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    g_autoptr(GError) error = NULL;
+    JsonNode * root = client_request_get_result(req, &error);
+    if (error) {
+        client_app_window_set_status(app->main_window, TRUE,
+            "Failed to contact server");
+        g_warning("Request failed: %s", error->message);
+    } else {
+        client_app_window_set_status(app->main_window, FALSE,
+            "Fill in your credentials");
+        client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+    }
 }
