@@ -12,6 +12,7 @@ struct _ClientRequest {
     ClientRequestCallback cb;
     gpointer user_data;
     GError * error;
+    GInputStream * stream;
 };
 
 G_DEFINE_TYPE(ClientRequest, client_request, G_TYPE_OBJECT);
@@ -29,6 +30,7 @@ static void client_request_dispose(GObject * obj) {
         g_cancellable_cancel(req->cancel_mgr_request);
     g_clear_object(&req->cancel_mgr_request);
     g_clear_object(&req->parser);
+    g_clear_object(&req->stream);
     G_OBJECT_CLASS(client_request_parent_class)->dispose(obj);
 }
 
@@ -80,6 +82,7 @@ static void request_parsed_cb(GObject * object, GAsyncResult * res, gpointer use
         g_debug("request response:\n%s", response);
     }
     req->cb(req, req->user_data);
+    g_input_stream_close(req->stream, NULL, NULL);
 }
 
 static void request_finished_cb(GObject * object, GAsyncResult * result, gpointer user_data) {
@@ -92,6 +95,7 @@ static void request_finished_cb(GObject * object, GAsyncResult * result, gpointe
 
     ClientRequest * req = CLIENT_REQUEST(user_data);
     req->error = error;
+    req->stream = g_object_ref(stream);
     if (req->error) {
         req->cb(req, req->user_data);
     } else {
