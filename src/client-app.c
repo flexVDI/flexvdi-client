@@ -72,7 +72,7 @@ static void client_app_activate(GApplication * gapp) {
     g_signal_connect(app->main_window, "save-button-pressed",
         G_CALLBACK(save_button_pressed_handler), app);
     g_signal_connect(app->main_window, "login-button-pressed",
-        G_CALLBACK(login_button_pressed_handler), NULL);
+        G_CALLBACK(login_button_pressed_handler), app);
 
     if (client_conf_get_host(app->conf) != NULL)
         client_app_show_login(app);
@@ -94,8 +94,11 @@ static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_dat
     client_app_show_login(CLIENT_APP(user_data));
 }
 
+static void client_app_request_desktop(ClientApp * app, const gchar * username,
+                                       const gchar * password, const gchar * desktop);
+
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    printf("Login\n");
+    client_app_request_desktop(CLIENT_APP(user_data), "", "", "");
 }
 
 static void client_app_configure(ClientApp * app) {
@@ -143,7 +146,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
                 "Fill in your credentials");
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
         } else {
-            // Kiosk desktop
+            client_app_request_desktop(app, "", "", "");
         }
     } else {
         client_app_window_set_status(app->main_window, TRUE,
@@ -152,5 +155,54 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
     }
 }
 
+static void desktop_request_cb(ClientRequest * req, gpointer user_data);
+
+static void client_app_request_desktop(ClientApp * app, const gchar * username,
+                                       const gchar * password, const gchar * desktop) {
+    client_app_window_set_status(app->main_window, FALSE,
+        "Requesting desktop policy...");
+    client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+    g_clear_object(&app->current_request);
+    g_autofree gchar * req_body = g_strdup_printf(
+        "{\"hwaddress\": \"%s\", \"username\": \"%s\", \"password\": \"%s\", \"desktop\": \"%s\"}",
+        client_conf_get_terminal_id(app->conf), username, password, desktop);
+    app->current_request = client_request_new_with_data(app->conf,
+        "/vdi/desktop", req_body, desktop_request_cb, app);
+}
+
+static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    g_autoptr(GError) error = NULL;
+    gboolean invalid = FALSE;
+    JsonNode * root = client_request_get_result(req, &error);
+    if (error) {
+        client_app_window_set_status(app->main_window, TRUE,
+            "Failed to contact server");
+        g_warning("Request failed: %s", error->message);
+    } else if (JSON_NODE_HOLDS_OBJECT(root)) {
+        JsonObject * response = json_node_get_object(root);
+        const gchar * status = json_object_get_string_member(response, "status");
+        const gchar * message = json_object_get_string_member(response, "message");
+        if (g_strcmp0(status, "OK") == 0) {
+            // Manage desktop
+        } else if (g_strcmp0(status, "Pending") == 0) {
+            client_app_window_set_status(app->main_window, FALSE,
+                "Preparing desktop...");
+            // Repeat request in 3 seconds
+        } else if (g_strcmp0(status, "Error") == 0) {
+            client_app_window_set_status(app->main_window, TRUE, message);
+            client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+        } else if (g_strcmp0(status, "SelectDesktop") == 0) {
+            JsonObject * desktops = json_object_get_object_member(response, "message");
+            if (desktops) {
+                // Show desktops
+            } else invalid = TRUE;
+        } else invalid = TRUE;
+    } else invalid = TRUE;
+
+    if (invalid) {
+        client_app_window_set_status(app->main_window, TRUE,
+            "Invalid response from server");
+        g_warning("Invalid response from server, see debug messages");
     }
 }
