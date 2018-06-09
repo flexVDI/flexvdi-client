@@ -15,6 +15,8 @@ void client_app_window_set_info(ClientAppWindow * win, const gchar * text);
 void client_app_window_set_status(ClientAppWindow * win, gboolean error, const gchar * text);
 void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * name);
 void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gboolean sensitive);
+const gchar * client_app_window_get_username(ClientAppWindow * win);
+const gchar * client_app_window_get_password(ClientAppWindow * win);
 
 
 #endif /* _FLEXVDICLIENTWIN_H */

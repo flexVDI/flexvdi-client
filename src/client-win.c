@@ -15,6 +15,8 @@ struct _ClientAppWindow {
     GtkButton * config;
     GtkButton * save;
     GtkButton * login;
+    GtkEntry * username;
+    GtkEntry * password;
 };
 
 enum {
@@ -75,6 +77,8 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, config);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, save);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, login);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, username);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, password);
 
     signals[CLIENT_APP_CONFIG_BUTTON_PRESSED] =
         g_signal_new("config-button-pressed",
@@ -165,4 +169,12 @@ void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gbool
 
 ClientAppWindow * client_app_window_new(ClientApp * app) {
     return g_object_new(CLIENT_APP_WINDOW_TYPE, "application", app, NULL);
+}
+
+const gchar * client_app_window_get_username(ClientAppWindow * win) {
+    return gtk_entry_get_text(win->username);
+}
+
+const gchar * client_app_window_get_password(ClientAppWindow * win) {
+    return gtk_entry_get_text(win->password);
 }
