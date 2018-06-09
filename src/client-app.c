@@ -11,6 +11,9 @@ struct _ClientApp {
     ClientConf * conf;
     ClientAppWindow * main_window;
     ClientRequest * current_request;
+    const gchar * username;
+    const gchar * password;
+    const gchar * desktop;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -34,6 +37,7 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
 
 static void client_app_init(ClientApp * app) {
     app->conf = client_conf_new();
+    app->username = app->password = app->desktop = "";
     g_application_add_main_option_entries(G_APPLICATION(app),
         client_conf_get_cmdline_entries(app->conf));
     g_signal_connect(app, "handle-local-options",
@@ -94,11 +98,13 @@ static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_dat
     client_app_show_login(CLIENT_APP(user_data));
 }
 
-static void client_app_request_desktop(ClientApp * app, const gchar * username,
-                                       const gchar * password, const gchar * desktop);
+static void client_app_request_desktop(ClientApp * app);
 
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    client_app_request_desktop(CLIENT_APP(user_data), "", "", "");
+    ClientApp * app = CLIENT_APP(user_data);
+    app->username = client_app_window_get_username(win);
+    app->password = client_app_window_get_password(win);
+    client_app_request_desktop(CLIENT_APP(user_data));
 }
 
 static void client_app_configure(ClientApp * app) {
@@ -119,6 +125,7 @@ static void client_app_show_login(ClientApp * app) {
         "Contacting server...");
     client_app_window_set_central_widget(app->main_window, "login");
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+    app->username = app->password = app->desktop = "";
     g_clear_object(&app->current_request);
     g_autofree gchar * req_body = g_strdup_printf(
         "{\"hwaddress\": \"%s\"}", client_conf_get_terminal_id(app->conf));
@@ -146,7 +153,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
                 "Fill in your credentials");
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
         } else {
-            client_app_request_desktop(app, "", "", "");
+            client_app_request_desktop(app);
         }
     } else {
         client_app_window_set_status(app->main_window, TRUE,
@@ -157,17 +164,22 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
 
 static void desktop_request_cb(ClientRequest * req, gpointer user_data);
 
-static void client_app_request_desktop(ClientApp * app, const gchar * username,
-                                       const gchar * password, const gchar * desktop) {
+static void client_app_request_desktop(ClientApp * app) {
     client_app_window_set_status(app->main_window, FALSE,
         "Requesting desktop policy...");
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
     g_clear_object(&app->current_request);
     g_autofree gchar * req_body = g_strdup_printf(
         "{\"hwaddress\": \"%s\", \"username\": \"%s\", \"password\": \"%s\", \"desktop\": \"%s\"}",
-        client_conf_get_terminal_id(app->conf), username, password, desktop);
+        client_conf_get_terminal_id(app->conf),
+        app->username, app->password, app->desktop);
     app->current_request = client_request_new_with_data(app->conf,
         "/vdi/desktop", req_body, desktop_request_cb, app);
+}
+
+static gboolean client_app_repeat_request_desktop(gpointer user_data) {
+    client_app_request_desktop(CLIENT_APP(user_data));
+    return FALSE; // Cancel timeout
 }
 
 static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
@@ -188,7 +200,7 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
         } else if (g_strcmp0(status, "Pending") == 0) {
             client_app_window_set_status(app->main_window, FALSE,
                 "Preparing desktop...");
-            // Repeat request in 3 seconds
+            g_timeout_add_seconds(3, client_app_repeat_request_desktop, app);
         } else if (g_strcmp0(status, "Error") == 0) {
             client_app_window_set_status(app->main_window, TRUE, message);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
