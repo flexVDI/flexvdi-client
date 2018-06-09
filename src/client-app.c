@@ -14,6 +14,7 @@ struct _ClientApp {
     const gchar * username;
     const gchar * password;
     const gchar * desktop;
+    GHashTable * desktops;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -38,6 +39,7 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
 static void client_app_init(ClientApp * app) {
     app->conf = client_conf_new();
     app->username = app->password = app->desktop = "";
+    app->desktops = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
     g_application_add_main_option_entries(G_APPLICATION(app),
         client_conf_get_cmdline_entries(app->conf));
     g_signal_connect(app, "handle-local-options",
@@ -182,6 +184,8 @@ static gboolean client_app_repeat_request_desktop(gpointer user_data) {
     return FALSE; // Cancel timeout
 }
 
+static void client_app_show_desktops(ClientApp * app, JsonObject * desktop);
+
 static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
     g_autoptr(GError) error = NULL;
@@ -205,9 +209,12 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
             client_app_window_set_status(app->main_window, TRUE, message);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
         } else if (g_strcmp0(status, "SelectDesktop") == 0) {
-            JsonObject * desktops = json_object_get_object_member(response, "message");
-            if (desktops) {
-                // Show desktops
+            g_autoptr(JsonParser) parser = json_parser_new_immutable();
+            if (json_parser_load_from_data(parser, message, -1, NULL)) {
+                root = json_parser_get_root(parser);
+                if (JSON_NODE_HOLDS_OBJECT(root)) {
+                    client_app_show_desktops(app, json_node_get_object(root));
+                } else invalid = TRUE;
             } else invalid = TRUE;
         } else invalid = TRUE;
     } else invalid = TRUE;
@@ -217,4 +224,23 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
             "Invalid response from server");
         g_warning("Invalid response from server, see debug messages");
     }
+}
+
+static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
+    g_hash_table_remove_all(app->desktops);
+    JsonObjectIter it;
+    const gchar * desktop_key;
+    JsonNode * desktop_node;
+    json_object_iter_init(&it, desktops);
+    while (json_object_iter_next(&it, &desktop_key, &desktop_node))
+        g_hash_table_insert(app->desktops,
+            g_strdup(json_node_get_string(desktop_node)), g_strdup(desktop_key));
+    g_autoptr(GList) desktop_names =
+        g_list_sort(g_hash_table_get_keys(app->desktops), (GCompareFunc)g_strcmp0);
+    client_app_window_set_desktops(app->main_window, desktop_names);
+
+    client_app_window_set_status(app->main_window, FALSE,
+        "Select your desktop");
+    client_app_window_set_central_widget(app->main_window, "desktops");
+    client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
 }
