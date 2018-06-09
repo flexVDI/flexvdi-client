@@ -70,3 +70,8 @@ stack button:focus {
 stack button label {
     color: #ffffff;
 }
+
+treeview:hover, treeview:selected {
+    background-color: #5db9cc;
+    color: #ffffff;
+}
