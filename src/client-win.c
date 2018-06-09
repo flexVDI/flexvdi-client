@@ -17,6 +17,8 @@ struct _ClientAppWindow {
     GtkButton * login;
     GtkEntry * username;
     GtkEntry * password;
+    GtkTreeView * desktops;
+    GtkListStore * desk_store;
 };
 
 enum {
@@ -55,11 +57,14 @@ static void client_app_window_init(ClientAppWindow * win) {
     g_signal_connect(win->config, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->save, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->login, "clicked", G_CALLBACK(button_pressed_handler), win);
+    win->desk_store = gtk_list_store_new(1, G_TYPE_STRING);
+    gtk_tree_view_set_model(win->desktops, GTK_TREE_MODEL(win->desk_store));
 }
 
 static void client_app_window_dispose(GObject * obj) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(obj);
     g_clear_object(&win->conf);
+    g_clear_object(&win->desk_store);
     G_OBJECT_CLASS(client_app_window_parent_class)->dispose(obj);
 }
 
@@ -79,6 +84,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, login);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, username);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, password);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, desktops);
 
     signals[CLIENT_APP_CONFIG_BUTTON_PRESSED] =
         g_signal_new("config-button-pressed",
@@ -177,4 +183,14 @@ const gchar * client_app_window_get_username(ClientAppWindow * win) {
 
 const gchar * client_app_window_get_password(ClientAppWindow * win) {
     return gtk_entry_get_text(win->password);
+}
+
+void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names) {
+    GList * name;
+    GtkTreeIter it;
+    gtk_list_store_clear(win->desk_store);
+    for (name = desktop_names; name != NULL; name = name->next) {
+        gtk_list_store_append(win->desk_store, &it);
+        gtk_list_store_set(win->desk_store, &it, 0, name->data, -1);
+    }
 }
