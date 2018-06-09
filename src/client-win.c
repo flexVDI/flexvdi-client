@@ -45,6 +45,12 @@ static void button_pressed_handler(GtkButton * button, gpointer user_data) {
         g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
 }
 
+static void entry_activate_handler(GtkEntry * entry, gpointer user_data) {
+    ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
+    if (entry == win->password)
+        g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
+}
+
 static void client_app_window_init(ClientAppWindow * win) {
     GtkCssProvider * css_provider = gtk_css_provider_new();
     gtk_css_provider_load_from_resource(css_provider, "/com/flexvdi/client/style.css");
@@ -57,6 +63,7 @@ static void client_app_window_init(ClientAppWindow * win) {
     g_signal_connect(win->config, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->save, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->login, "clicked", G_CALLBACK(button_pressed_handler), win);
+    g_signal_connect(win->password, "activate", G_CALLBACK(entry_activate_handler), win);
     win->desk_store = gtk_list_store_new(1, G_TYPE_STRING);
     gtk_tree_view_set_model(win->desktops, GTK_TREE_MODEL(win->desk_store));
 }
