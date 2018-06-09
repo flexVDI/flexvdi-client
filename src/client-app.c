@@ -131,9 +131,26 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
         client_app_window_set_status(app->main_window, TRUE,
             "Failed to contact server");
         g_warning("Request failed: %s", error->message);
+    } else if (JSON_NODE_HOLDS_OBJECT(root)) {
+        JsonObject * response = json_node_get_object(root);
+        const gchar * status = json_object_get_string_member(response, "status");
+        const gchar * auth_mode = json_object_get_string_member(response, "auth_mode");
+        if (g_strcmp0(status, "OK") != 0) {
+            client_app_window_set_status(app->main_window, TRUE,
+                "Access denied");
+        } else if (g_strcmp0(auth_mode, "active_directory") == 0) {
+            client_app_window_set_status(app->main_window, FALSE,
+                "Fill in your credentials");
+            client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+        } else {
+            // Kiosk desktop
+        }
     } else {
-        client_app_window_set_status(app->main_window, FALSE,
-            "Fill in your credentials");
-        client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+        client_app_window_set_status(app->main_window, TRUE,
+            "Invalid response from server");
+        g_warning("Invalid response from server, see debug messages");
+    }
+}
+
     }
 }
