@@ -57,6 +57,7 @@ static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_d
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
+static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data);
 
 static void client_app_configure(ClientApp * app);
 static void client_app_show_login(ClientApp * app);
@@ -79,6 +80,8 @@ static void client_app_activate(GApplication * gapp) {
         G_CALLBACK(save_button_pressed_handler), app);
     g_signal_connect(app->main_window, "login-button-pressed",
         G_CALLBACK(login_button_pressed_handler), app);
+    g_signal_connect(app->main_window, "desktop-selected",
+        G_CALLBACK(desktop_selected_handler), app);
 
     if (client_conf_get_host(app->conf) != NULL)
         client_app_show_login(app);
@@ -107,6 +110,18 @@ static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_da
     app->username = client_app_window_get_username(win);
     app->password = client_app_window_get_password(win);
     client_app_request_desktop(CLIENT_APP(user_data));
+}
+
+static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    g_autofree gchar * desktop_name = client_app_window_get_desktop(win);
+    gchar * desktop = g_hash_table_lookup(app->desktops, desktop_name);
+    if (desktop) {
+        app->desktop = desktop;
+        client_app_request_desktop(app);
+    } else {
+        g_warning("Selected desktop \"%s\" does not exist", desktop_name);
+    }
 }
 
 static void client_app_configure(ClientApp * app) {
