@@ -9,5 +9,7 @@
         <file>images/logo-client.png</file>
         <file>icons/16x16/emblems/user.png</file>
         <file>icons/16x16/emblems/lock.png</file>
+        <file>icons/16x16/actions/window-close-symbolic.symbolic.png</file>
+        <file>icons/16x16/actions/window-minimize-symbolic.symbolic.png</file>
     </gresource>
 </gresources>
