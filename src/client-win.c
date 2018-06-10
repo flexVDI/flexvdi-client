@@ -25,6 +25,7 @@ enum {
     CLIENT_APP_CONFIG_BUTTON_PRESSED = 0,
     CLIENT_APP_SAVE_BUTTON_PRESSED,
     CLIENT_APP_LOGIN_BUTTON_PRESSED,
+    CLIENT_APP_DESKTOP_SELECTED,
     CLIENT_APP_LAST_SIGNAL
 };
 
@@ -51,6 +52,12 @@ static void entry_activate_handler(GtkEntry * entry, gpointer user_data) {
         g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
 }
 
+static void desktop_selected_handler(GtkTreeView * tree_view, GtkTreePath * path,
+                                     GtkTreeViewColumn * column, gpointer user_data) {
+    ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
+    g_signal_emit(win, signals[CLIENT_APP_DESKTOP_SELECTED], 0);
+}
+
 static void client_app_window_init(ClientAppWindow * win) {
     GtkCssProvider * css_provider = gtk_css_provider_new();
     gtk_css_provider_load_from_resource(css_provider, "/com/flexvdi/client/style.css");
@@ -66,6 +73,7 @@ static void client_app_window_init(ClientAppWindow * win) {
     g_signal_connect(win->password, "activate", G_CALLBACK(entry_activate_handler), win);
     win->desk_store = gtk_list_store_new(1, G_TYPE_STRING);
     gtk_tree_view_set_model(win->desktops, GTK_TREE_MODEL(win->desk_store));
+    g_signal_connect(win->desktops, "row-activated", G_CALLBACK(desktop_selected_handler), win);
 }
 
 static void client_app_window_dispose(GObject * obj) {
@@ -115,6 +123,16 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
 
     signals[CLIENT_APP_LOGIN_BUTTON_PRESSED] =
         g_signal_new("login-button-pressed",
+                     CLIENT_APP_WINDOW_TYPE,
+                     G_SIGNAL_RUN_FIRST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
+
+    signals[CLIENT_APP_DESKTOP_SELECTED] =
+        g_signal_new("desktop-selected",
                      CLIENT_APP_WINDOW_TYPE,
                      G_SIGNAL_RUN_FIRST,
                      0,
