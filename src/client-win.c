@@ -219,3 +219,14 @@ void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names
         gtk_list_store_set(win->desk_store, &it, 0, name->data, -1);
     }
 }
+
+gchar * client_app_window_get_desktop(ClientAppWindow * win) {
+    GtkTreeSelection * sel = gtk_tree_view_get_selection(win->desktops);
+    GtkTreeModel * model;
+    GtkTreeIter it;
+    gchar * desktop;
+    if (gtk_tree_selection_get_selected(sel, &model, &it)) {
+        gtk_tree_model_get(model, &it, 0, &desktop, -1);
+        return desktop;
+    } else return g_strdup("");
+}

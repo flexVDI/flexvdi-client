@@ -18,6 +18,7 @@ void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gbool
 const gchar * client_app_window_get_username(ClientAppWindow * win);
 const gchar * client_app_window_get_password(ClientAppWindow * win);
 void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names);
+gchar * client_app_window_get_desktop(ClientAppWindow * win);
 
 
 #endif /* _FLEXVDICLIENTWIN_H */
