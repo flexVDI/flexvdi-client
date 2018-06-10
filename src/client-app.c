@@ -213,7 +213,6 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
     } else if (JSON_NODE_HOLDS_OBJECT(root)) {
         JsonObject * response = json_node_get_object(root);
         const gchar * status = json_object_get_string_member(response, "status");
-        const gchar * message = json_object_get_string_member(response, "message");
         if (g_strcmp0(status, "OK") == 0) {
             // Manage desktop
         } else if (g_strcmp0(status, "Pending") == 0) {
@@ -221,9 +220,11 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
                 "Preparing desktop...");
             g_timeout_add_seconds(3, client_app_repeat_request_desktop, app);
         } else if (g_strcmp0(status, "Error") == 0) {
+            const gchar * message = json_object_get_string_member(response, "message");
             client_app_window_set_status(app->main_window, TRUE, message);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
         } else if (g_strcmp0(status, "SelectDesktop") == 0) {
+            const gchar * message = json_object_get_string_member(response, "message");
             g_autoptr(JsonParser) parser = json_parser_new_immutable();
             if (json_parser_load_from_data(parser, message, -1, NULL)) {
                 root = json_parser_get_root(parser);
