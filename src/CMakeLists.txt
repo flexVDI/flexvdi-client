@@ -2,6 +2,8 @@ set(client_sources
     main.c client-app.c client-win.c
     flexvdi-spice.c configuration.c client-request.c)
 if (WIN32)
+    set(client_sources ${client_sources} terminalid-win32.c)
+    set(CLIENT_LIBRARIES ${CLIENT_LIBRARIES} iphlpapi)
     if (ENABLE_PRINTING)
         set(client_sources ${client_sources} printclient.c PPDGenerator.c printclient-win32.c)
         add_executable(print-pdf print-with-poppler.c)
