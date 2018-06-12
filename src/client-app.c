@@ -1,16 +1,19 @@
 #include <stdio.h>
 #include <gtk/gtk.h>
+#include <spice-client-gtk.h>
 
 #include "client-app.h"
 #include "configuration.h"
 #include "client-win.h"
 #include "client-request.h"
+#include "client-conn.h"
 
 struct _ClientApp {
     GtkApplication parent;
     ClientConf * conf;
     ClientAppWindow * main_window;
     ClientRequest * current_request;
+    ClientConn * connection;
     const gchar * username;
     const gchar * password;
     const gchar * desktop;
@@ -42,6 +45,7 @@ static void client_app_init(ClientApp * app) {
     app->desktops = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
     g_application_add_main_option_entries(G_APPLICATION(app),
         client_conf_get_cmdline_entries(app->conf));
+    g_application_add_option_group(G_APPLICATION(app), spice_get_option_group());
     g_signal_connect(app, "handle-local-options",
         G_CALLBACK(client_app_handle_options), NULL);
 }
@@ -200,6 +204,7 @@ static gboolean client_app_repeat_request_desktop(gpointer user_data) {
 }
 
 static void client_app_show_desktops(ClientApp * app, JsonObject * desktop);
+static void client_app_connect(ClientApp * app, JsonObject * params);
 
 static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
@@ -214,7 +219,7 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
         JsonObject * response = json_node_get_object(root);
         const gchar * status = json_object_get_string_member(response, "status");
         if (g_strcmp0(status, "OK") == 0) {
-            // Manage desktop
+            client_app_connect(app, response);
         } else if (g_strcmp0(status, "Pending") == 0) {
             client_app_window_set_status(app->main_window, FALSE,
                 "Preparing desktop...");
@@ -259,4 +264,9 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
         "Select your desktop");
     client_app_window_set_central_widget(app->main_window, "desktops");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+}
+
+static void client_app_connect(ClientApp * app, JsonObject * params) {
+    app->connection = client_conn_new(app->conf, params);
+    client_conn_connect(app->connection);
 }
