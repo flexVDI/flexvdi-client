@@ -1,5 +1,5 @@
 set(client_sources
-    main.c client-app.c client-win.c
+    main.c client-app.c client-win.c client-conn.c
     flexvdi-spice.c configuration.c client-request.c)
 if (WIN32)
     set(client_sources ${client_sources} terminalid-win32.c)
