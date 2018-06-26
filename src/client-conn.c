@@ -8,15 +8,9 @@
 
 struct _ClientConn {
     GObject parent;
-    ClientConf * conf;
     SpiceSession * session;
     SpiceGtkSession * gtk_session;
-    SpiceMainChannel * main;
-    GList * wins;
     SpiceAudio * audio;
-    const char * mouse_state;
-    const char * agent_state;
-    gboolean agent_connected;
     int channels;
     gboolean disconnecting;
     ClientConnDisconnectReason reason;
@@ -33,12 +27,23 @@ static void client_conn_class_init(ClientConnClass * class) {
     object_class->finalize = client_conn_finalize;
 }
 
+static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data);
+static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer data);
+
 static void client_conn_init(ClientConn * conn) {
+    conn->session = spice_session_new();
+    conn->gtk_session = spice_gtk_session_get(conn->session);
+    spice_set_session_option(conn->session);
+
+    g_signal_connect(conn->session, "channel-new",
+                     G_CALLBACK(channel_new), conn);
+    g_signal_connect(conn->session, "channel-destroy",
+                     G_CALLBACK(channel_destroy), conn);
 }
 
 static void client_conn_dispose(GObject * obj) {
     ClientConn * conn = CLIENT_CONN(obj);
-    g_clear_object(&conn->conf);
+    g_clear_object(&conn->session);
     G_OBJECT_CLASS(client_conn_parent_class)->dispose(obj);
 }
 
@@ -47,11 +52,7 @@ static void client_conn_finalize(GObject * obj) {
 }
 
 ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
-    ClientConn * conn = g_object_new(CLIENT_CONN_TYPE, NULL);
-    conn->conf = g_object_ref(conf);
-    conn->session = spice_session_new();
-    conn->gtk_session = spice_gtk_session_get(conn->session);
-    spice_set_session_option(conn->session);
+    ClientConn * conn = CLIENT_CONN(g_object_new(CLIENT_CONN_TYPE, NULL));
     g_object_set(conn->session,
                  "host", json_object_get_string_member(params, "spice_address"),
                  "port", json_object_get_string_member(params, "spice_port"),
@@ -63,30 +64,6 @@ ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
         g_object_set(conn->session, "ws-port", ws_port, NULL);
     }
 
-    /*
-    g_object_set(conn->gtk_session,
-                 "disable-copy-to-guest", disable_copy_to_guest,
-                 "disable-paste-from-guest", disable_paste_from_guest,
-                 NULL);
-    g_signal_connect(conn->session, "channel-new",
-                     G_CALLBACK(channel_new), conn);
-    g_signal_connect(conn->session, "channel-destroy",
-                     G_CALLBACK(channel_destroy), conn);
-    g_signal_connect(conn->session, "notify::migration-state",
-                     G_CALLBACK(migration_state), conn);
-
-    manager = spice_usb_device_manager_get(conn->session, NULL);
-    if (manager) {
-        g_signal_connect(manager, "auto-connect-failed",
-                         G_CALLBACK(usb_connect_failed), NULL);
-        g_signal_connect(manager, "device-error",
-                         G_CALLBACK(usb_connect_failed), NULL);
-    }
-
-    conn->transfers = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-                                            g_object_unref,
-                                            (GDestroyNotify)transfer_task_widgets_free);
-    */
     return conn;
 }
 
@@ -101,4 +78,31 @@ void client_conn_disconnect(ClientConn * conn, ClientConnDisconnectReason reason
     conn->disconnecting = TRUE;
     conn->reason = reason;
     spice_session_disconnect(conn->session);
+}
+
+static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data) {
+    ClientConn * conn = CLIENT_CONN(data);
+    int id;
+
+    g_object_get(channel, "channel-id", &id, NULL);
+    g_debug("New Spice channel (#%d)", id);
+    conn->channels++;
+    if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
+        conn->audio = spice_audio_get(s, NULL);
+    }
+    spice_channel_connect(channel);
+}
+
+static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer data) {
+    ClientConn * conn = CLIENT_CONN(data);
+    int id;
+
+    g_object_get(channel, "channel-id", &id, NULL);
+    g_debug("Destroy Spice channel (#%d)", id);
+    conn->channels--;
+
+    if (conn->channels <= 0) {
+        // What? Notify app?
+        g_debug("No more channels left");
+    }
 }

@@ -18,7 +18,7 @@ typedef enum {
     CLIENT_CONN_DISCONNECT_AUTH_ERROR,
 } ClientConnDisconnectReason;
 
-#define CLIENT_CONN_TYPE (client_conf_get_type())
+#define CLIENT_CONN_TYPE (client_conn_get_type())
 G_DECLARE_FINAL_TYPE(ClientConn, client_conn, CLIENT, CONN, GObject)
 
 ClientConn * client_conn_new(ClientConf * conf, JsonObject * params);
