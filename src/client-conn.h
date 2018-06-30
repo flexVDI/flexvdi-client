@@ -2,11 +2,12 @@
  * Copyright Flexible Software Solutions S.L. 2018
  **/
 
-#ifndef _SPICE_CONN_H
-#define _SPICE_CONN_H
+#ifndef _CLIENT_CONN_H
+#define _CLIENT_CONN_H
 
 #include <glib-object.h>
 #include <json-glib/json-glib.h>
+#include <spice-client-gtk.h>
 
 #include "configuration.h"
 
@@ -24,6 +25,8 @@ G_DECLARE_FINAL_TYPE(ClientConn, client_conn, CLIENT, CONN, GObject)
 ClientConn * client_conn_new(ClientConf * conf, JsonObject * params);
 void client_conn_connect(ClientConn * conn);
 void client_conn_disconnect(ClientConn * conn, ClientConnDisconnectReason reason);
+SpiceSession * client_conn_get_session(ClientConn * conn);
+SpiceGtkSession * client_conn_get_gtk_session(ClientConn * conn);
 
 
-#endif /* _SPICE_CONN_H */
+#endif /* _CLIENT_CONN_H */

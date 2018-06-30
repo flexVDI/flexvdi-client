@@ -2,8 +2,6 @@
  * Copyright Flexible Software Solutions S.L. 2018
  **/
 
-#include <spice-client-gtk.h>
-
 #include "client-conn.h"
 
 struct _ClientConn {
@@ -78,6 +76,14 @@ void client_conn_disconnect(ClientConn * conn, ClientConnDisconnectReason reason
     conn->disconnecting = TRUE;
     conn->reason = reason;
     spice_session_disconnect(conn->session);
+}
+
+SpiceSession * client_conn_get_session(ClientConn * conn) {
+    return conn->session;
+}
+
+SpiceGtkSession * client_conn_get_gtk_session(ClientConn * conn) {
+    return conn->gtk_session;
 }
 
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data) {
