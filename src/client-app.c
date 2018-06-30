@@ -18,6 +18,7 @@ struct _ClientApp {
     const gchar * password;
     const gchar * desktop;
     GHashTable * desktops;
+    SpiceMainChannel * main;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -276,7 +277,59 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
 }
 
+static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data);
+
 static void client_app_connect(ClientApp * app, JsonObject * params) {
     app->connection = client_conn_new(app->conf, params);
+
+    SpiceSession * session = client_conn_get_session(app->connection);
+    g_signal_connect(session, "channel-new",
+                     G_CALLBACK(channel_new), app);
+
     client_conn_connect(app->connection);
+}
+
+static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app);
+
+static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+
+    if (SPICE_IS_MAIN_CHANNEL(channel)) {
+        g_debug("New main channel");
+        app->main = SPICE_MAIN_CHANNEL(channel);
+        // g_signal_connect(channel, "channel-event",
+        //                  G_CALLBACK(main_channel_event), app);
+    }
+
+    if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
+        g_signal_connect(channel, "notify::monitors",
+                         G_CALLBACK(display_monitors), app);
+    }
+
+    if (SPICE_IS_INPUTS_CHANNEL(channel)) {
+        // g_signal_connect(channel, "inputs-modifiers",
+        //                  G_CALLBACK(inputs_modifiers), app);
+    }
+
+    if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
+        // Support usb redir
+    }
+
+    if (SPICE_IS_PORT_CHANNEL(channel)) {
+        // Check flexvdi port channel
+    }
+}
+
+static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app) {
+    GArray * monitors = NULL;
+    int id;
+
+    g_object_get(display,
+                 "channel-id", &id,
+                 "monitors", &monitors,
+                 NULL);
+    g_return_if_fail(monitors != NULL);
+    g_debug("Reported %d monitors in display channel %d", monitors->len, id);
+
+    g_clear_pointer(&monitors, g_array_unref);
 }
