@@ -82,10 +82,10 @@ void client_conn_disconnect(ClientConn * conn, ClientConnDisconnectReason reason
 
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data) {
     ClientConn * conn = CLIENT_CONN(data);
-    int id;
+    int id, type;
 
-    g_object_get(channel, "channel-id", &id, NULL);
-    g_debug("New Spice channel (#%d)", id);
+    g_object_get(channel, "channel-id", &id, "channel-type", &type, NULL);
+    g_debug("New Spice channel (%d:%d)", type, id);
     conn->channels++;
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         conn->audio = spice_audio_get(s, NULL);
@@ -95,10 +95,10 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
 
 static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer data) {
     ClientConn * conn = CLIENT_CONN(data);
-    int id;
+    int id, type;
 
-    g_object_get(channel, "channel-id", &id, NULL);
-    g_debug("Destroy Spice channel (#%d)", id);
+    g_object_get(channel, "channel-id", &id, "channel-type", &type, NULL);
+    g_debug("Destroyed Spice channel (%d:%d)", type, id);
     conn->channels--;
 
     if (conn->channels <= 0) {
