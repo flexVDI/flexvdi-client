@@ -62,6 +62,7 @@ static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer
 static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
 static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data);
+static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 
 static void client_app_configure(ClientApp * app);
 static void client_app_show_login(ClientApp * app);
@@ -86,6 +87,8 @@ static void client_app_activate(GApplication * gapp) {
         G_CALLBACK(login_button_pressed_handler), app);
     g_signal_connect(app->main_window, "desktop-selected",
         G_CALLBACK(desktop_selected_handler), app);
+    g_signal_connect(app->main_window, "delete-event",
+        G_CALLBACK(delete_cb), app);
 
     if (client_conf_get_host(app->conf) != NULL)
         client_app_show_login(app);
@@ -126,6 +129,13 @@ static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data) 
     } else {
         g_warning("Selected desktop \"%s\" does not exist", desktop_name);
     }
+}
+
+static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    if (app->connection)
+        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
+    return FALSE;
 }
 
 static void client_app_configure(ClientApp * app) {
