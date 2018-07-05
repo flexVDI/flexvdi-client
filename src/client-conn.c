@@ -37,6 +37,7 @@ static void client_conn_init(ClientConn * conn) {
                      G_CALLBACK(channel_new), conn);
     g_signal_connect(conn->session, "channel-destroy",
                      G_CALLBACK(channel_destroy), conn);
+    g_object_ref(conn);
 }
 
 static void client_conn_dispose(GObject * obj) {
@@ -110,5 +111,6 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer d
     if (conn->channels <= 0) {
         // What? Notify app?
         g_debug("No more channels left");
+        g_object_unref(conn);
     }
 }
