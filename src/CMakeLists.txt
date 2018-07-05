@@ -1,6 +1,7 @@
 set(client_sources
     main.c client-app.c client-win.c client-conn.c
-    flexvdi-spice.c configuration.c client-request.c)
+    flexvdi-spice.c configuration.c client-request.c
+    spice-win.c)
 if (WIN32)
     set(client_sources ${client_sources} terminalid-win32.c)
     set(CLIENT_LIBRARIES ${CLIENT_LIBRARIES} iphlpapi)
