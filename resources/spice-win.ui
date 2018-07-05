@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="SpiceWindow" parent="GtkWindow">
+    <property name="default-width">800</property>
+    <property name="default-height">600</property>
+    <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>
+    <child>
+      <object class="GtkBox" id="content_box">
+        <property name="name">content-box</property>
+        <property name="visible">True</property>
+        <property name="orientation">vertical</property>
+      </object>
+    </child>
+  </template>
+</interface>
