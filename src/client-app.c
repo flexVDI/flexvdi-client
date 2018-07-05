@@ -7,6 +7,9 @@
 #include "client-win.h"
 #include "client-request.h"
 #include "client-conn.h"
+#include "spice-win.h"
+
+#define MAX_WINDOWS 16
 
 struct _ClientApp {
     GtkApplication parent;
@@ -17,8 +20,10 @@ struct _ClientApp {
     const gchar * username;
     const gchar * password;
     const gchar * desktop;
+    gchar * desktop_name;
     GHashTable * desktops;
     SpiceMainChannel * main;
+    SpiceWindow * windows[MAX_WINDOWS];
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -122,13 +127,14 @@ static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_da
 
 static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
-    g_autofree gchar * desktop_name = client_app_window_get_desktop(win);
-    gchar * desktop = g_hash_table_lookup(app->desktops, desktop_name);
+    if (app->desktop_name) g_free(app->desktop_name);
+    app->desktop_name = client_app_window_get_desktop(win);
+    gchar * desktop = g_hash_table_lookup(app->desktops, app->desktop_name);
     if (desktop) {
         app->desktop = desktop;
         client_app_request_desktop(app);
     } else {
-        g_warning("Selected desktop \"%s\" does not exist", desktop_name);
+        g_warning("Selected desktop \"%s\" does not exist", app->desktop_name);
     }
 }
 
@@ -322,16 +328,56 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
     }
 }
 
+static void spice_win_display_mark(SpiceChannel * channel, gint mark, SpiceWindow * win);
+
 static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app) {
     GArray * monitors = NULL;
     int id;
+    guint i;
 
     g_object_get(display,
                  "channel-id", &id,
                  "monitors", &monitors,
                  NULL);
     g_return_if_fail(monitors != NULL);
+    g_return_if_fail(id == 0); // Only one display channel supported
     g_debug("Reported %d monitors in display channel %d", monitors->len, id);
 
+    for (i = 0; i < monitors->len; ++i) {
+        if (!app->windows[i]) {
+            g_autofree gchar * title = g_strdup_printf("%s #%d", app->desktop_name, i);
+            SpiceWindow * win = spice_window_new(app->connection, display, i, title);
+            app->windows[i] = win;
+            gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(win));
+            spice_g_signal_connect_object(display, "display-mark",
+                                          G_CALLBACK(spice_win_display_mark), win, 0);
+            if (i == 0)
+                g_signal_connect(win, "delete-event", G_CALLBACK(delete_cb), app);
+            if (monitors->len == 1)
+                gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER_ALWAYS);
+            gtk_widget_show(GTK_WIDGET(win));
+            if (app->main_window) {
+                gtk_widget_destroy(GTK_WIDGET(app->main_window));
+                app->main_window = NULL;
+            }
+        }
+    }
+
+    for (; i < MAX_WINDOWS; ++i) {
+        if (!app->windows[i]) continue;
+        gtk_widget_destroy(GTK_WIDGET(app->windows[i]));
+        app->windows[i] = NULL;
+        spice_main_set_display_enabled(app->main, i, FALSE);
+        spice_main_send_monitor_config(app->main);
+    }
+
     g_clear_pointer(&monitors, g_array_unref);
+}
+
+static void spice_win_display_mark(SpiceChannel * channel, gint mark, SpiceWindow * win) {
+    if (mark) {
+        gtk_widget_show(GTK_WIDGET(win));
+    } else {
+        gtk_widget_hide(GTK_WIDGET(win));
+    }
 }
