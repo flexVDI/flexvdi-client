@@ -144,6 +144,11 @@
                     <property name="top_attach">2</property>
                   </packing>
                 </child>
+                <focus-chain>
+                  <widget name="host" />
+                  <widget name="fullscreen" />
+                  <widget name="save" />
+                </focus-chain>
               </object>
               <packing>
                 <property name="name">settings</property>
