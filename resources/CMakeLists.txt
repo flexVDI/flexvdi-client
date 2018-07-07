@@ -12,6 +12,19 @@ add_custom_command(OUTPUT ${resources_c}
                         images/logo-flexVDI-toolbar.png
                         images/button-settings.png
                         images/logo-client.png
+                        icons/16x16/emblems/user.png
+                        icons/16x16/emblems/lock.png
+                        icons/16x16/actions/window-close-symbolic.symbolic.png
+                        icons/16x16/actions/window-minimize-symbolic.symbolic.png
+                        icons/24x24/actions/window-close-cus.png
+                        icons/24x24/actions/edit-copy-cus.png
+                        icons/24x24/actions/edit-paste-cus.png
+                        icons/24x24/actions/view-fullscreen-cus.png
+                        icons/24x24/actions/view-restore-cus.png
+                        icons/24x24/actions/go-bottom-cus.png
+                        icons/24x24/actions/system-log-out-cus.png
+                        icons/24x24/actions/system-reboot-cus.png
+                        icons/24x24/actions/system-shutdown-cus.png
                   )
 
 add_library(resource_objects OBJECT ${resources_c})
