@@ -196,6 +196,16 @@ void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * n
 
 void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gboolean sensitive) {
     gtk_widget_set_sensitive(GTK_WIDGET(win->stack), sensitive);
+    if (sensitive) {
+        const gchar * child_name = gtk_stack_get_visible_child_name(win->stack);
+        if (!g_strcmp0(child_name, "settings")) {
+            gtk_widget_grab_focus(GTK_WIDGET(win->host));
+        } else if (!g_strcmp0(child_name, "login")) {
+            gtk_widget_grab_focus(GTK_WIDGET(win->username));
+        } else if (!g_strcmp0(child_name, "desktops")) {
+            gtk_widget_grab_focus(GTK_WIDGET(win->desktops));
+        }
+    }
 }
 
 ClientAppWindow * client_app_window_new(ClientApp * app) {
