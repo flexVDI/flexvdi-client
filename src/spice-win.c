@@ -13,7 +13,7 @@ struct _SpiceWindow {
     GtkRevealer * revealer;
     SpiceDisplay * spice;
     GtkBox * content_box;
-    GtkBox * toolbar_box;
+    GtkToolbar * toolbar;
     GtkToolButton * fullscreen_button;
     GtkToolButton * restore_button;
     GtkToolButton * minimize_button;
@@ -33,7 +33,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
                                                 "/com/flexvdi/client/spice-win.ui");
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, revealer);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, content_box);
-    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, toolbar_box);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, toolbar);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, fullscreen_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, restore_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, minimize_button);
@@ -113,22 +113,22 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
             gtk_widget_hide(GTK_WIDGET(win->fullscreen_button));
             gtk_widget_show(GTK_WIDGET(win->restore_button));
             gtk_widget_show(GTK_WIDGET(win->minimize_button));
-            g_object_ref(win->toolbar_box);
+            g_object_ref(win->toolbar);
             gtk_container_remove(GTK_CONTAINER(win->content_box),
-                                 GTK_WIDGET(win->toolbar_box));
-            gtk_container_add(GTK_CONTAINER(win->revealer), GTK_WIDGET(win->toolbar_box));
+                                 GTK_WIDGET(win->toolbar));
+            gtk_container_add(GTK_CONTAINER(win->revealer), GTK_WIDGET(win->toolbar));
             gtk_revealer_set_reveal_child(win->revealer, TRUE);
-            g_object_unref(win->toolbar_box);
+            g_object_unref(win->toolbar);
             gtk_widget_grab_focus(GTK_WIDGET(win->spice));
         } else {
             gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
             gtk_widget_hide(GTK_WIDGET(win->restore_button));
             gtk_widget_hide(GTK_WIDGET(win->minimize_button));
-            g_object_ref(win->toolbar_box);
+            g_object_ref(win->toolbar);
             gtk_container_remove(GTK_CONTAINER(win->revealer),
-                                 GTK_WIDGET(win->toolbar_box));
-            gtk_box_pack_start(win->content_box, GTK_WIDGET(win->toolbar_box), FALSE, FALSE, 0);
-            g_object_unref(win->toolbar_box);
+                                 GTK_WIDGET(win->toolbar));
+            gtk_box_pack_start(win->content_box, GTK_WIDGET(win->toolbar), FALSE, FALSE, 0);
+            g_object_unref(win->toolbar);
         }
     }
     return TRUE;

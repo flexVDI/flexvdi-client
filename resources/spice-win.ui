@@ -13,117 +13,109 @@
             <property name="visible">True</property>
             <property name="orientation">vertical</property>
             <child>
-              <object class="GtkBox" id="toolbar_box">
-                <property name="name">toolbar-box</property>
+              <object class="GtkToolbar" id="toolbar">
+                <property name="name">toolbar</property>
                 <property name="visible">True</property>
-                <property name="orientation">horizontal</property>
+                <property name="toolbar-style">GTK_TOOLBAR_ICONS</property>
+                <property name="icon-size">GTK_ICON_SIZE_LARGE_TOOLBAR</property>
                 <child>
-                  <object class="GtkToolbar" id="toolbar">
-                    <property name="name">toolbar</property>
+                  <object class="GtkToolButton" id="close_button">
                     <property name="visible">True</property>
-                    <property name="toolbar-style">GTK_TOOLBAR_ICONS</property>
-                    <property name="icon-size">GTK_ICON_SIZE_LARGE_TOOLBAR</property>
-                    <child>
-                      <object class="GtkToolButton" id="close_button">
-                        <property name="visible">True</property>
-                        <property name="icon-name">window-close-cus</property>
-                        <property name="tooltip-text" translatable="yes">Close connection</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkSeparatorToolItem">
-                        <property name="visible">True</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkToolButton" id="copy_button">
-                        <property name="visible">True</property>
-                        <property name="icon-name">edit-copy-cus</property>
-                        <property name="tooltip-text" translatable="yes">Copy from guest</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkToolButton" id="paste_button">
-                        <property name="visible">True</property>
-                        <property name="icon-name">edit-paste-cus</property>
-                        <property name="tooltip-text" translatable="yes">Paste to guest</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkToolButton" id="fullscreen_button">
-                        <property name="name">fullscreen-button</property>
-                        <property name="visible">True</property>
-                        <property name="icon-name">view-fullscreen-cus</property>
-                        <property name="tooltip-text" translatable="yes">Go fullstreen</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkToolButton" id="restore_button">
-                        <property name="name">restore-button</property>
-                        <property name="visible">False</property>
-                        <property name="icon-name">view-restore-cus</property>
-                        <property name="tooltip-text" translatable="yes">Restore view</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkToolButton" id="minimize_button">
-                        <property name="name">minimize-button</property>
-                        <property name="visible">False</property>
-                        <property name="icon-name">go-bottom-cus</property>
-                        <property name="tooltip-text" translatable="yes">Minimize</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkSeparatorToolItem">
-                        <property name="visible">True</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkToolButton" id="reboot_button">
-                        <property name="visible">True</property>
-                        <property name="icon-name">system-reboot-cus</property>
-                        <property name="tooltip-text" translatable="yes">Reset</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkToolButton" id="shutdown_button">
-                        <property name="visible">True</property>
-                        <property name="icon-name">system-log-out-cus</property>
-                        <property name="tooltip-text" translatable="yes">Orderly shutdown</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkToolButton" id="poweroff_button">
-                        <property name="visible">True</property>
-                        <property name="icon-name">system-shutdown-cus</property>
-                        <property name="tooltip-text" translatable="yes">Immediate poweroff</property>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkSeparatorToolItem">
-                        <property name="visible">True</property>
-                      </object>
-                    </child>
+                    <property name="icon-name">window-close-cus</property>
+                    <property name="tooltip-text" translatable="yes">Close connection</property>
                   </object>
-                  <packing>
-                    <property name="pack-type">start</property>
-                  </packing>
                 </child>
                 <child>
-                  <object class="GtkMenuButton" id="keys_button">
+                  <object class="GtkSeparatorToolItem">
                     <property name="visible">True</property>
-                    <property name="relief">GTK_RELIEF_NONE</property>
-                    <property name="popup">keys_menu</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="copy_button">
+                    <property name="visible">True</property>
+                    <property name="icon-name">edit-copy-cus</property>
+                    <property name="tooltip-text" translatable="yes">Copy from guest</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="paste_button">
+                    <property name="visible">True</property>
+                    <property name="icon-name">edit-paste-cus</property>
+                    <property name="tooltip-text" translatable="yes">Paste to guest</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="fullscreen_button">
+                    <property name="name">fullscreen-button</property>
+                    <property name="visible">True</property>
+                    <property name="icon-name">view-fullscreen-cus</property>
+                    <property name="tooltip-text" translatable="yes">Go fullstreen</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="restore_button">
+                    <property name="name">restore-button</property>
+                    <property name="visible">False</property>
+                    <property name="icon-name">view-restore-cus</property>
+                    <property name="tooltip-text" translatable="yes">Restore view</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="minimize_button">
+                    <property name="name">minimize-button</property>
+                    <property name="visible">False</property>
+                    <property name="icon-name">go-bottom-cus</property>
+                    <property name="tooltip-text" translatable="yes">Minimize</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkSeparatorToolItem">
+                    <property name="visible">True</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="reboot_button">
+                    <property name="visible">True</property>
+                    <property name="icon-name">system-reboot-cus</property>
+                    <property name="tooltip-text" translatable="yes">Reset</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="shutdown_button">
+                    <property name="visible">True</property>
+                    <property name="icon-name">system-log-out-cus</property>
+                    <property name="tooltip-text" translatable="yes">Orderly shutdown</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="poweroff_button">
+                    <property name="visible">True</property>
+                    <property name="icon-name">system-shutdown-cus</property>
+                    <property name="tooltip-text" translatable="yes">Immediate poweroff</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkSeparatorToolItem">
+                    <property name="visible">True</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolItem">
+                    <property name="visible">True</property>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkMenuButton" id="keys_button">
+                        <property name="name">keys-button</property>
                         <property name="visible">True</property>
-                        <property name="icon-name">input-keyboard</property>
+                        <property name="popup">keys_menu</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="icon-name">input-keyboard</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                   </object>
-                  <packing>
-                    <property name="pack-type">start</property>
-                  </packing>
                 </child>
               </object>
               <packing>
