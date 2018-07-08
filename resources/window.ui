@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <template class="ClientAppWindow" parent="GtkApplicationWindow">
+    <property name="name">main-window</property>
     <property name="title" translatable="yes">flexVDI Client</property>
     <property name="default-width">800</property>
     <property name="default-height">600</property>

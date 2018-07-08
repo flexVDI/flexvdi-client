@@ -1,8 +1,11 @@
 * {
     font-family: Lato;
     font-style: normal;
-    font-size: x-large;
     color: #444;
+}
+
+#main-window * {
+    font-size: x-large;
 }
 
 #header {
