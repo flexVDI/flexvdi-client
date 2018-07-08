@@ -64,6 +64,11 @@ static void spice_window_finalize(GObject * obj) {
     G_OBJECT_CLASS(spice_window_parent_class)->finalize(obj);
 }
 
+static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * event,
+                                       gpointer user_data);
+static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
+                                gpointer user_data);
+
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                                int id, gchar * title) {
     SpiceWindow * win = g_object_new(SPICE_WIN_TYPE,
@@ -81,6 +86,11 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     spice_grab_sequence_free(seq);
     gtk_box_pack_end(win->content_box, GTK_WIDGET(win->spice), TRUE, TRUE, 0);
     gtk_widget_grab_focus(GTK_WIDGET(win->spice));
+
+    g_signal_connect(G_OBJECT(win->spice), "motion-notify-event",
+                     G_CALLBACK(motion_notify_event_cb), win);
+    g_signal_connect(G_OBJECT(win->spice), "leave-notify-event",
+                     G_CALLBACK(leave_window_cb), win);
 
     return win;
 }
@@ -122,4 +132,35 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
         }
     }
     return TRUE;
+}
+
+static gboolean hide_widget_cb(gpointer user_data) {
+    GtkRevealer * revealer = GTK_REVEALER(user_data);
+    if (!gtk_revealer_get_reveal_child(revealer))
+        gtk_widget_hide(GTK_WIDGET(revealer));
+    return FALSE;
+}
+
+static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * event,
+                                       gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    if (win->fullscreen) {
+        if (event->y == 0.0) {
+            gtk_widget_show(GTK_WIDGET(win->revealer));
+            gtk_revealer_set_reveal_child(win->revealer, TRUE);
+        } else if (gtk_revealer_get_reveal_child(win->revealer)) {
+            gtk_revealer_set_reveal_child(win->revealer, FALSE);
+            g_timeout_add(gtk_revealer_get_transition_duration(win->revealer),
+                          hide_widget_cb, win->revealer);
+        }
+    }
+    return FALSE;
+}
+
+static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
+                                gpointer user_data) {
+    GdkEventMotion mevent = {
+        .y = event->y
+    };
+    return motion_notify_event_cb(widget, &mevent, user_data);
 }
