@@ -297,6 +297,8 @@ static void client_app_connect(ClientApp * app, JsonObject * params) {
     client_conn_connect(app->connection);
 }
 
+static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
+                               gpointer user_data);
 static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app);
 
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data) {
@@ -305,8 +307,8 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         g_debug("New main channel");
         app->main = SPICE_MAIN_CHANNEL(channel);
-        // g_signal_connect(channel, "channel-event",
-        //                  G_CALLBACK(main_channel_event), app);
+         g_signal_connect(channel, "channel-event",
+                          G_CALLBACK(main_channel_event), app);
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
@@ -325,6 +327,45 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
 
     if (SPICE_IS_PORT_CHANNEL(channel)) {
         // Check flexvdi port channel
+    }
+}
+
+static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
+                               gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    const GError * error = NULL;
+
+    switch (event) {
+    case SPICE_CHANNEL_OPENED:
+        g_debug("main channel: opened");
+        break;
+    case SPICE_CHANNEL_SWITCHING:
+        g_debug("main channel: switching host");
+        break;
+    case SPICE_CHANNEL_CLOSED:
+        g_debug("main channel: closed");
+        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
+        break;
+    case SPICE_CHANNEL_ERROR_IO:
+        client_conn_disconnect(app->connection, CLIENT_CONN_ISCONNECT_IO_ERROR);
+        break;
+    case SPICE_CHANNEL_ERROR_TLS:
+    case SPICE_CHANNEL_ERROR_LINK:
+    case SPICE_CHANNEL_ERROR_CONNECT:
+        error = spice_channel_get_error(channel);
+        g_debug("main channel: failed to connect");
+        if (error) {
+            g_debug("channel error: %s", error->message);
+        }
+        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_CONN_ERROR);
+        break;
+    case SPICE_CHANNEL_ERROR_AUTH:
+        g_warning("main channel: auth failure (wrong password?)");
+        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_AUTH_ERROR);
+        break;
+    default:
+        g_warning("unknown main channel event: %u", event);
+        break;
     }
 }
 
