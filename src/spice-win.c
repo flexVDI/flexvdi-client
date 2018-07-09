@@ -14,6 +14,7 @@ struct _SpiceWindow {
     SpiceDisplay * spice;
     GtkBox * content_box;
     GtkToolbar * toolbar;
+    GtkToolButton * close_button;
     GtkToolButton * fullscreen_button;
     GtkToolButton * restore_button;
     GtkToolButton * minimize_button;
@@ -34,6 +35,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, revealer);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, content_box);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, toolbar);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, close_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, fullscreen_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, restore_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, minimize_button);
@@ -46,6 +48,7 @@ static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data);
 static void spice_window_init(SpiceWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
 
+    g_signal_connect_swapped(win->close_button, "clicked", G_CALLBACK(gtk_window_close), win);
     g_signal_connect(win->fullscreen_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
     g_signal_connect(win->restore_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
     g_signal_connect(win, "window-state-event", G_CALLBACK(window_state_cb), win);
