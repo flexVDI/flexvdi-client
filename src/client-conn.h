@@ -27,6 +27,7 @@ void client_conn_connect(ClientConn * conn);
 void client_conn_disconnect(ClientConn * conn, ClientConnDisconnectReason reason);
 SpiceSession * client_conn_get_session(ClientConn * conn);
 SpiceGtkSession * client_conn_get_gtk_session(ClientConn * conn);
+SpiceMainChannel * client_conn_get_main_channel(ClientConn * conn);
 
 
 #endif /* _CLIENT_CONN_H */

@@ -8,6 +8,7 @@ struct _ClientConn {
     GObject parent;
     SpiceSession * session;
     SpiceGtkSession * gtk_session;
+    SpiceMainChannel * main;
     SpiceAudio * audio;
     int channels;
     gboolean disconnecting;
@@ -94,6 +95,9 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
     g_object_get(channel, "channel-id", &id, "channel-type", &type, NULL);
     g_debug("New Spice channel (%d:%d)", type, id);
     conn->channels++;
+    if (SPICE_IS_MAIN_CHANNEL(channel)) {
+        conn->main = SPICE_MAIN_CHANNEL(channel);
+    }
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         conn->audio = spice_audio_get(s, NULL);
     }
@@ -113,4 +117,8 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer d
         g_debug("No more channels left");
         g_object_unref(conn);
     }
+}
+
+SpiceMainChannel * client_conn_get_main_channel(ClientConn * conn) {
+    return conn->main;
 }
