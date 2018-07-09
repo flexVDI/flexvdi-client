@@ -91,7 +91,7 @@
                   <object class="GtkToolButton" id="poweroff_button">
                     <property name="visible">True</property>
                     <property name="icon-name">system-shutdown-cus</property>
-                    <property name="tooltip-text" translatable="yes">Immediate poweroff</property>
+                    <property name="tooltip-text" translatable="yes">Immediately poweroff</property>
                   </object>
                 </child>
                 <child>

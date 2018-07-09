@@ -18,6 +18,9 @@ struct _SpiceWindow {
     GtkToolButton * fullscreen_button;
     GtkToolButton * restore_button;
     GtkToolButton * minimize_button;
+    GtkToolButton * reboot_button;
+    GtkToolButton * shutdown_button;
+    GtkToolButton * poweroff_button;
 };
 
 G_DEFINE_TYPE(SpiceWindow, spice_window, GTK_TYPE_WINDOW);
@@ -39,11 +42,15 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, fullscreen_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, restore_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, minimize_button);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, reboot_button);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, shutdown_button);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, poweroff_button);
 }
 
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
                                 gpointer user_data);
 static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data);
+static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data);
 
 static void spice_window_init(SpiceWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
@@ -51,7 +58,12 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect_swapped(win->close_button, "clicked", G_CALLBACK(gtk_window_close), win);
     g_signal_connect(win->fullscreen_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
     g_signal_connect(win->restore_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
+    g_signal_connect(win->reboot_button, "clicked", G_CALLBACK(power_event_cb), win);
+    g_signal_connect(win->shutdown_button, "clicked", G_CALLBACK(power_event_cb), win);
+    g_signal_connect(win->poweroff_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win, "window-state-event", G_CALLBACK(window_state_cb), win);
+
+
 }
 
 static void spice_window_dispose(GObject * obj) {
@@ -153,6 +165,34 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
         }
     }
     return TRUE;
+}
+
+static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    const gchar * action_name;
+    int event_type;
+    if (toolbutton == win->reboot_button) {
+        action_name = "reset";
+        event_type = SPICE_POWER_EVENT_RESET;
+    } else if (toolbutton == win->shutdown_button) {
+        action_name = "orderly shutdown";
+        event_type = SPICE_POWER_EVENT_POWERDOWN;
+    } else if (toolbutton == win->poweroff_button) {
+        action_name = "immediately power off";
+        event_type = SPICE_POWER_EVENT_SHUTDOWN;
+    }
+
+    GtkWidget * dialog = gtk_message_dialog_new(GTK_WINDOW(win),
+                                                GTK_DIALOG_DESTROY_WITH_PARENT | GTK_DIALOG_MODAL,
+                                                GTK_MESSAGE_WARNING, GTK_BUTTONS_YES_NO,
+                                                "WARNING: Are you sure you want to %s your desktop?",
+                                                action_name);
+    gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_YES);
+    gint result = gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
+    if (result == GTK_RESPONSE_YES) {
+        spice_main_power_event_request(client_conn_get_main_channel(win->conn), event_type);
+    }
 }
 
 static gboolean hide_widget_cb(gpointer user_data) {
