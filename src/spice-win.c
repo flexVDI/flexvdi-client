@@ -15,6 +15,8 @@ struct _SpiceWindow {
     GtkBox * content_box;
     GtkToolbar * toolbar;
     GtkToolButton * close_button;
+    GtkToolButton * copy_button;
+    GtkToolButton * paste_button;
     GtkToolButton * fullscreen_button;
     GtkToolButton * restore_button;
     GtkToolButton * minimize_button;
@@ -39,6 +41,8 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, content_box);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, toolbar);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, close_button);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, copy_button);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, paste_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, fullscreen_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, restore_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, minimize_button);
@@ -47,6 +51,8 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, poweroff_button);
 }
 
+static void copy_from_guest(GtkToolButton * toolbutton, gpointer user_data);
+static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data);
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
                                 gpointer user_data);
 static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data);
@@ -56,6 +62,8 @@ static void spice_window_init(SpiceWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
 
     g_signal_connect_swapped(win->close_button, "clicked", G_CALLBACK(gtk_window_close), win);
+    g_signal_connect(win->copy_button, "clicked", G_CALLBACK(copy_from_guest), win);
+    g_signal_connect(win->paste_button, "clicked", G_CALLBACK(paste_to_guest), win);
     g_signal_connect(win->fullscreen_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
     g_signal_connect(win->restore_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
     g_signal_connect(win->reboot_button, "clicked", G_CALLBACK(power_event_cb), win);
@@ -126,6 +134,20 @@ static void channel_event(SpiceChannel * channel, SpiceChannelEvent event, gpoin
     default:
         return;
     }
+}
+
+static void copy_from_guest(GtkToolButton * toolbutton, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    spice_gtk_session_paste_from_guest(
+        client_conn_get_gtk_session(win->conn)
+    );
+}
+
+static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    spice_gtk_session_copy_to_guest(
+        client_conn_get_gtk_session(win->conn)
+    );
 }
 
 static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data) {
