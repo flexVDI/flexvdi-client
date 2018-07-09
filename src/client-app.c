@@ -140,10 +140,7 @@ static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data) 
 
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
-    if (app->connection) {
-        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
-        g_clear_object(&app->connection);
-    }
+    client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
     return FALSE;
 }
 
