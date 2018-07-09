@@ -67,6 +67,7 @@ static void spice_window_finalize(GObject * obj) {
     G_OBJECT_CLASS(spice_window_parent_class)->finalize(obj);
 }
 
+static void channel_event(SpiceChannel * channel, SpiceChannelEvent event, gpointer user_data);
 static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * event,
                                        gpointer user_data);
 static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
@@ -80,6 +81,7 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     win->id = id;
     win->conn = g_object_ref(conn);
     win->display_channel = g_object_ref(channel);
+    g_signal_connect(channel, "channel-event", G_CALLBACK(channel_event), win);
 
     /* spice display */
     SpiceSession * session = client_conn_get_session(conn);
@@ -96,6 +98,22 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                      G_CALLBACK(leave_window_cb), win);
 
     return win;
+}
+
+static void channel_event(SpiceChannel * channel, SpiceChannelEvent event, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+
+    switch (event) {
+    case SPICE_CHANNEL_CLOSED:
+    case SPICE_CHANNEL_ERROR_IO:
+    case SPICE_CHANNEL_ERROR_TLS:
+    case SPICE_CHANNEL_ERROR_LINK:
+    case SPICE_CHANNEL_ERROR_CONNECT:
+    case SPICE_CHANNEL_ERROR_AUTH:
+        gtk_window_close(GTK_WINDOW(win));
+    default:
+        return;
+    }
 }
 
 static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data) {
