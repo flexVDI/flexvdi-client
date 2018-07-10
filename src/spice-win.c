@@ -23,6 +23,7 @@ struct _SpiceWindow {
     GtkToolButton * reboot_button;
     GtkToolButton * shutdown_button;
     GtkToolButton * poweroff_button;
+    GtkMenu * keys_menu;
 };
 
 G_DEFINE_TYPE(SpiceWindow, spice_window, GTK_TYPE_WINDOW);
@@ -49,6 +50,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, reboot_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, shutdown_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, poweroff_button);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, keys_menu);
 }
 
 static void copy_from_guest(GtkToolButton * toolbutton, gpointer user_data);
@@ -57,6 +59,11 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
                                 gpointer user_data);
 static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data);
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data);
+static void keystroke_cb(GtkMenuItem * menuitem, gpointer user_data);
+
+static void set_keystroke_cb(GtkWidget * widget, gpointer data) {
+    g_signal_connect(widget, "activate", G_CALLBACK(keystroke_cb), data);
+}
 
 static void spice_window_init(SpiceWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
@@ -71,7 +78,7 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect(win->poweroff_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win, "window-state-event", G_CALLBACK(window_state_cb), win);
 
-
+    gtk_container_foreach(GTK_CONTAINER(win->keys_menu), set_keystroke_cb, win);
 }
 
 static void spice_window_dispose(GObject * obj) {
@@ -246,4 +253,55 @@ static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
         .y = event->y
     };
     return motion_notify_event_cb(widget, &mevent, user_data);
+}
+
+static void keystroke_cb(GtkMenuItem * menuitem, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    guint keyvals[3] = {
+        GDK_KEY_Control_L,
+        GDK_KEY_Alt_L,
+        GDK_KEY_F1
+    };
+    int numKeys = 3;
+
+    if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+Supr")) {
+        keyvals[2] = GDK_KEY_Delete;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Win+Right")) {
+        keyvals[1] = GDK_KEY_Meta_L;
+        keyvals[2] = GDK_KEY_Right;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Win+Left")) {
+        keyvals[1] = GDK_KEY_Meta_L;
+        keyvals[2] = GDK_KEY_Left;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Win+L")) {
+        keyvals[0] = GDK_KEY_Meta_L;
+        keyvals[1] = GDK_KEY_l;
+        numKeys = 2;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F1")) {
+        keyvals[2] = GDK_KEY_F1;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F2")) {
+        keyvals[2] = GDK_KEY_F2;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F3")) {
+        keyvals[2] = GDK_KEY_F3;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F4")) {
+        keyvals[2] = GDK_KEY_F4;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F5")) {
+        keyvals[2] = GDK_KEY_F5;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F6")) {
+        keyvals[2] = GDK_KEY_F6;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F7")) {
+        keyvals[2] = GDK_KEY_F7;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F8")) {
+        keyvals[2] = GDK_KEY_F8;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F9")) {
+        keyvals[2] = GDK_KEY_F9;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F10")) {
+        keyvals[2] = GDK_KEY_F10;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F11")) {
+        keyvals[2] = GDK_KEY_F11;
+    } else if (!g_strcmp0(gtk_menu_item_get_label(menuitem), "Ctrl+Alt+F12")) {
+        keyvals[2] = GDK_KEY_F12;
+    } else return;
+
+    spice_display_send_keys(SPICE_DISPLAY(win->spice), keyvals, numKeys,
+                            SPICE_DISPLAY_KEY_EVENT_PRESS | SPICE_DISPLAY_KEY_EVENT_RELEASE);
 }
