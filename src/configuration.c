@@ -19,6 +19,68 @@ struct _ClientConf {
 
 G_DEFINE_TYPE(ClientConf, client_conf, G_TYPE_OBJECT);
 
+static const GOptionEntry cmdline_entries[] = {
+    // { long_name, short_name, flags, arg, arg_data, description, arg_description },
+    { "version", 0, 0, G_OPTION_ARG_NONE, NULL,
+      "Show version and exit", NULL },
+    { "host", 'h', 0, G_OPTION_ARG_STRING, NULL,
+      "Connection host address", NULL },
+    { "port", 'p', 0, G_OPTION_ARG_INT, NULL,
+      "Connection port (default 443)", NULL },
+    { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, NULL,
+      "Show desktop in fullscreen mode", NULL },
+    { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, NULL,
+      "Add serial port redirection. "
+      "The Nth use of this option is attached to channel serialredirN. "
+      "Example: /dev/ttyS0,9600,8N1", "<device,speed,mode>" },
+    { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, NULL,
+      "Disable printing support", NULL },
+    { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
+};
+
+static void client_conf_finalize(GObject * obj);
+
+static void client_conf_class_init(ClientConfClass * class) {
+    GObjectClass * object_class = G_OBJECT_CLASS(class);
+    object_class->finalize = client_conf_finalize;
+}
+
+static void client_conf_load(ClientConf * conf);
+
+static void client_conf_init(ClientConf * conf) {
+    conf->version = FALSE;
+    conf->host = NULL;
+    conf->port = 443;
+    conf->fullscreen = FALSE;
+    conf->serial_params = NULL;
+    conf->disable_printing = FALSE;
+    conf->terminal_id = NULL;
+    conf->cmdline_entries = g_memdup(cmdline_entries, sizeof(cmdline_entries));
+    conf->file = g_key_file_new();
+    client_conf_load(conf);
+
+    int i = 0;
+    conf->cmdline_entries[i++].arg_data = &conf->version;
+    conf->cmdline_entries[i++].arg_data = &conf->host;
+    conf->cmdline_entries[i++].arg_data = &conf->port;
+    conf->cmdline_entries[i++].arg_data = &conf->fullscreen;
+    conf->cmdline_entries[i++].arg_data = &conf->serial_params;
+    conf->cmdline_entries[i++].arg_data = &conf->disable_printing;
+}
+
+static void client_conf_finalize(GObject * obj) {
+    ClientConf * conf = CLIENT_CONF(obj);
+    g_free(conf->cmdline_entries);
+    g_free(conf->host);
+    g_free(conf->serial_params);
+    g_key_file_free(conf->file);
+    G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
+}
+
+ClientConf * client_conf_new(void) {
+    return g_object_new(CLIENT_CONF_TYPE, NULL);
+}
+
 GOptionEntry * client_conf_get_cmdline_entries(ClientConf * conf) {
     return conf->cmdline_entries;
 }
@@ -80,25 +142,6 @@ void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
     conf->fullscreen = fs;
 }
 
-static const GOptionEntry cmdline_entries[] = {
-    // { long_name, short_name, flags, arg, arg_data, description, arg_description },
-    { "version", 0, 0, G_OPTION_ARG_NONE, NULL,
-      "Show version and exit", NULL },
-    { "host", 'h', 0, G_OPTION_ARG_STRING, NULL,
-      "Connection host address", NULL },
-    { "port", 'p', 0, G_OPTION_ARG_INT, NULL,
-      "Connection port (default 443)", NULL },
-    { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, NULL,
-      "Show desktop in fullscreen mode", NULL },
-    { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, NULL,
-      "Add serial port redirection. "
-      "The Nth use of this option is attached to channel serialredirN. "
-      "Example: /dev/ttyS0,9600,8N1", "<device,speed,mode>" },
-    { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, NULL,
-      "Disable printing support", NULL },
-    { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
-};
-
 static void client_conf_load(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = g_build_filename(
@@ -138,43 +181,4 @@ static void client_conf_load(ClientConf * conf) {
         conf->disable_printing = print_val;
     else
         g_error_free(error);
-}
-
-static void client_conf_init(ClientConf * conf) {
-    conf->version = FALSE;
-    conf->host = NULL;
-    conf->port = 443;
-    conf->fullscreen = FALSE;
-    conf->serial_params = NULL;
-    conf->disable_printing = FALSE;
-    conf->terminal_id = NULL;
-    conf->cmdline_entries = g_memdup(cmdline_entries, sizeof(cmdline_entries));
-    conf->file = g_key_file_new();
-    client_conf_load(conf);
-
-    int i = 0;
-    conf->cmdline_entries[i++].arg_data = &conf->version;
-    conf->cmdline_entries[i++].arg_data = &conf->host;
-    conf->cmdline_entries[i++].arg_data = &conf->port;
-    conf->cmdline_entries[i++].arg_data = &conf->fullscreen;
-    conf->cmdline_entries[i++].arg_data = &conf->serial_params;
-    conf->cmdline_entries[i++].arg_data = &conf->disable_printing;
-}
-
-static void client_conf_finalize(GObject * obj) {
-    ClientConf * conf = CLIENT_CONF(obj);
-    g_free(conf->cmdline_entries);
-    g_free(conf->host);
-    g_free(conf->serial_params);
-    g_key_file_free(conf->file);
-    G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
-}
-
-static void client_conf_class_init(ClientConfClass * class) {
-    GObjectClass * object_class = G_OBJECT_CLASS(class);
-    object_class->finalize = client_conf_finalize;
-}
-
-ClientConf * client_conf_new(void) {
-    return g_object_new(CLIENT_CONF_TYPE, NULL);
 }
