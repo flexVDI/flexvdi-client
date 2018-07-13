@@ -11,6 +11,9 @@ struct _ClientConf {
     gboolean version;
     gchar * host;
     gint port;
+    gchar * username;
+    gchar * password;
+    gchar * desktop;
     gboolean fullscreen;
     const gchar ** serial_params;
     gboolean disable_printing;
@@ -27,6 +30,12 @@ static const GOptionEntry cmdline_entries[] = {
       "Connection host address", NULL },
     { "port", 'p', 0, G_OPTION_ARG_INT, NULL,
       "Connection port (default 443)", NULL },
+    { "username", 'u', 0, G_OPTION_ARG_STRING, NULL,
+      "User name", NULL },
+    { "password", 'w', 0, G_OPTION_ARG_STRING, NULL,
+      "Password", NULL },
+    { "desktop", 'd', 0, G_OPTION_ARG_STRING, NULL,
+      "Desktop name to connect to", NULL },
     { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, NULL,
       "Show desktop in fullscreen mode", NULL },
     { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, NULL,
@@ -51,6 +60,9 @@ static void client_conf_init(ClientConf * conf) {
     conf->version = FALSE;
     conf->host = NULL;
     conf->port = 443;
+    conf->username = NULL;
+    conf->password = NULL;
+    conf->desktop = NULL;
     conf->fullscreen = FALSE;
     conf->serial_params = NULL;
     conf->disable_printing = FALSE;
@@ -63,6 +75,9 @@ static void client_conf_init(ClientConf * conf) {
     conf->cmdline_entries[i++].arg_data = &conf->version;
     conf->cmdline_entries[i++].arg_data = &conf->host;
     conf->cmdline_entries[i++].arg_data = &conf->port;
+    conf->cmdline_entries[i++].arg_data = &conf->username;
+    conf->cmdline_entries[i++].arg_data = &conf->password;
+    conf->cmdline_entries[i++].arg_data = &conf->desktop;
     conf->cmdline_entries[i++].arg_data = &conf->fullscreen;
     conf->cmdline_entries[i++].arg_data = &conf->serial_params;
     conf->cmdline_entries[i++].arg_data = &conf->disable_printing;
@@ -72,6 +87,9 @@ static void client_conf_finalize(GObject * obj) {
     ClientConf * conf = CLIENT_CONF(obj);
     g_free(conf->cmdline_entries);
     g_free(conf->host);
+    g_free(conf->username);
+    g_free(conf->password);
+    g_free(conf->desktop);
     g_free(conf->serial_params);
     g_key_file_free(conf->file);
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
@@ -95,6 +113,18 @@ const gchar * client_conf_get_host(ClientConf * conf) {
 
 gint client_conf_get_port(ClientConf * conf) {
     return conf->port;
+}
+
+const gchar * client_conf_get_username(ClientConf * conf) {
+    return conf->username;
+}
+
+const gchar * client_conf_get_password(ClientConf * conf) {
+    return conf->password;
+}
+
+const gchar * client_conf_get_desktop(ClientConf * conf) {
+    return conf->desktop;
 }
 
 gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path) {
