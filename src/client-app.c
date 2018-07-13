@@ -96,9 +96,12 @@ static void client_app_activate(GApplication * gapp) {
     g_signal_connect(app->main_window, "delete-event",
         G_CALLBACK(delete_cb), app);
 
-    if (client_conf_get_host(app->conf) != NULL)
+    if (client_conf_get_host(app->conf) != NULL) {
         client_app_show_login(app);
-    else
+        if (client_conf_get_username(app->conf) && client_conf_get_password(app->conf)) {
+            login_button_pressed_handler(app->main_window, app);
+        }
+    } else
         client_app_configure(app);
 }
 

@@ -151,6 +151,8 @@ static void desktop_selected_handler(GtkTreeView * tree_view, GtkTreePath * path
 
 static void load_config(ClientAppWindow * win) {
     const gchar * host = client_conf_get_host(win->conf);
+    const gchar * username = client_conf_get_username(win->conf);
+    const gchar * password = client_conf_get_password(win->conf);
     if (host) {
         if (client_conf_get_port(win->conf) == 443) {
             gtk_entry_set_text(win->host, host);
@@ -159,6 +161,10 @@ static void load_config(ClientAppWindow * win) {
             gtk_entry_set_text(win->host, host_str);
         }
     }
+    if (username)
+        gtk_entry_set_text(win->username, username);
+    if (password)
+        gtk_entry_set_text(win->password, password);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(win->fullscreen),
         client_conf_get_fullscreen(win->conf));
 }
