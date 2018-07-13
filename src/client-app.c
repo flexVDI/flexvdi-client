@@ -239,6 +239,8 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
         JsonObject * response = json_node_get_object(root);
         const gchar * status = json_object_get_string_member(response, "status");
         if (g_strcmp0(status, "OK") == 0) {
+            client_app_window_set_status(app->main_window, FALSE,
+                "Connecting to desktop...");
             client_app_connect(app, response);
         } else if (g_strcmp0(status, "Pending") == 0) {
             client_app_window_set_status(app->main_window, FALSE,
