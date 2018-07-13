@@ -241,6 +241,25 @@ void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names
         gtk_list_store_append(win->desk_store, &it);
         gtk_list_store_set(win->desk_store, &it, 0, name->data, -1);
     }
+
+    const gchar * desktop = client_conf_get_desktop(win->conf);
+    if (desktop != NULL) {
+        gboolean valid = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(win->desk_store), &it);
+        while (valid) {
+            g_autofree gchar * d;
+            gtk_tree_model_get(GTK_TREE_MODEL(win->desk_store), &it, 0, &d, -1);
+            if (!g_strcmp0(desktop, d)) {
+                GtkTreePath * path = gtk_tree_model_get_path(GTK_TREE_MODEL(win->desk_store), &it);
+                GtkTreeSelection * sel = gtk_tree_view_get_selection(win->desktops);
+                gtk_tree_selection_select_path(sel, path);
+                g_signal_emit(win, signals[CLIENT_APP_DESKTOP_SELECTED], 0);
+                gtk_tree_path_free(path);
+                break;
+            } else {
+                valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(win->desk_store), &it);
+            }
+        }
+    }
 }
 
 gchar * client_app_window_get_desktop(ClientAppWindow * win) {
