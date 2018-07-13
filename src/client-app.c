@@ -384,7 +384,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
     for (i = 0; i < monitors->len; ++i) {
         if (!app->windows[i]) {
             g_autofree gchar * title = g_strdup_printf("%s #%d", app->desktop_name, i);
-            SpiceWindow * win = spice_window_new(app->connection, display, i, title);
+            SpiceWindow * win = spice_window_new(app->connection, display, app->conf, i, title);
             app->windows[i] = win;
             gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(win));
             spice_g_signal_connect_object(display, "display-mark",

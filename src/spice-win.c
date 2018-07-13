@@ -53,6 +53,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, keys_menu);
 }
 
+static void realize_window(GtkWidget * toplevel, gpointer user_data);
 static void copy_from_guest(GtkToolButton * toolbutton, gpointer user_data);
 static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data);
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
@@ -77,6 +78,7 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect(win->shutdown_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win->poweroff_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win, "window-state-event", G_CALLBACK(window_state_cb), win);
+    g_signal_connect(win, "realize", G_CALLBACK(realize_window), win);
 
     gtk_container_foreach(GTK_CONTAINER(win->keys_menu), set_keystroke_cb, win);
 }
@@ -101,7 +103,7 @@ static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
                                 gpointer user_data);
 
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
-                               int id, gchar * title) {
+                               ClientConf * conf, int id, gchar * title) {
     SpiceWindow * win = g_object_new(SPICE_WIN_TYPE,
                                      "title", title,
                                      NULL);
@@ -124,7 +126,15 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     g_signal_connect(G_OBJECT(win->spice), "leave-notify-event",
                      G_CALLBACK(leave_window_cb), win);
 
+    win->fullscreen = client_conf_get_fullscreen(conf);
+
     return win;
+}
+
+static void realize_window(GtkWidget * toplevel, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    if (win->fullscreen)
+        gtk_window_fullscreen(GTK_WINDOW(win));
 }
 
 static void channel_event(SpiceChannel * channel, SpiceChannelEvent event, gpointer user_data) {
