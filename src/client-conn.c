@@ -59,9 +59,8 @@ ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
                  "password", json_object_get_string_member(params, "spice_password"),
                  NULL);
     if (json_object_get_boolean_member(params, "use_ws")) {
-        g_autofree gchar * ws_port =
-            g_strdup_printf("%d", client_conf_get_port(conf));
-        g_object_set(conn->session, "ws-port", ws_port, NULL);
+        const gchar * port = client_conf_get_port(conf);
+        g_object_set(conn->session, "ws-port", port ? port : "443", NULL);
     }
 
     return conn;

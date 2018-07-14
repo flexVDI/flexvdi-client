@@ -10,7 +10,7 @@ struct _ClientConf {
     GKeyFile * file;
     gboolean version;
     gchar * host;
-    gint port;
+    gchar * port;
     gchar * username;
     gchar * password;
     gchar * desktop;
@@ -28,7 +28,7 @@ static const GOptionEntry cmdline_entries[] = {
       "Show version and exit", NULL },
     { "host", 'h', 0, G_OPTION_ARG_STRING, NULL,
       "Connection host address", NULL },
-    { "port", 'p', 0, G_OPTION_ARG_INT, NULL,
+    { "port", 'p', 0, G_OPTION_ARG_STRING, NULL,
       "Connection port (default 443)", NULL },
     { "username", 'u', 0, G_OPTION_ARG_STRING, NULL,
       "User name", NULL },
@@ -59,7 +59,7 @@ static void client_conf_load(ClientConf * conf);
 static void client_conf_init(ClientConf * conf) {
     conf->version = FALSE;
     conf->host = NULL;
-    conf->port = 443;
+    conf->port = NULL;
     conf->username = NULL;
     conf->password = NULL;
     conf->desktop = NULL;
@@ -87,6 +87,7 @@ static void client_conf_finalize(GObject * obj) {
     ClientConf * conf = CLIENT_CONF(obj);
     g_free(conf->cmdline_entries);
     g_free(conf->host);
+    g_free(conf->port);
     g_free(conf->username);
     g_free(conf->password);
     g_free(conf->desktop);
@@ -111,7 +112,7 @@ const gchar * client_conf_get_host(ClientConf * conf) {
     return conf->host;
 }
 
-gint client_conf_get_port(ClientConf * conf) {
+const gchar * client_conf_get_port(ClientConf * conf) {
     return conf->port;
 }
 
@@ -132,7 +133,7 @@ gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path) {
     if (!conf->port)
         return g_strdup_printf("https://%s%s", conf->host, path);
     else
-        return g_strdup_printf("https://%s:%d%s", conf->host, conf->port, path);
+        return g_strdup_printf("https://%s:%s%s", conf->host, conf->port, path);
 }
 
 gboolean client_conf_get_fullscreen(ClientConf * conf) {
@@ -164,8 +165,8 @@ void client_conf_set_host(ClientConf * conf, const gchar * host) {
     conf->host = g_strdup(host);
 }
 
-void client_conf_set_port(ClientConf * conf, gint port) {
-    conf->port = port;
+void client_conf_set_port(ClientConf * conf, const gchar * port) {
+    conf->port = port ? g_strdup(port) : NULL;
 }
 
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
@@ -196,8 +197,8 @@ static void client_conf_load(ClientConf * conf) {
     if (host_val != NULL)
         conf->host = host_val;
 
-    gint port_val = g_key_file_get_integer(conf->file, "General", "port", NULL);
-    if (port_val != 0)
+    gchar * port_val = g_key_file_get_string(conf->file, "General", "port", NULL);
+    if (port_val != NULL)
         conf->port = port_val;
 
     gboolean fs_val = g_key_file_get_boolean(conf->file, "General", "fullscreen", &error);

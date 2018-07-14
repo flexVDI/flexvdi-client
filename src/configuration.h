@@ -15,7 +15,7 @@ ClientConf * client_conf_new(void);
 GOptionEntry * client_conf_get_cmdline_entries(ClientConf * conf);
 gboolean client_conf_show_version(ClientConf * conf);
 const gchar * client_conf_get_host(ClientConf * conf);
-gint client_conf_get_port(ClientConf * conf);
+const gchar * client_conf_get_port(ClientConf * conf);
 const gchar * client_conf_get_username(ClientConf * conf);
 const gchar * client_conf_get_password(ClientConf * conf);
 const gchar * client_conf_get_desktop(ClientConf * conf);
@@ -26,7 +26,7 @@ gboolean client_conf_get_disable_printing(ClientConf * conf);
 const gchar * client_conf_get_terminal_id(ClientConf * conf);
 
 void client_conf_set_host(ClientConf * conf, const gchar * host);
-void client_conf_set_port(ClientConf * conf, gint port);
+void client_conf_set_port(ClientConf * conf, const gchar * port);
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs);
 
 #endif /* _CONFIGURATION_H */

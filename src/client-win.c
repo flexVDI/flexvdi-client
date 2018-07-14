@@ -151,13 +151,14 @@ static void desktop_selected_handler(GtkTreeView * tree_view, GtkTreePath * path
 
 static void load_config(ClientAppWindow * win) {
     const gchar * host = client_conf_get_host(win->conf);
+    const gchar * port = client_conf_get_port(win->conf);
     const gchar * username = client_conf_get_username(win->conf);
     const gchar * password = client_conf_get_password(win->conf);
     if (host) {
-        if (client_conf_get_port(win->conf) == 443) {
+        if (!port) {
             gtk_entry_set_text(win->host, host);
         } else {
-            g_autofree gchar * host_str = g_strdup_printf("%s:%d", host, client_conf_get_port(win->conf));
+            g_autofree gchar * host_str = g_strdup_printf("%s:%s", host, port);
             gtk_entry_set_text(win->host, host_str);
         }
     }
@@ -173,12 +174,7 @@ static void save_config(ClientAppWindow * win) {
     const gchar * host_port = gtk_entry_get_text(win->host);
     char ** tokens = g_strsplit(host_port, ":", 2);
     client_conf_set_host(win->conf, tokens[0]);
-    int port = 443;
-    if (tokens[1]) {
-        port = atoi(tokens[1]);
-        if (port < 1 || port > 65535) port = 443;
-    }
-    client_conf_set_port(win->conf, port);
+    client_conf_set_port(win->conf, tokens[1]);
     client_conf_set_fullscreen(win->conf,
         gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(win->fullscreen)));
     g_strfreev(tokens);
