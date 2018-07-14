@@ -92,6 +92,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->password);
     g_free(conf->desktop);
     g_free(conf->serial_params);
+    g_free(conf->terminal_id);
     g_key_file_free(conf->file);
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
 }
