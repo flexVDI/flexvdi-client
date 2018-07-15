@@ -188,6 +188,16 @@ gboolean client_conf_get_disable_printing(ClientConf * conf) {
     return conf->disable_printing;
 }
 
+void set_modified(GOptionEntry * option, const gchar * name) {
+    while (option->long_name != NULL) {
+        if (!g_strcmp0(option->long_name, name)) {
+            option->flags = 1;
+            break;
+        }
+        ++option;
+    }
+}
+
 gchar * discover_terminal_id();
 
 const gchar * client_conf_get_terminal_id(ClientConf * conf) {
@@ -196,21 +206,24 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
         if (conf->terminal_id[0] == '\0') {
             // TODO: Random terminal id
         }
-        // TODO: Save terminal id
+        set_modified(conf->main_options, "terminal_id");
     }
     return conf->terminal_id;
 }
 
 void client_conf_set_host(ClientConf * conf, const gchar * host) {
     conf->host = g_strdup(host);
+    set_modified(conf->main_options, "host");
 }
 
 void client_conf_set_port(ClientConf * conf, const gchar * port) {
     conf->port = port ? g_strdup(port) : NULL;
+    set_modified(conf->main_options, "port");
 }
 
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
     conf->fullscreen = fs;
+    set_modified(conf->session_options, "fullscreen");
 }
 
 static void read_string(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
@@ -339,24 +352,26 @@ void client_conf_save(ClientConf * conf) {
     for (int i = 0; i < G_N_ELEMENTS(groups); ++i) {
         GOptionEntry * option = groups[i].options;
         while (option->long_name != NULL) {
-            switch (option->arg) {
-            case G_OPTION_ARG_STRING:
-                write_string(conf->file, groups[i].group, option->long_name,
-                             *((gchar **)option->arg_data));
-                break;
-            case G_OPTION_ARG_INT:
-                write_int(conf->file, groups[i].group, option->long_name,
-                          *((gint *)option->arg_data));
-                break;
-            case G_OPTION_ARG_NONE:
-                write_bool(conf->file, groups[i].group, option->long_name,
-                           *((gboolean *)option->arg_data));
-                break;
-            case G_OPTION_ARG_STRING_ARRAY:
-                write_string_array(conf->file, groups[i].group, option->long_name,
-                                   *((gchar ***)option->arg_data));
-                break;
-            default:;
+            if (option->flags) {
+                switch (option->arg) {
+                case G_OPTION_ARG_STRING:
+                    write_string(conf->file, groups[i].group, option->long_name,
+                                *((gchar **)option->arg_data));
+                    break;
+                case G_OPTION_ARG_INT:
+                    write_int(conf->file, groups[i].group, option->long_name,
+                            *((gint *)option->arg_data));
+                    break;
+                case G_OPTION_ARG_NONE:
+                    write_bool(conf->file, groups[i].group, option->long_name,
+                            *((gboolean *)option->arg_data));
+                    break;
+                case G_OPTION_ARG_STRING_ARRAY:
+                    write_string_array(conf->file, groups[i].group, option->long_name,
+                                    *((gchar ***)option->arg_data));
+                    break;
+                default:;
+                }
             }
             ++option;
         }
