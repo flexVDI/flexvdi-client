@@ -15,6 +15,7 @@ struct _ClientConf {
     gchar * password;
     gchar * desktop;
     gboolean fullscreen;
+    gint inactivity_timeout;
     gchar ** redir_rports;
     gchar ** redir_lports;
     gchar ** serial_params;
@@ -54,6 +55,8 @@ static void client_conf_init(ClientConf * conf) {
         "Desktop name to connect to", NULL },
         { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, &conf->fullscreen,
         "Show desktop in fullscreen mode", NULL },
+        { "inactivity-timeout", 0, 0, G_OPTION_ARG_INT, &conf->inactivity_timeout,
+        "Close the client after a certain time of inactivity", "seconds" },
         { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, &conf->disable_printing,
         "Disable printing support", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
@@ -78,6 +81,7 @@ static void client_conf_init(ClientConf * conf) {
     conf->password = NULL;
     conf->desktop = NULL;
     conf->fullscreen = FALSE;
+    conf->inactivity_timeout = 0;
     conf->serial_params = NULL;
     conf->redir_rports = NULL;
     conf->redir_lports = NULL;
@@ -136,6 +140,8 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
         g_object_set(session, "redirected-remote-ports", conf->redir_rports, NULL);
     if (conf->redir_lports)
         g_object_set(session, "redirected-local-ports", conf->redir_lports, NULL);
+    if (conf->inactivity_timeout != 0)
+        g_object_set(session, "inactivity-timeout", conf->inactivity_timeout, NULL);
 }
 
 gboolean client_conf_show_version(ClientConf * conf) {
@@ -233,6 +239,15 @@ static void read_bool(GKeyFile * file, const gchar * group, const gchar * key, g
     } else g_error_free(error);
 }
 
+static void read_int(GKeyFile * file, const gchar * group, const gchar * key, gint * val) {
+    GError * error = NULL;
+    gint int_val = g_key_file_get_integer(file, group, key, &error);
+    if (!error) {
+        *val = int_val;
+        g_debug("Option %s:%s = %d", group, key, int_val);
+    } else g_error_free(error);
+}
+
 gchar * get_config_filename() {
     return g_build_filename(
         g_get_user_config_dir(),
@@ -268,6 +283,10 @@ static void client_conf_load(ClientConf * conf) {
                 read_string(conf->file, groups[i].group, option->long_name,
                             (gchar **)option->arg_data);
                 break;
+            case G_OPTION_ARG_INT:
+                read_int(conf->file, groups[i].group, option->long_name,
+                         (gint *)option->arg_data);
+                break;
             case G_OPTION_ARG_NONE:
                 read_bool(conf->file, groups[i].group, option->long_name,
                           (gboolean *)option->arg_data);
@@ -286,22 +305,25 @@ static void client_conf_load(ClientConf * conf) {
 static void write_string(GKeyFile * file, const gchar * group, const gchar * key, gchar * val) {
     if (val)
         g_key_file_set_string(file, group, key, val);
-    else if (g_key_file_has_key(file, group, key, NULL))
-        g_key_file_remove_key(file, group, key, NULL);
+    else g_key_file_remove_key(file, group, key, NULL);
 }
 
 static void write_string_array(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
     if (val)
         g_key_file_set_string_list(file, group, key, (const gchar **)val, g_strv_length(val));
-    else if (g_key_file_has_key(file, group, key, NULL))
-        g_key_file_remove_key(file, group, key, NULL);
+    else g_key_file_remove_key(file, group, key, NULL);
 }
 
 static void write_bool(GKeyFile * file, const gchar * group, const gchar * key, gboolean val) {
     if (val)
         g_key_file_set_boolean(file, group, key, val);
-    else if (g_key_file_has_key(file, group, key, NULL))
-        g_key_file_remove_key(file, group, key, NULL);
+    else g_key_file_remove_key(file, group, key, NULL);
+}
+
+static void write_int(GKeyFile * file, const gchar * group, const gchar * key, gint val) {
+    if (val)
+        g_key_file_set_integer(file, group, key, val);
+    else g_key_file_remove_key(file, group, key, NULL);
 }
 
 void client_conf_save(ClientConf * conf) {
@@ -321,6 +343,10 @@ void client_conf_save(ClientConf * conf) {
             case G_OPTION_ARG_STRING:
                 write_string(conf->file, groups[i].group, option->long_name,
                              *((gchar **)option->arg_data));
+                break;
+            case G_OPTION_ARG_INT:
+                write_int(conf->file, groups[i].group, option->long_name,
+                          *((gint *)option->arg_data));
                 break;
             case G_OPTION_ARG_NONE:
                 write_bool(conf->file, groups[i].group, option->long_name,
