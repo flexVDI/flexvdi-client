@@ -207,6 +207,7 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
             // TODO: Random terminal id
         }
         set_modified(conf->main_options, "terminal_id");
+        client_conf_save(conf);
     }
     return conf->terminal_id;
 }
