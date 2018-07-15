@@ -2,7 +2,6 @@
  * Copyright Flexible Software Solutions S.L. 2018
  **/
 
-#include <spice-client-gtk.h>
 #include "configuration.h"
 
 struct _ClientConf {
@@ -16,6 +15,8 @@ struct _ClientConf {
     gchar * password;
     gchar * desktop;
     gboolean fullscreen;
+    gchar ** redir_rports;
+    gchar ** redir_lports;
     gchar ** serial_params;
     gboolean disable_printing;
     gchar * terminal_id;
@@ -59,6 +60,10 @@ static void client_conf_init(ClientConf * conf) {
     };
 
     GOptionEntry device_options[] = {
+        { "redirect-rport", 'R', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_rports,
+        "Redirect a remote TCP port", "[bind_address:]guest_port:host:hostport" },
+        { "redirect-lport", 'L', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_lports,
+        "Redirect a local TCP port", "[bind_address:]local_port:host:hostport", },
         { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, &conf->serial_params,
         "Add serial port redirection. "
         "The Nth use of this option is attached to channel serialredirN. "
@@ -74,6 +79,8 @@ static void client_conf_init(ClientConf * conf) {
     conf->desktop = NULL;
     conf->fullscreen = FALSE;
     conf->serial_params = NULL;
+    conf->redir_rports = NULL;
+    conf->redir_lports = NULL;
     conf->disable_printing = FALSE;
     conf->terminal_id = NULL;
     conf->main_options = g_memdup(main_options, sizeof(main_options));
@@ -94,6 +101,8 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->password);
     g_free(conf->desktop);
     g_strfreev(conf->serial_params);
+    g_strfreev(conf->redir_rports);
+    g_strfreev(conf->redir_lports);
     g_free(conf->terminal_id);
     g_key_file_free(conf->file);
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
@@ -120,6 +129,13 @@ void client_conf_set_application_options(ClientConf * conf, GApplication * app) 
     g_application_add_option_group(app, session_group);
     g_application_add_option_group(app, devices_group);
     g_application_add_option_group(app, spice_get_option_group());
+}
+
+void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) {
+    if (conf->redir_rports)
+        g_object_set(session, "redirected-remote-ports", conf->redir_rports, NULL);
+    if (conf->redir_lports)
+        g_object_set(session, "redirected-local-ports", conf->redir_lports, NULL);
 }
 
 gboolean client_conf_show_version(ClientConf * conf) {

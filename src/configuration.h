@@ -5,6 +5,7 @@
 #ifndef _CONFIGURATION_H
 #define _CONFIGURATION_H
 
+#include <spice-client-gtk.h>
 #include <glib-object.h>
 
 
@@ -13,6 +14,7 @@ G_DECLARE_FINAL_TYPE(ClientConf, client_conf, CLIENT, CONF, GObject)
 
 ClientConf * client_conf_new(void);
 void client_conf_set_application_options(ClientConf * conf, GApplication * app);
+void client_conf_set_session_options(ClientConf * conf, SpiceSession * session);
 
 gboolean client_conf_show_version(ClientConf * conf);
 const gchar * client_conf_get_host(ClientConf * conf);

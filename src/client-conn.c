@@ -62,6 +62,7 @@ ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
         const gchar * port = client_conf_get_port(conf);
         g_object_set(conn->session, "ws-port", port ? port : "443", NULL);
     }
+    client_conf_set_session_options(conf, conn->session);
 
     return conn;
 }
