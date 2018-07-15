@@ -13,6 +13,7 @@ G_DECLARE_FINAL_TYPE(ClientConf, client_conf, CLIENT, CONF, GObject)
 
 ClientConf * client_conf_new(void);
 void client_conf_set_application_options(ClientConf * conf, GApplication * app);
+
 gboolean client_conf_show_version(ClientConf * conf);
 const gchar * client_conf_get_host(ClientConf * conf);
 const gchar * client_conf_get_port(ClientConf * conf);
@@ -28,5 +29,6 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf);
 void client_conf_set_host(ClientConf * conf, const gchar * host);
 void client_conf_set_port(ClientConf * conf, const gchar * port);
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs);
+void client_conf_save(ClientConf * conf);
 
 #endif /* _CONFIGURATION_H */

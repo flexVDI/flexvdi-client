@@ -217,14 +217,18 @@ static void read_bool(GKeyFile * file, const gchar * group, const gchar * key, g
     } else g_error_free(error);
 }
 
-static void client_conf_load(ClientConf * conf) {
-    GError * error = NULL;
-    g_autofree gchar * config_filename = g_build_filename(
+gchar * get_config_filename() {
+    return g_build_filename(
         g_get_user_config_dir(),
         "flexVDI Client",
         "settings.ini",
         NULL
     );
+}
+
+static void client_conf_load(ClientConf * conf) {
+    GError * error = NULL;
+    g_autofree gchar * config_filename = get_config_filename();
 
     if (!g_key_file_load_from_file(conf->file, config_filename,
             G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
@@ -260,5 +264,64 @@ static void client_conf_load(ClientConf * conf) {
             }
             ++option;
         }
+    }
+}
+
+static void write_string(GKeyFile * file, const gchar * group, const gchar * key, gchar * val) {
+    if (val)
+        g_key_file_set_string(file, group, key, val);
+    else if (g_key_file_has_key(file, group, key, NULL))
+        g_key_file_remove_key(file, group, key, NULL);
+}
+
+static void write_string_array(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
+    if (val)
+        g_key_file_set_string_list(file, group, key, (const gchar **)val, g_strv_length(val));
+    else if (g_key_file_has_key(file, group, key, NULL))
+        g_key_file_remove_key(file, group, key, NULL);
+}
+
+static void write_bool(GKeyFile * file, const gchar * group, const gchar * key, gboolean val) {
+    if (val)
+        g_key_file_set_boolean(file, group, key, val);
+    else if (g_key_file_has_key(file, group, key, NULL))
+        g_key_file_remove_key(file, group, key, NULL);
+}
+
+void client_conf_save(ClientConf * conf) {
+    GError * error = NULL;
+    g_autofree gchar * config_filename = get_config_filename();
+
+    struct { const gchar * group; GOptionEntry * options; } groups[] = {
+        { "General", conf->main_options },
+        { "Session", conf->session_options },
+        { "Devices", conf->device_options }
+    };
+
+    for (int i = 0; i < G_N_ELEMENTS(groups); ++i) {
+        GOptionEntry * option = groups[i].options;
+        while (option->long_name != NULL) {
+            switch (option->arg) {
+            case G_OPTION_ARG_STRING:
+                write_string(conf->file, groups[i].group, option->long_name,
+                             *((gchar **)option->arg_data));
+                break;
+            case G_OPTION_ARG_NONE:
+                write_bool(conf->file, groups[i].group, option->long_name,
+                           *((gboolean *)option->arg_data));
+                break;
+            case G_OPTION_ARG_STRING_ARRAY:
+                write_string_array(conf->file, groups[i].group, option->long_name,
+                                   *((gchar ***)option->arg_data));
+                break;
+            default:;
+            }
+            ++option;
+        }
+    }
+
+    if (!g_key_file_save_to_file(conf->file, config_filename, &error)) {
+        g_warning("Error saving settings file: %s", error->message);
+        g_error_free(error);
     }
 }

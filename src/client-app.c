@@ -114,6 +114,7 @@ static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer
 }
 
 static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
+    client_conf_save(CLIENT_APP(user_data)->conf);
     client_app_show_login(CLIENT_APP(user_data));
 }
 
