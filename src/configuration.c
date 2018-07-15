@@ -190,27 +190,30 @@ static void client_conf_load(ClientConf * conf) {
         return;
     }
 
-    gchar * tid_val = g_key_file_get_string(conf->file, "General", "terminal_id", NULL);
-    if (tid_val != NULL)
-        conf->terminal_id = tid_val;
+    struct { const gchar * group, * key; gchar ** value; } string_params[] = {
+        { "General", "terminal_id", &conf->terminal_id },
+        { "General", "host", &conf->host },
+        { "General", "port", &conf->port }
+    };
 
-    gchar * host_val = g_key_file_get_string(conf->file, "General", "host", NULL);
-    if (host_val != NULL)
-        conf->host = host_val;
+    struct { const gchar * group, * key; gboolean * value; } bool_params[] = {
+        { "General", "fullscreen", &conf->fullscreen },
+        { "General", "disable_printing", &conf->disable_printing }
+    };
 
-    gchar * port_val = g_key_file_get_string(conf->file, "General", "port", NULL);
-    if (port_val != NULL)
-        conf->port = port_val;
+    for (int i = 0; i < G_N_ELEMENTS(string_params); ++i) {
+        gchar * val = g_key_file_get_string(conf->file, string_params[i].group,
+                                            string_params[i].key, NULL);
+        if (val)
+            *string_params[i].value = val;
+    }
 
-    gboolean fs_val = g_key_file_get_boolean(conf->file, "General", "fullscreen", &error);
-    if (!error)
-        conf->fullscreen = fs_val;
-    else
-        g_error_free(error);
-
-    gboolean print_val = g_key_file_get_boolean(conf->file, "General", "disable_printing", &error);
-    if (!error)
-        conf->disable_printing = print_val;
-    else
-        g_error_free(error);
+    for (int i = 0; i < G_N_ELEMENTS(bool_params); ++i) {
+        gboolean val = g_key_file_get_boolean(conf->file, bool_params[i].group,
+                                              bool_params[i].key, &error);
+        if (!error)
+            *bool_params[i].value = val;
+        else
+            g_clear_error(&error);
+    }
 }
