@@ -49,9 +49,7 @@ static void client_app_init(ClientApp * app) {
     app->conf = client_conf_new();
     app->username = app->password = app->desktop = "";
     app->desktops = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-    g_application_add_main_option_entries(G_APPLICATION(app),
-        client_conf_get_cmdline_entries(app->conf));
-    g_application_add_option_group(G_APPLICATION(app), spice_get_option_group());
+    client_conf_set_application_options(app->conf, G_APPLICATION(app));
     g_signal_connect(app, "handle-local-options",
         G_CALLBACK(client_app_handle_options), NULL);
 }

@@ -12,7 +12,7 @@
 G_DECLARE_FINAL_TYPE(ClientConf, client_conf, CLIENT, CONF, GObject)
 
 ClientConf * client_conf_new(void);
-GOptionEntry * client_conf_get_cmdline_entries(ClientConf * conf);
+void client_conf_set_application_options(ClientConf * conf, GApplication * app);
 gboolean client_conf_show_version(ClientConf * conf);
 const gchar * client_conf_get_host(ClientConf * conf);
 const gchar * client_conf_get_port(ClientConf * conf);
