@@ -7,7 +7,7 @@
 
 struct _ClientConf {
     GObject parent;
-    GOptionEntry * main_options;
+    GOptionEntry * main_options, * session_options, * device_options;
     GKeyFile * file;
     gboolean version;
     gchar * host;
@@ -35,8 +35,6 @@ static void client_conf_load(ClientConf * conf);
 static void client_conf_init(ClientConf * conf) {
     GOptionEntry main_options[] = {
         // { long_name, short_name, flags, arg, arg_data, description, arg_description },
-        { "version", 0, 0, G_OPTION_ARG_NONE, &conf->version,
-        "Show version and exit", NULL },
         { "host", 'h', 0, G_OPTION_ARG_STRING, &conf->host,
         "Connection host address", NULL },
         { "port", 'p', 0, G_OPTION_ARG_STRING, &conf->port,
@@ -45,16 +43,24 @@ static void client_conf_init(ClientConf * conf) {
         "User name", NULL },
         { "password", 'w', 0, G_OPTION_ARG_STRING, &conf->password,
         "Password", NULL },
+        { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
+    };
+
+    GOptionEntry session_options[] = {
         { "desktop", 'd', 0, G_OPTION_ARG_STRING, &conf->desktop,
         "Desktop name to connect to", NULL },
         { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, &conf->fullscreen,
         "Show desktop in fullscreen mode", NULL },
+        { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, &conf->disable_printing,
+        "Disable printing support", NULL },
+        { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
+    };
+
+    GOptionEntry device_options[] = {
         { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, &conf->serial_params,
         "Add serial port redirection. "
         "The Nth use of this option is attached to channel serialredirN. "
         "Example: /dev/ttyS0,9600,8N1", "<device,speed,mode>" },
-        { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, &conf->disable_printing,
-        "Disable printing support", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -69,6 +75,8 @@ static void client_conf_init(ClientConf * conf) {
     conf->disable_printing = FALSE;
     conf->terminal_id = NULL;
     conf->main_options = g_memdup(main_options, sizeof(main_options));
+    conf->session_options = g_memdup(session_options, sizeof(session_options));
+    conf->device_options = g_memdup(device_options, sizeof(device_options));
     conf->file = g_key_file_new();
     client_conf_load(conf);
 }
@@ -76,6 +84,8 @@ static void client_conf_init(ClientConf * conf) {
 static void client_conf_finalize(GObject * obj) {
     ClientConf * conf = CLIENT_CONF(obj);
     g_free(conf->main_options);
+    g_free(conf->session_options);
+    g_free(conf->device_options);
     g_free(conf->host);
     g_free(conf->port);
     g_free(conf->username);
@@ -92,7 +102,21 @@ ClientConf * client_conf_new(void) {
 }
 
 void client_conf_set_application_options(ClientConf * conf, GApplication * app) {
+    GOptionEntry version_option[] = {
+        { "version", 0, 0, G_OPTION_ARG_NONE, &conf->version,
+        "Show version and exit", NULL },
+        { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
+    };
     g_application_add_main_option_entries(app, conf->main_options);
+    g_application_add_main_option_entries(app, version_option);
+    GOptionGroup * session_group = g_option_group_new("session",
+        "Session options", "Show session options", NULL, NULL);
+    g_option_group_add_entries(session_group, conf->session_options);
+    GOptionGroup * devices_group = g_option_group_new("device",
+        "Device options", "Show device options", NULL, NULL);
+    g_option_group_add_entries(devices_group, conf->device_options);
+    g_application_add_option_group(app, session_group);
+    g_application_add_option_group(app, devices_group);
     g_application_add_option_group(app, spice_get_option_group());
 }
 
