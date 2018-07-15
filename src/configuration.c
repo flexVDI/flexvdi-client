@@ -16,7 +16,7 @@ struct _ClientConf {
     gchar * password;
     gchar * desktop;
     gboolean fullscreen;
-    const gchar ** serial_params;
+    gchar ** serial_params;
     gboolean disable_printing;
     gchar * terminal_id;
 };
@@ -43,6 +43,8 @@ static void client_conf_init(ClientConf * conf) {
         "User name", NULL },
         { "password", 'w', 0, G_OPTION_ARG_STRING, &conf->password,
         "Password", NULL },
+        { "terminal_id", 0, 0, G_OPTION_ARG_STRING, &conf->terminal_id,
+        "Use a given Terminal ID instead of calculating it automatically", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -91,7 +93,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->username);
     g_free(conf->password);
     g_free(conf->desktop);
-    g_free(conf->serial_params);
+    g_strfreev(conf->serial_params);
     g_free(conf->terminal_id);
     g_key_file_free(conf->file);
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
@@ -156,7 +158,7 @@ gboolean client_conf_get_fullscreen(ClientConf * conf) {
     return conf->fullscreen;
 }
 
-const gchar ** client_conf_get_serial_params(ClientConf * conf) {
+gchar ** client_conf_get_serial_params(ClientConf * conf) {
     return conf->serial_params;
 }
 
@@ -189,6 +191,32 @@ void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
     conf->fullscreen = fs;
 }
 
+static void read_string(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
+    gchar * str_val = g_key_file_get_string(file, group, key, NULL);
+    if (str_val) {
+        g_debug("Option %s:%s = %s", group, key, str_val);
+        *val = str_val;
+    }
+}
+
+static void read_string_array(GKeyFile * file, const gchar * group, const gchar * key, gchar *** val) {
+    gsize size;
+    gchar ** str_val = g_key_file_get_string_list(file, group, key, &size, NULL);
+    if (str_val) {
+        g_debug("Option %s:%s = [%lu](%s, ...)", group, key, size, str_val[0]);
+        *val = str_val;
+    }
+}
+
+static void read_bool(GKeyFile * file, const gchar * group, const gchar * key, gboolean * val) {
+    GError * error = NULL;
+    gboolean bool_val = g_key_file_get_boolean(file, group, key, &error);
+    if (!error) {
+        *val = bool_val;
+        g_debug("Option %s:%s = %s", group, key, bool_val ? "true" : "false");
+    } else g_error_free(error);
+}
+
 static void client_conf_load(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = g_build_filename(
@@ -202,33 +230,35 @@ static void client_conf_load(ClientConf * conf) {
             G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
         if (!g_error_matches(error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
             g_warning("Error loading settings file: %s", error->message);
+        g_error_free(error);
         return;
     }
 
-    struct { const gchar * group, * key; gchar ** value; } string_params[] = {
-        { "General", "terminal_id", &conf->terminal_id },
-        { "General", "host", &conf->host },
-        { "General", "port", &conf->port }
+    struct { const gchar * group; GOptionEntry * options; } groups[] = {
+        { "General", conf->main_options },
+        { "Session", conf->session_options },
+        { "Devices", conf->device_options }
     };
 
-    struct { const gchar * group, * key; gboolean * value; } bool_params[] = {
-        { "General", "fullscreen", &conf->fullscreen },
-        { "General", "disable_printing", &conf->disable_printing }
-    };
-
-    for (int i = 0; i < G_N_ELEMENTS(string_params); ++i) {
-        gchar * val = g_key_file_get_string(conf->file, string_params[i].group,
-                                            string_params[i].key, NULL);
-        if (val)
-            *string_params[i].value = val;
-    }
-
-    for (int i = 0; i < G_N_ELEMENTS(bool_params); ++i) {
-        gboolean val = g_key_file_get_boolean(conf->file, bool_params[i].group,
-                                              bool_params[i].key, &error);
-        if (!error)
-            *bool_params[i].value = val;
-        else
-            g_clear_error(&error);
+    for (int i = 0; i < G_N_ELEMENTS(groups); ++i) {
+        GOptionEntry * option = groups[i].options;
+        while (option->long_name != NULL) {
+            switch (option->arg) {
+            case G_OPTION_ARG_STRING:
+                read_string(conf->file, groups[i].group, option->long_name,
+                            (gchar **)option->arg_data);
+                break;
+            case G_OPTION_ARG_NONE:
+                read_bool(conf->file, groups[i].group, option->long_name,
+                          (gboolean *)option->arg_data);
+                break;
+            case G_OPTION_ARG_STRING_ARRAY:
+                read_string_array(conf->file, groups[i].group, option->long_name,
+                                  (gchar ***)option->arg_data);
+                break;
+            default:;
+            }
+            ++option;
+        }
     }
 }

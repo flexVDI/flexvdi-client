@@ -21,7 +21,7 @@ const gchar * client_conf_get_password(ClientConf * conf);
 const gchar * client_conf_get_desktop(ClientConf * conf);
 gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path);
 gboolean client_conf_get_fullscreen(ClientConf * conf);
-const gchar ** client_conf_get_serial_params(ClientConf * conf);
+gchar ** client_conf_get_serial_params(ClientConf * conf);
 gboolean client_conf_get_disable_printing(ClientConf * conf);
 const gchar * client_conf_get_terminal_id(ClientConf * conf);
 
