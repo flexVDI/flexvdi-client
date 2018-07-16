@@ -24,6 +24,8 @@ struct _ClientConf {
     gboolean auto_usbredir;
     gboolean disable_copy_from_guest;
     gboolean disable_paste_to_guest;
+    gboolean grab_mouse;
+    gboolean resize_guest;
     // Device options
     gchar ** redir_rports;
     gchar ** redir_lports;
@@ -74,6 +76,10 @@ static void client_conf_init(ClientConf * conf) {
         "Disable clipboard from guest to client", NULL },
         { "disable-paste-to-guest", 0, 0, G_OPTION_ARG_NONE, &conf->disable_paste_to_guest,
         "Disable clipboard from client to guest", NULL },
+        { "grab-mouse", 0, 0, G_OPTION_ARG_NONE, &conf->grab_mouse,
+        "Grab mouse in server mode", NULL },
+        { "resize-guest", 0, 0, G_OPTION_ARG_NONE, &conf->resize_guest,
+        "Resize guest display to match window size", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -90,6 +96,8 @@ static void client_conf_init(ClientConf * conf) {
     };
 
     conf->auto_clipboard = TRUE;
+    conf->grab_mouse = TRUE;
+    conf->resize_guest = TRUE;
     conf->main_options = g_memdup(main_options, sizeof(main_options));
     conf->session_options = g_memdup(session_options, sizeof(session_options));
     conf->device_options = g_memdup(device_options, sizeof(device_options));
@@ -153,6 +161,16 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
         "auto-usbredir", conf->auto_usbredir,
         "disable-paste-from-guest", conf->disable_copy_from_guest,
         "disable-copy-to-guest", conf->disable_paste_to_guest,
+        NULL);
+}
+
+void client_conf_set_display_options(ClientConf * conf, SpiceDisplay * display) {
+    g_object_set(display,
+        "grab-keyboard", TRUE,
+        "grab-mouse", conf->grab_mouse,
+        "resize-guest", conf->resize_guest,
+        "scaling", TRUE,
+        "disable-inputs", FALSE,
         NULL);
 }
 

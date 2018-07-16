@@ -15,6 +15,7 @@ G_DECLARE_FINAL_TYPE(ClientConf, client_conf, CLIENT, CONF, GObject)
 ClientConf * client_conf_new(void);
 void client_conf_set_application_options(ClientConf * conf, GApplication * app);
 void client_conf_set_session_options(ClientConf * conf, SpiceSession * session);
+void client_conf_set_display_options(ClientConf * conf, SpiceDisplay * display);
 
 gboolean client_conf_show_version(ClientConf * conf);
 const gchar * client_conf_get_host(ClientConf * conf);

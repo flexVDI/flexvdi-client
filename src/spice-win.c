@@ -131,6 +131,7 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                      G_CALLBACK(leave_window_cb), win);
 
     win->fullscreen = client_conf_get_fullscreen(conf);
+    client_conf_set_display_options(conf, win->spice);
 
     return win;
 }
