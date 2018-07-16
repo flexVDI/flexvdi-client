@@ -20,6 +20,10 @@ struct _ClientConf {
     gboolean fullscreen;
     gint inactivity_timeout;
     gboolean disable_printing;
+    gboolean auto_clipboard;
+    gboolean auto_usbredir;
+    gboolean disable_copy_from_guest;
+    gboolean disable_paste_to_guest;
     // Device options
     gchar ** redir_rports;
     gchar ** redir_lports;
@@ -62,6 +66,14 @@ static void client_conf_init(ClientConf * conf) {
         "Close the client after a certain time of inactivity", "seconds" },
         { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, &conf->disable_printing,
         "Disable printing support", NULL },
+        { "auto-clipboard", 0, 0, G_OPTION_ARG_NONE, &conf->auto_clipboard,
+        "Automatically share clipboard between guest and client", NULL },
+        { "auto-usbredir", 0, 0, G_OPTION_ARG_NONE, &conf->auto_usbredir,
+        "Automatically redirect newly connected USB devices", NULL },
+        { "disable-copy-from-guest", 0, 0, G_OPTION_ARG_NONE, &conf->disable_copy_from_guest,
+        "Disable clipboard from guest to client", NULL },
+        { "disable-paste-to-guest", 0, 0, G_OPTION_ARG_NONE, &conf->disable_paste_to_guest,
+        "Disable clipboard from client to guest", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -77,6 +89,7 @@ static void client_conf_init(ClientConf * conf) {
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
+    conf->auto_clipboard = TRUE;
     conf->main_options = g_memdup(main_options, sizeof(main_options));
     conf->session_options = g_memdup(session_options, sizeof(session_options));
     conf->device_options = g_memdup(device_options, sizeof(device_options));
@@ -132,6 +145,15 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
         g_object_set(session, "redirected-local-ports", conf->redir_lports, NULL);
     if (conf->inactivity_timeout != 0)
         g_object_set(session, "inactivity-timeout", conf->inactivity_timeout, NULL);
+
+    SpiceGtkSession * gtk_session = spice_gtk_session_get(session);
+    g_object_set(gtk_session,
+        "sync-modifiers", TRUE,
+        "auto-clipboard", conf->auto_clipboard,
+        "auto-usbredir", conf->auto_usbredir,
+        "disable-paste-from-guest", conf->disable_copy_from_guest,
+        "disable-copy-to-guest", conf->disable_paste_to_guest,
+        NULL);
 }
 
 gboolean client_conf_show_version(ClientConf * conf) {
