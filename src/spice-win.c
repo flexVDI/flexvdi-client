@@ -24,6 +24,7 @@ struct _SpiceWindow {
     GtkToolButton * shutdown_button;
     GtkToolButton * poweroff_button;
     GtkMenu * keys_menu;
+    gulong channel_event_handler_id;
 };
 
 G_DEFINE_TYPE(SpiceWindow, spice_window, GTK_TYPE_WINDOW);
@@ -86,6 +87,8 @@ static void spice_window_init(SpiceWindow * win) {
 static void spice_window_dispose(GObject * obj) {
     SpiceWindow * win = SPICE_WIN(obj);
     g_clear_object(&win->conn);
+    if (win->display_channel)
+        g_signal_handler_disconnect(win->display_channel, win->channel_event_handler_id);
     g_clear_object(&win->display_channel);
     G_OBJECT_CLASS(spice_window_parent_class)->dispose(obj);
 }
@@ -110,7 +113,8 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     win->id = id;
     win->conn = g_object_ref(conn);
     win->display_channel = g_object_ref(channel);
-    g_signal_connect(channel, "channel-event", G_CALLBACK(channel_event), win);
+    win->channel_event_handler_id =
+        g_signal_connect(channel, "channel-event", G_CALLBACK(channel_event), win);
 
     /* spice display */
     SpiceSession * session = client_conn_get_session(conn);
