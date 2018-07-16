@@ -124,6 +124,8 @@ static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_da
     ClientApp * app = CLIENT_APP(user_data);
     app->username = client_app_window_get_username(win);
     app->password = client_app_window_get_password(win);
+    client_conf_set_username(app->conf, app->username);
+    client_conf_save(app->conf);
     client_app_request_desktop(CLIENT_APP(user_data));
 }
 

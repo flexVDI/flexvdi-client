@@ -222,6 +222,11 @@ void client_conf_set_port(ClientConf * conf, const gchar * port) {
     set_modified(conf->main_options, "port");
 }
 
+void client_conf_set_username(ClientConf * conf, const gchar * username) {
+    conf->username = g_strdup(username);
+    set_modified(conf->main_options, "username");
+}
+
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
     conf->fullscreen = fs;
     set_modified(conf->session_options, "fullscreen");

@@ -30,6 +30,7 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf);
 
 void client_conf_set_host(ClientConf * conf, const gchar * host);
 void client_conf_set_port(ClientConf * conf, const gchar * port);
+void client_conf_set_username(ClientConf * conf, const gchar * username);
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs);
 void client_conf_save(ClientConf * conf);
 
