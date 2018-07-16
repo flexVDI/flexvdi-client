@@ -77,19 +77,6 @@ static void client_conf_init(ClientConf * conf) {
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
-    conf->version = FALSE;
-    conf->host = NULL;
-    conf->port = NULL;
-    conf->username = NULL;
-    conf->password = NULL;
-    conf->desktop = NULL;
-    conf->fullscreen = FALSE;
-    conf->inactivity_timeout = 0;
-    conf->serial_params = NULL;
-    conf->redir_rports = NULL;
-    conf->redir_lports = NULL;
-    conf->disable_printing = FALSE;
-    conf->terminal_id = NULL;
     conf->main_options = g_memdup(main_options, sizeof(main_options));
     conf->session_options = g_memdup(session_options, sizeof(session_options));
     conf->device_options = g_memdup(device_options, sizeof(device_options));
