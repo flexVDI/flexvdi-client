@@ -9,18 +9,21 @@ struct _ClientConf {
     GOptionEntry * main_options, * session_options, * device_options;
     GKeyFile * file;
     gboolean version;
+    // Main options
     gchar * host;
     gchar * port;
     gchar * username;
     gchar * password;
+    gchar * terminal_id;
+    // Session options
     gchar * desktop;
     gboolean fullscreen;
     gint inactivity_timeout;
+    gboolean disable_printing;
+    // Device options
     gchar ** redir_rports;
     gchar ** redir_lports;
     gchar ** serial_params;
-    gboolean disable_printing;
-    gchar * terminal_id;
 };
 
 G_DEFINE_TYPE(ClientConf, client_conf, G_TYPE_OBJECT);
