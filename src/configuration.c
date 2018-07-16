@@ -64,22 +64,32 @@ static void client_conf_init(ClientConf * conf) {
         "Desktop name to connect to", NULL },
         { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, &conf->fullscreen,
         "Show desktop in fullscreen mode", NULL },
+        { "no-fullscreen", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
+        G_OPTION_ARG_NONE, &conf->fullscreen, "", NULL },
         { "inactivity-timeout", 0, 0, G_OPTION_ARG_INT, &conf->inactivity_timeout,
         "Close the client after a certain time of inactivity", "seconds" },
         { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, &conf->disable_printing,
         "Disable printing support", NULL },
         { "auto-clipboard", 0, 0, G_OPTION_ARG_NONE, &conf->auto_clipboard,
         "Automatically share clipboard between guest and client", NULL },
+        { "no-auto-clipboard", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
+        G_OPTION_ARG_NONE, &conf->auto_clipboard, "", NULL },
         { "auto-usbredir", 0, 0, G_OPTION_ARG_NONE, &conf->auto_usbredir,
         "Automatically redirect newly connected USB devices", NULL },
+        { "no-auto-usbredir", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
+        G_OPTION_ARG_NONE, &conf->auto_usbredir, "", NULL },
         { "disable-copy-from-guest", 0, 0, G_OPTION_ARG_NONE, &conf->disable_copy_from_guest,
         "Disable clipboard from guest to client", NULL },
         { "disable-paste-to-guest", 0, 0, G_OPTION_ARG_NONE, &conf->disable_paste_to_guest,
         "Disable clipboard from client to guest", NULL },
         { "grab-mouse", 0, 0, G_OPTION_ARG_NONE, &conf->grab_mouse,
         "Grab mouse in server mode", NULL },
+        { "no-grab-mouse", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
+        G_OPTION_ARG_NONE, &conf->grab_mouse, "", NULL },
         { "resize-guest", 0, 0, G_OPTION_ARG_NONE, &conf->resize_guest,
         "Resize guest display to match window size", NULL },
+        { "no-resize-guest", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
+        G_OPTION_ARG_NONE, &conf->resize_guest, "", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -326,7 +336,7 @@ static void client_conf_load(ClientConf * conf) {
 
     for (int i = 0; i < G_N_ELEMENTS(groups); ++i) {
         GOptionEntry * option = groups[i].options;
-        while (option->long_name != NULL) {
+        for (; option->long_name != NULL; ++option) {
             switch (option->arg) {
             case G_OPTION_ARG_STRING:
                 read_string(conf->file, groups[i].group, option->long_name,
@@ -337,6 +347,7 @@ static void client_conf_load(ClientConf * conf) {
                          (gint *)option->arg_data);
                 break;
             case G_OPTION_ARG_NONE:
+                if (g_str_has_prefix(option->long_name, "no-")) continue;
                 read_bool(conf->file, groups[i].group, option->long_name,
                           (gboolean *)option->arg_data);
                 break;
@@ -346,7 +357,6 @@ static void client_conf_load(ClientConf * conf) {
                 break;
             default:;
             }
-            ++option;
         }
     }
 }
@@ -387,29 +397,28 @@ void client_conf_save(ClientConf * conf) {
 
     for (int i = 0; i < G_N_ELEMENTS(groups); ++i) {
         GOptionEntry * option = groups[i].options;
-        while (option->long_name != NULL) {
-            if (option->flags) {
-                switch (option->arg) {
-                case G_OPTION_ARG_STRING:
-                    write_string(conf->file, groups[i].group, option->long_name,
-                                *((gchar **)option->arg_data));
-                    break;
-                case G_OPTION_ARG_INT:
-                    write_int(conf->file, groups[i].group, option->long_name,
-                            *((gint *)option->arg_data));
-                    break;
-                case G_OPTION_ARG_NONE:
-                    write_bool(conf->file, groups[i].group, option->long_name,
-                            *((gboolean *)option->arg_data));
-                    break;
-                case G_OPTION_ARG_STRING_ARRAY:
-                    write_string_array(conf->file, groups[i].group, option->long_name,
-                                    *((gchar ***)option->arg_data));
-                    break;
-                default:;
-                }
+        for (; option->long_name != NULL; ++option) {
+            if (!option->flags) continue;
+            switch (option->arg) {
+            case G_OPTION_ARG_STRING:
+                write_string(conf->file, groups[i].group, option->long_name,
+                            *((gchar **)option->arg_data));
+                break;
+            case G_OPTION_ARG_INT:
+                write_int(conf->file, groups[i].group, option->long_name,
+                        *((gint *)option->arg_data));
+                break;
+            case G_OPTION_ARG_NONE:
+                if (g_str_has_prefix(option->long_name, "no-")) continue;
+                write_bool(conf->file, groups[i].group, option->long_name,
+                        *((gboolean *)option->arg_data));
+                break;
+            case G_OPTION_ARG_STRING_ARRAY:
+                write_string_array(conf->file, groups[i].group, option->long_name,
+                                *((gchar ***)option->arg_data));
+                break;
+            default:;
             }
-            ++option;
         }
     }
 
