@@ -412,8 +412,8 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
         if (!app->windows[i]) continue;
         gtk_widget_destroy(GTK_WIDGET(app->windows[i]));
         app->windows[i] = NULL;
-        spice_main_set_display_enabled(app->main, i, FALSE);
-        spice_main_send_monitor_config(app->main);
+        spice_main_channel_update_display_enabled(app->main, i, FALSE, TRUE);
+        spice_main_channel_send_monitor_config(app->main);
     }
 
     g_clear_pointer(&monitors, g_array_unref);
