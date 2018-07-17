@@ -60,6 +60,7 @@ static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data);
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
                                 gpointer user_data);
 static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data);
+static void minimize(GtkToolButton * toolbutton, gpointer user_data);
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data);
 static void keystroke_cb(GtkMenuItem * menuitem, gpointer user_data);
 
@@ -75,6 +76,7 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect(win->paste_button, "clicked", G_CALLBACK(paste_to_guest), win);
     g_signal_connect(win->fullscreen_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
     g_signal_connect(win->restore_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
+    g_signal_connect(win->minimize_button, "clicked", G_CALLBACK(minimize), win);
     g_signal_connect(win->reboot_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win->shutdown_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win->poweroff_button, "clicked", G_CALLBACK(power_event_cb), win);
@@ -179,6 +181,11 @@ static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data) {
     } else {
         gtk_window_fullscreen(GTK_WINDOW(win));
     }
+}
+
+static void minimize(GtkToolButton * toolbutton, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    gtk_window_iconify(GTK_WINDOW(win));
 }
 
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
