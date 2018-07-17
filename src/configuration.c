@@ -228,6 +228,14 @@ gboolean client_conf_get_disable_printing(ClientConf * conf) {
     return conf->disable_printing;
 }
 
+gboolean client_conf_get_disable_copy_from_guest(ClientConf * conf) {
+    return conf->disable_copy_from_guest;
+}
+
+gboolean client_conf_get_disable_paste_to_guest(ClientConf * conf) {
+    return conf->disable_paste_to_guest;
+}
+
 void set_modified(GOptionEntry * option, const gchar * name) {
     while (option->long_name != NULL) {
         if (!g_strcmp0(option->long_name, name)) {

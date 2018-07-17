@@ -16,6 +16,6 @@ G_DECLARE_FINAL_TYPE(SpiceWindow, spice_window, SPICE, WIN, GtkWindow)
 
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                                ClientConf * conf, int id, gchar * title);
-
+void spice_win_set_cp_sensitive(SpiceWindow * win, gboolean copy, gboolean paste);
 
 #endif /* _SPICE_WIN_H */

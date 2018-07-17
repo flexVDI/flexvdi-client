@@ -320,3 +320,8 @@ static void keystroke_cb(GtkMenuItem * menuitem, gpointer user_data) {
     spice_display_send_keys(SPICE_DISPLAY(win->spice), keyvals, numKeys,
                             SPICE_DISPLAY_KEY_EVENT_PRESS | SPICE_DISPLAY_KEY_EVENT_RELEASE);
 }
+
+void spice_win_set_cp_sensitive(SpiceWindow * win, gboolean copy, gboolean paste) {
+    gtk_widget_set_sensitive(GTK_WIDGET(win->copy_button), copy);
+    gtk_widget_set_sensitive(GTK_WIDGET(win->paste_button), paste);
+}

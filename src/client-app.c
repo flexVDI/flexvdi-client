@@ -309,6 +309,7 @@ static void client_app_connect(ClientApp * app, JsonObject * params) {
 static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
                                gpointer user_data);
 static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app);
+static void main_agent_update(SpiceChannel * channel, ClientApp * app);
 
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
@@ -316,8 +317,11 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         g_debug("New main channel");
         app->main = SPICE_MAIN_CHANNEL(channel);
-         g_signal_connect(channel, "channel-event",
-                          G_CALLBACK(main_channel_event), app);
+        g_signal_connect(channel, "channel-event",
+                         G_CALLBACK(main_channel_event), app);
+        g_signal_connect(channel, "main-agent-update",
+                         G_CALLBACK(main_agent_update), app);
+        main_agent_update(channel, app);
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
@@ -379,6 +383,7 @@ static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
 }
 
 static void spice_win_display_mark(SpiceChannel * channel, gint mark, SpiceWindow * win);
+static void set_cp_sensitive(SpiceWindow * win, ClientApp * app);
 
 static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app) {
     GArray * monitors = NULL;
@@ -406,6 +411,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
             if (monitors->len == 1)
                 gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER_ALWAYS);
             gtk_widget_show(GTK_WIDGET(win));
+            set_cp_sensitive(win, app);
             if (app->main_window) {
                 gtk_widget_destroy(GTK_WIDGET(app->main_window));
                 app->main_window = NULL;
@@ -429,5 +435,21 @@ static void spice_win_display_mark(SpiceChannel * channel, gint mark, SpiceWindo
         gtk_widget_show(GTK_WIDGET(win));
     } else {
         gtk_widget_hide(GTK_WIDGET(win));
+    }
+}
+
+static void set_cp_sensitive(SpiceWindow * win, ClientApp * app) {
+    gboolean agent_connected;
+    g_object_get(app->main, "agent-connected", &agent_connected, NULL);
+    spice_win_set_cp_sensitive(win,
+        agent_connected && !client_conf_get_disable_copy_from_guest(app->conf),
+        agent_connected && !client_conf_get_disable_paste_to_guest(app->conf));
+}
+
+static void main_agent_update(SpiceChannel * channel, ClientApp * app) {
+    for (int i = 0; i < MAX_WINDOWS; ++i) {
+        if (app->windows[i]) {
+            set_cp_sensitive(app->windows[i], app);
+        }
     }
 }
