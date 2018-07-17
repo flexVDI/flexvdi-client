@@ -26,6 +26,11 @@ struct _ClientConf {
     gboolean disable_paste_to_guest;
     gboolean grab_mouse;
     gboolean resize_guest;
+    gboolean disable_power_actions;
+    gboolean disable_usbredir;
+    gboolean disable_video_streaming;
+    gboolean disable_audio_playback;
+    gboolean disable_audio_record;
     // Device options
     gchar ** redir_rports;
     gchar ** redir_lports;
@@ -90,6 +95,16 @@ static void client_conf_init(ClientConf * conf) {
         "Resize guest display to match window size", NULL },
         { "no-resize-guest", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
         G_OPTION_ARG_NONE, &conf->resize_guest, "", NULL },
+        { "disable-power-actions", 0, 0, G_OPTION_ARG_NONE, &conf->disable_power_actions,
+        "Disable reset/poweroff guest actions", NULL },
+        { "disable-usbredir", 0, 0, G_OPTION_ARG_NONE, &conf->disable_usbredir,
+        "Disable USB device redirection", NULL },
+        { "disable-video-streaming", 0, 0, G_OPTION_ARG_NONE, &conf->disable_video_streaming,
+        "Disable video streaming", NULL },
+        { "disable-audio-playback", 0, 0, G_OPTION_ARG_NONE, &conf->disable_audio_playback,
+        "Disable audio playback from guest", NULL },
+        { "disable-audio-record", 0, 0, G_OPTION_ARG_NONE, &conf->disable_audio_record,
+        "Disable audio record to guest", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -163,6 +178,9 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
         g_object_set(session, "redirected-local-ports", conf->redir_lports, NULL);
     if (conf->inactivity_timeout != 0)
         g_object_set(session, "inactivity-timeout", conf->inactivity_timeout, NULL);
+    g_object_set(session, "enable-usbredir", !conf->disable_usbredir, NULL);
+    g_object_set(session, "enable-audio",
+        !conf->disable_audio_playback && !conf->disable_audio_record, NULL);
 
     SpiceGtkSession * gtk_session = spice_gtk_session_get(session);
     g_object_set(gtk_session,
@@ -234,6 +252,10 @@ gboolean client_conf_get_disable_copy_from_guest(ClientConf * conf) {
 
 gboolean client_conf_get_disable_paste_to_guest(ClientConf * conf) {
     return conf->disable_paste_to_guest;
+}
+
+gboolean client_conf_get_disable_power_actions(ClientConf * conf) {
+    return conf->disable_power_actions;
 }
 
 void set_modified(GOptionEntry * option, const gchar * name) {
