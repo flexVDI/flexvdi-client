@@ -297,6 +297,7 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data);
 
 static void client_app_connect(ClientApp * app, JsonObject * params) {
+    client_conf_get_options_from_response(app->conf, params);
     app->connection = client_conn_new(app->conf, params);
 
     SpiceSession * session = client_conn_get_session(app->connection);

@@ -152,6 +152,31 @@ ClientConf * client_conf_new(void) {
     return g_object_new(CLIENT_CONF_TYPE, NULL);
 }
 
+void client_conf_get_options_from_response(ClientConf * conf, JsonObject * params) {
+    if (json_object_has_member(params, "enable_power_actions"))
+        conf->disable_power_actions |= !json_object_get_boolean_member(params, "enable_power_actions");
+    if (json_object_has_member(params, "enable_usb_redir"))
+        conf->disable_usbredir |= !json_object_get_boolean_member(params, "enable_usb_redir");
+    if (json_object_has_member(params, "enable_video_streaming"))
+        conf->disable_video_streaming |= !json_object_get_boolean_member(params, "enable_video_streaming");
+    if (json_object_has_member(params, "enable_audio_playback"))
+        conf->disable_audio_playback |= !json_object_get_boolean_member(params, "enable_audio_playback");
+    if (json_object_has_member(params, "enable_audio_record"))
+        conf->disable_audio_record |= !json_object_get_boolean_member(params, "enable_audio_record");
+    if (json_object_has_member(params, "enable_copy_paste_g2h"))
+        conf->disable_copy_from_guest |= !json_object_get_boolean_member(params, "enable_copy_paste_g2h");
+    if (json_object_has_member(params, "enable_copy_paste_h2g"))
+        conf->disable_paste_to_guest |= !json_object_get_boolean_member(params, "enable_copy_paste_h2g");
+    if (json_object_has_member(params, "enable_printing"))
+        conf->disable_printing |= !json_object_get_boolean_member(params, "enable_printing");
+    if (json_object_has_member(params, "inactivity_timeout")) {
+        int timeout_from_manager = json_object_get_int_member(params, "inactivity_timeout");
+        if (conf->inactivity_timeout == 0 ||
+            (timeout_from_manager > 0 && timeout_from_manager < conf->inactivity_timeout))
+            conf->inactivity_timeout = timeout_from_manager;
+    }
+}
+
 void client_conf_set_application_options(ClientConf * conf, GApplication * app) {
     GOptionEntry version_option[] = {
         { "version", 0, 0, G_OPTION_ARG_NONE, &conf->version,
