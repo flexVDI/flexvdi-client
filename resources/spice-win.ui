@@ -69,7 +69,7 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkSeparatorToolItem">
+                  <object class="GtkSeparatorToolItem" id="power_actions_separator">
                     <property name="visible">True</property>
                   </object>
                 </child>

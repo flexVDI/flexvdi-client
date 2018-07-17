@@ -20,6 +20,7 @@ struct _SpiceWindow {
     GtkToolButton * fullscreen_button;
     GtkToolButton * restore_button;
     GtkToolButton * minimize_button;
+    GtkSeparatorToolItem * power_actions_separator;
     GtkToolButton * reboot_button;
     GtkToolButton * shutdown_button;
     GtkToolButton * poweroff_button;
@@ -48,6 +49,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, fullscreen_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, restore_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, minimize_button);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, power_actions_separator);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, reboot_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, shutdown_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, poweroff_button);
@@ -134,6 +136,12 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
 
     win->fullscreen = client_conf_get_fullscreen(conf);
     client_conf_set_display_options(conf, win->spice);
+    if (client_conf_get_disable_power_actions(conf)) {
+        gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->power_actions_separator));
+        gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->reboot_button));
+        gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->poweroff_button));
+        gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->shutdown_button));
+    }
 
     return win;
 }
