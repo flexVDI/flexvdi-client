@@ -146,6 +146,11 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
     ClientApp * app = CLIENT_APP(user_data);
     if (app->connection)
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
+    for (int i = 0; i < MAX_WINDOWS; ++i) {
+        if (GTK_WIDGET(app->windows[i]) == widget) {
+            app->windows[i] = NULL;
+        }
+    }
     return FALSE;
 }
 
