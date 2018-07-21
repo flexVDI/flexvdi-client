@@ -78,3 +78,25 @@ treeview:hover, treeview:selected {
     background-color: #5db9cc;
     color: #ffffff;
 }
+
+toolbar button {
+	min-width:24px;
+    border-color: transparent;
+    outline: none;
+}
+
+toolbar button:hover {
+	min-width:24px;
+	border-color: #909090;
+}
+
+toolbar button:active {
+	background-color: rgba(0,0,0,0.2);
+}
+
+tooltip {
+	background-color: lightgray;
+	border-color: white;
+	border-radius: 0;
+	text-shadow: none;
+}
