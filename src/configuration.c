@@ -31,9 +31,12 @@ struct _ClientConf {
     gboolean disable_video_streaming;
     gboolean disable_audio_playback;
     gboolean disable_audio_record;
+    gchar * preferred_compression;
     // Device options
     gchar ** redir_rports;
     gchar ** redir_lports;
+    gchar * usb_auto_filter;
+    gchar * usb_connect_filter;
     gchar ** serial_params;
 };
 
@@ -105,14 +108,20 @@ static void client_conf_init(ClientConf * conf) {
         "Disable audio playback from guest", NULL },
         { "disable-audio-record", 0, 0, G_OPTION_ARG_NONE, &conf->disable_audio_record,
         "Disable audio record to guest", NULL },
+        { "preferred-compression", 'd', 0, G_OPTION_ARG_STRING, &conf->preferred_compression,
+        "Preferred image compression algorithm", "<auto-glz,auto-lz,quic,glz,lz,lz4,off>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
     GOptionEntry device_options[] = {
         { "redirect-rport", 'R', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_rports,
-        "Redirect a remote TCP port", "[bind_address:]guest_port:host:hostport" },
+        "Redirect a remote TCP port", "[bind_address:]guest_port:host:host_port" },
         { "redirect-lport", 'L', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_lports,
-        "Redirect a local TCP port", "[bind_address:]local_port:host:hostport", },
+        "Redirect a local TCP port", "[bind_address:]local_port:host:host_port", },
+        { "usbredir-auto-redirect-filter", 0, 0, G_OPTION_ARG_STRING, &conf->usb_auto_filter,
+          "Filter selecting USB devices to be auto-redirected when plugged in", "<filter-string>" },
+        { "usbredir-redirect-on-connect", 0, 0, G_OPTION_ARG_STRING, &conf->usb_connect_filter,
+          "Filter selecting USB devices to redirect on connect", "<filter-string>" },
         { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, &conf->serial_params,
         "Add serial port redirection. "
         "The Nth use of this option is attached to channel serialredirN. "
@@ -143,6 +152,9 @@ static void client_conf_finalize(GObject * obj) {
     g_strfreev(conf->serial_params);
     g_strfreev(conf->redir_rports);
     g_strfreev(conf->redir_lports);
+    g_free(conf->usb_auto_filter);
+    g_free(conf->usb_connect_filter);
+    g_free(conf->preferred_compression);
     g_free(conf->terminal_id);
     g_key_file_free(conf->file);
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
@@ -193,7 +205,29 @@ void client_conf_set_application_options(ClientConf * conf, GApplication * app) 
     g_option_group_add_entries(devices_group, conf->device_options);
     g_application_add_option_group(app, session_group);
     g_application_add_option_group(app, devices_group);
-    g_application_add_option_group(app, spice_get_option_group());
+}
+
+static void parse_preferred_compression(SpiceSession * session, const gchar * value) {
+    int preferred_compression = SPICE_IMAGE_COMPRESSION_INVALID;
+    if (!g_strcmp0(value, "auto-glz")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_AUTO_GLZ;
+    } else if (!g_strcmp0(value, "auto-lz")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_AUTO_LZ;
+    } else if (!g_strcmp0(value, "quic")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_QUIC;
+    } else if (!g_strcmp0(value, "glz")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_GLZ;
+    } else if (!g_strcmp0(value, "lz")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_LZ;
+    } else if (!g_strcmp0(value, "lz4")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_LZ4;
+    } else if (!g_strcmp0(value, "off")) {
+        preferred_compression = SPICE_IMAGE_COMPRESSION_OFF;
+    } else {
+        g_warning("Image compression algorithm %s not supported", value);
+        return;
+    }
+    g_object_set(session, "preferred-compression", preferred_compression, NULL);
 }
 
 void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) {
@@ -204,6 +238,19 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
     if (conf->inactivity_timeout != 0)
         g_object_set(session, "inactivity-timeout", conf->inactivity_timeout, NULL);
     g_object_set(session, "enable-usbredir", !conf->disable_usbredir, NULL);
+    if (!conf->disable_usbredir) {
+        SpiceUsbDeviceManager * mgr = spice_usb_device_manager_get(session, NULL);
+        if (mgr) {
+            if (conf->usb_auto_filter)
+                g_object_set(mgr, "auto-connect-filter", conf->usb_auto_filter, NULL);
+            if (conf->usb_connect_filter)
+                g_object_set(mgr, "redirect-on-connect", conf->usb_connect_filter, NULL);
+        } else {
+            g_warning("USB redirection support not available");
+        }
+    }
+    if (conf->preferred_compression)
+        parse_preferred_compression(session, conf->preferred_compression);
     g_object_set(session, "enable-audio",
         !conf->disable_audio_playback && !conf->disable_audio_record, NULL);
 
