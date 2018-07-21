@@ -2,6 +2,7 @@
  * Copyright Flexible Software Solutions S.L. 2018
  **/
 
+#include <gst/gst.h>
 #include "configuration.h"
 
 struct _ClientConf {
@@ -205,6 +206,7 @@ void client_conf_set_application_options(ClientConf * conf, GApplication * app) 
     g_option_group_add_entries(devices_group, conf->device_options);
     g_application_add_option_group(app, session_group);
     g_application_add_option_group(app, devices_group);
+    g_application_add_option_group(app, gst_init_get_option_group());
 }
 
 static void parse_preferred_compression(SpiceSession * session, const gchar * value) {

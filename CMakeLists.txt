@@ -48,6 +48,7 @@ check_client_module(gobject gobject-2.0)
 check_client_module(gio gio-2.0)
 check_client_module(libsoup libsoup-2.4)
 check_client_module(json json-glib-1.0)
+check_client_module(gst gstreamer-1.0)
 
 if (WIN32)
     check_client_module(CAIRO cairo)
