@@ -12,6 +12,7 @@
 #include "spice-client.h"
 #include "flexvdi-port.h"
 #include "spice-util.h"
+#include "serialredir.h"
 
 
 typedef struct SerialPort {
@@ -25,8 +26,19 @@ typedef struct SerialPort {
 } SerialPort;
 
 
+static gchar ** serial_params;
 static SerialPort * serialPorts;
 static int numPorts;
+
+
+void serial_port_init(ClientConf * conf) {
+    serial_params = client_conf_get_serial_params(conf);
+    numPorts = 0;
+    if (serial_params) {
+        while (serial_params[numPorts]) ++numPorts;
+        serialPorts = g_malloc0(sizeof(SerialPort) * numPorts);
+    }
+}
 
 
 static SerialPort * getSerialPort(SpicePortChannel * channel) {
@@ -150,7 +162,7 @@ static void sendCallback(GObject * sourceObject, GAsyncResult * res,
     GError *error = NULL;
     SpicePortChannel * channel = (SpicePortChannel *)sourceObject;
     SerialPortBuffer * buffer = (SerialPortBuffer *)userData;
-    spice_port_write_finish(channel, res, &error);
+    spice_port_channel_write_finish(channel, res, &error);
     g_debug("Data sent to serial port %d\n", (int)(buffer->serial - serialPorts));
     if (error) {
         g_warning("Error sending data to guest: %s", error->message);
@@ -172,8 +184,8 @@ static void readCallback(GObject * sourceObject, GAsyncResult * res,
         if (g_input_stream_read_finish(istream, res, &error) == 1) {
             g_debug("Data from serial device %s: 0x%.2hhX\n",
                        serial->deviceName, buffer->data);
-            spice_port_write_async(serial->channel, &buffer->data, 1, serial->cancellable,
-                                   sendCallback, buffer);
+            spice_port_channel_write_async(serial->channel, &buffer->data, 1,
+                                           serial->cancellable, sendCallback, buffer);
         } else {
             g_warning("Error reading from serial device: %s", error->message);
             g_free(userData);
@@ -222,59 +234,40 @@ static void openSerial(SerialPort * serial) {
 }
 
 
-static void allocSerialPorts() {
-    numPorts = 0;
-    const gchar ** serialParams = NULL; //getSerialPortParams();
-    if (serialParams) {
-        while (serialParams[numPorts]) ++numPorts;
-        serialPorts = g_malloc0(sizeof(SerialPort) * numPorts);
-    }
-}
+static void serial_port_data(SpicePortChannel * channel, gpointer data, int size);
 
-
-void serialPortData(SpicePortChannel * channel, gpointer data, int size);
-
-void serialPortOpened(SpiceChannel * channel) {
+void serial_port_open(SpiceChannel * channel) {
     gchar * name = NULL;
     gboolean opened = FALSE;
     g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
     if (!strncmp(name, "serialredir", 11)) {
-        if (!serialPorts) allocSerialPorts();
         int portNumber = atoi(&name[11]);
-        if (opened && portNumber >= 0 && portNumber < numPorts) {
-            g_signal_connect(channel, "port-data", G_CALLBACK(serialPortData), NULL);
+        if (portNumber < 0 || portNumber >= numPorts) return;
+        SerialPort * serial = &serialPorts[portNumber];
+        if (opened) {
+            g_signal_connect(channel, "port-data", G_CALLBACK(serial_port_data), NULL);
             g_debug("Opened channel %s for serial port %d\n", name, portNumber);
-            SerialPort * serial = &serialPorts[portNumber];
             serial->cancellable = g_cancellable_new();
             serial->channel = SPICE_PORT_CHANNEL(channel);
-            //parseSerialParams(serial, getSerialPortParams()[portNumber]);
+            parseSerialParams(serial, serial_params[portNumber]);
             openSerial(serial);
         } else {
-            g_signal_handlers_disconnect_by_func(channel, G_CALLBACK(serialPortData), NULL);
+            serial->channel = NULL;
+            closeSerial(serial);
+            g_object_unref(serial->cancellable);
+            serial->cancellable = NULL;
+            g_signal_handlers_disconnect_by_func(channel, G_CALLBACK(serial_port_data), NULL);
         }
     }
 }
 
 
-void serialPortData(SpicePortChannel * channel, gpointer data, int size) {
+static void serial_port_data(SpicePortChannel * channel, gpointer data, int size) {
     SerialPort * serial = getSerialPort(channel);
     if (serial) {
         g_debug("Data to serial device: 0x%.2hhX\n", *((char *)data));
         gpointer wbuffer = g_memdup(data, size);
         g_output_stream_write_async(serial->ostream, wbuffer, size, G_PRIORITY_DEFAULT,
                                     serial->cancellable, writeCallback, wbuffer);
-    }
-}
-
-
-void serialChannelDestroy(SpicePortChannel * channel) {
-    if (SPICE_IS_PORT_CHANNEL(channel)) {
-        SerialPort * serial = getSerialPort(channel);
-        if (serial) {
-            serial->channel = NULL;
-            closeSerial(serial);
-            g_object_unref(serial->cancellable);
-            serial->cancellable = NULL;
-        }
     }
 }

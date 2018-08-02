@@ -6,9 +6,9 @@
 #define SERIALREDIR_H
 
 #include "spice-client.h"
+#include "configuration.h"
 
-void serialPortOpened(SpiceChannel * channel);
-void serialPortData(SpicePortChannel * pchannel, gpointer data, int size);
-void serialChannelDestroy(SpicePortChannel * channel);
+void serial_port_init(ClientConf * conf);
+void serial_port_open(SpiceChannel * channel);
 
 #endif // SERIALREDIR_H
