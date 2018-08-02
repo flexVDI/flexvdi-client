@@ -12,7 +12,7 @@
 #include <windows.h>
 #endif
 #include "PPDGenerator.h"
-#include "flexvdi-spice.h"
+#include "flexvdi-port.h"
 
 
 typedef struct PaperDescription {

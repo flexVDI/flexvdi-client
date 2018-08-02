@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <glib.h>
 #include "src/printclient.h"
-#include "src/flexvdi-spice.h"
+#include "src/flexvdi-port.h"
 
 
 int main(int argc, char * argv[]) {

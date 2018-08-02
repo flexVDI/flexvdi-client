@@ -10,7 +10,7 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 #include "spice-client.h"
-#include "flexvdi-spice.h"
+#include "flexvdi-port.h"
 #include "spice-util.h"
 
 
@@ -232,6 +232,8 @@ static void allocSerialPorts() {
 }
 
 
+void serialPortData(SpicePortChannel * channel, gpointer data, int size);
+
 void serialPortOpened(SpiceChannel * channel) {
     gchar * name = NULL;
     gboolean opened = FALSE;
@@ -240,12 +242,15 @@ void serialPortOpened(SpiceChannel * channel) {
         if (!serialPorts) allocSerialPorts();
         int portNumber = atoi(&name[11]);
         if (opened && portNumber >= 0 && portNumber < numPorts) {
+            g_signal_connect(channel, "port-data", G_CALLBACK(serialPortData), NULL);
             g_debug("Opened channel %s for serial port %d\n", name, portNumber);
             SerialPort * serial = &serialPorts[portNumber];
             serial->cancellable = g_cancellable_new();
             serial->channel = SPICE_PORT_CHANNEL(channel);
             //parseSerialParams(serial, getSerialPortParams()[portNumber]);
             openSerial(serial);
+        } else {
+            g_signal_handlers_disconnect_by_func(channel, G_CALLBACK(serialPortData), NULL);
         }
     }
 }

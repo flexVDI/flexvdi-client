@@ -10,7 +10,7 @@
 #include <glib/gstdio.h>
 #include <unistd.h>
 #include "printclient.h"
-#include "flexvdi-spice.h"
+#include "flexvdi-port.h"
 
 static GHashTable * printJobs;
 

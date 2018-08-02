@@ -8,6 +8,9 @@
 #include "client-request.h"
 #include "client-conn.h"
 #include "spice-win.h"
+#include "flexvdi-port.h"
+#include "serialredir.h"
+#include "printclient.h"
 
 #define MAX_WINDOWS 16
 
@@ -72,6 +75,8 @@ static void client_app_configure(ClientApp * app);
 static void client_app_show_login(ClientApp * app);
 
 static void client_app_activate(GApplication * gapp) {
+    initPrintClient();
+
     ClientApp * app = CLIENT_APP(gapp);
     app->main_window = client_app_window_new(app);
     gtk_window_present(GTK_WINDOW(app->main_window));
@@ -295,6 +300,7 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
 }
 
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data);
+static void channel_destroy(SpiceSession * s, SpiceChannel * channel);
 
 static void client_app_connect(ClientApp * app, JsonObject * params) {
     client_conf_get_options_from_response(app->conf, params);
@@ -303,6 +309,8 @@ static void client_app_connect(ClientApp * app, JsonObject * params) {
     SpiceSession * session = client_conn_get_session(app->connection);
     g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), app);
+    g_signal_connect(session, "channel-destroy",
+                     G_CALLBACK(channel_destroy), app);
 
     client_conn_connect(app->connection);
 }
@@ -311,6 +319,7 @@ static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
                                gpointer user_data);
 static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app);
 static void main_agent_update(SpiceChannel * channel, ClientApp * app);
+static void port_opened(SpiceChannel * channel, GParamSpec * pspec);
 
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
@@ -340,7 +349,16 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
     }
 
     if (SPICE_IS_PORT_CHANNEL(channel)) {
-        // Check flexvdi port channel
+        g_signal_connect(channel, "notify::port-opened",
+                         G_CALLBACK(port_opened), app);
+    }
+}
+
+static void channel_destroy(SpiceSession * s, SpiceChannel * channel) {
+    if (SPICE_IS_PORT_CHANNEL(channel)) {
+#ifdef ENABLE_SERIALREDIR
+        serialChannelDestroy(SPICE_PORT_CHANNEL(channel));
+#endif
     }
 }
 
@@ -452,5 +470,19 @@ static void main_agent_update(SpiceChannel * channel, ClientApp * app) {
         if (app->windows[i]) {
             set_cp_sensitive(app->windows[i], app);
         }
+    }
+}
+
+static void port_opened(SpiceChannel * channel, GParamSpec * pspec) {
+    gchar * name = NULL;
+    gboolean opened;
+    g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
+    g_debug("Port channel %s is %s", name, opened ? "open" : "closed");
+    if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
+        flexvdi_port_open(channel);
+#ifdef ENABLE_SERIALREDIR
+    } else {
+        serialPortOpened(channel);
+#endif
     }
 }

@@ -8,7 +8,7 @@
 #include <shellapi.h>
 #include "printclient.h"
 #include "PPDGenerator.h"
-#include "flexvdi-spice.h"
+#include "flexvdi-port.h"
 
 
 int flexvdiSpiceGetPrinterList(GSList ** printerList) {

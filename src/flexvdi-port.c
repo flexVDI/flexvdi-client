@@ -7,14 +7,11 @@
 #include <string.h>
 #include <glib.h>
 #include <glib/gstdio.h>
-#include "flexvdi-spice.h"
 #include "spice-client.h"
 #define FLEXVDI_PROTO_IMPL
 #include "flexdp.h"
 #include "flexvdi-port.h"
-#ifdef ENABLE_PRINTING
 #include "printclient.h"
-#endif
 #ifdef ENABLE_SERIALREDIR
 #include "serialredir.h"
 #endif
@@ -32,6 +29,7 @@ typedef struct flexvdi_port {
     WaitState state;
     FlexVDIMessageHeader curHeader;
     uint8_t * buffer, * bufpos, * bufend;
+    FlexVDICapabilitiesMsg agentCapabilities;
 } flexvdi_port;
 
 
@@ -113,13 +111,13 @@ void sendMessageAsync(uint32_t type, uint8_t * buffer,
     head->type = type;
     marshallMessage(type, buffer, head->size);
     marshallHeader(head);
-    spice_port_write_async(port.channel, head, size, port.cancellable, sendMessageAsyncCb,
-                           newAsyncUserData(callback, user_data));
+    spice_port_channel_write_async(port.channel, head, size, port.cancellable, sendMessageAsyncCb,
+                                   newAsyncUserData(callback, user_data));
 }
 
 
 void sendMessageFinish(GObject * source_object, GAsyncResult * res, GError ** error) {
-    spice_port_write_finish(SPICE_PORT_CHANNEL(source_object), res, error);
+    spice_port_channel_write_finish(SPICE_PORT_CHANNEL(source_object), res, error);
 }
 
 
@@ -130,63 +128,54 @@ static void preparePortBuffer(size_t size) {
 }
 
 
-static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
-    gchar *name = NULL;
+static void port_data(SpicePortChannel * pchannel, gpointer data, int size);
+
+void flexvdi_port_open(SpiceChannel * channel) {
     gboolean opened = FALSE;
-    g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
-    if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
-        if (opened) {
-            g_info("flexVDI guest agent connected\n");
-            port.connected = TRUE;
-            port.channel = SPICE_PORT_CHANNEL(channel);
-            port.cancellable = g_cancellable_new();
-            port.buffer = NULL;
-            preparePortBuffer(sizeof(FlexVDIMessageHeader));
-            port.state = WAIT_NEW_MESSAGE;
-            uint8_t * buf = getMsgBuffer(sizeof(FlexVDIResetMsg));
-            if (buf) {
-                sendMessage(FLEXVDI_RESET, buf);
-            }
-            buf = getMsgBuffer(sizeof(FlexVDICapabilitiesMsg));
-            if (buf) {
-                FlexVDICapabilitiesMsg * capMsg = (FlexVDICapabilitiesMsg *)buf;
-                capMsg->caps[0] = capMsg->caps[1] = capMsg->caps[2] = capMsg->caps[3] = 0;
-#ifdef ENABLE_PRINTING
-                setCapability(capMsg, FLEXVDI_CAP_PRINTING);
-#endif
-                sendMessage(FLEXVDI_CAPABILITIES, buf);
-            }
-        } else {
-            g_info("flexVDI guest agent disconnected\n");
-            port.connected = FALSE;
-            g_cancellable_cancel(port.cancellable);
-            g_object_unref(port.cancellable);
-            port.cancellable = NULL;
+    g_object_get(channel, "port-opened", &opened, NULL);
+    if (opened) {
+        g_info("flexVDI guest agent connected");
+        g_signal_connect(channel, "port-data", G_CALLBACK(port_data), NULL);
+        port.connected = TRUE;
+        port.channel = SPICE_PORT_CHANNEL(channel);
+        port.cancellable = g_cancellable_new();
+        port.buffer = NULL;
+        memset(port.agentCapabilities.caps, 0, sizeof(port.agentCapabilities));
+        preparePortBuffer(sizeof(FlexVDIMessageHeader));
+        port.state = WAIT_NEW_MESSAGE;
+        uint8_t * buf = getMsgBuffer(sizeof(FlexVDIResetMsg));
+        if (buf) {
+            sendMessage(FLEXVDI_RESET, buf);
         }
-#ifdef ENABLE_SERIALREDIR
+        buf = getMsgBuffer(sizeof(FlexVDICapabilitiesMsg));
+        if (buf) {
+            FlexVDICapabilitiesMsg * capMsg = (FlexVDICapabilitiesMsg *)buf;
+            capMsg->caps[0] = capMsg->caps[1] = capMsg->caps[2] = capMsg->caps[3] = 0;
+            setCapability(capMsg, FLEXVDI_CAP_PRINTING);
+            sendMessage(FLEXVDI_CAPABILITIES, buf);
+        }
     } else {
-        serialPortOpened(channel);
-#endif
+        g_info("flexVDI guest agent disconnected");
+        g_signal_handlers_disconnect_by_func(channel, G_CALLBACK(port_data), NULL);
+        port.connected = FALSE;
+        port.channel = NULL;
+        g_cancellable_cancel(port.cancellable);
+        g_object_unref(port.cancellable);
+        port.cancellable = NULL;
     }
 }
 
 
-static FlexVDICapabilitiesMsg agentCapabilities;
-
-
 int flexvdi_agent_supports_capability(int cap) {
-    return supportsCapability(&agentCapabilities, cap);
+    return supportsCapability(&port.agentCapabilities, cap);
 }
 
 
 static void handleCapabilitiesMsg(FlexVDICapabilitiesMsg * msg) {
-    memcpy(&agentCapabilities, msg, sizeof(FlexVDICapabilitiesMsg));
+    memcpy(&port.agentCapabilities, msg, sizeof(FlexVDICapabilitiesMsg));
     g_debug("flexVDI guest agent capabilities: %08x %08x %08x %08x",
-               agentCapabilities.caps[3], agentCapabilities.caps[2],
-               agentCapabilities.caps[1], agentCapabilities.caps[0]);
-    // if (getDisablePrinting()) {
-    //     resetCapability(&agentCapabilities, FLEXVDI_CAP_PRINTING);
-    // }
+            port.agentCapabilities.caps[3], port.agentCapabilities.caps[2],
+            port.agentCapabilities.caps[1], port.agentCapabilities.caps[0]);
     GSList * it;
     for (it = connectionHandlers; it != NULL; it = g_slist_next(it)) {
         ConnectionHandler * handler = (ConnectionHandler *)it->data;
@@ -200,14 +189,12 @@ static void handleMessage(uint32_t type, uint8_t * msg) {
     case FLEXVDI_CAPABILITIES:
         handleCapabilitiesMsg((FlexVDICapabilitiesMsg *)msg);
         break;
-#ifdef ENABLE_PRINTING
     case FLEXVDI_PRINTJOB:
         handlePrintJob((FlexVDIPrintJobMsg *)msg);
         break;
     case FLEXVDI_PRINTJOBDATA:
         handlePrintJobData((FlexVDIPrintJobDataMsg *)msg);
         break;
-#endif
     }
 }
 
@@ -222,13 +209,6 @@ static void prepareOneByte() {
 
 
 static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
-    if (pchannel != port.channel) {
-#ifdef ENABLE_SERIALREDIR
-        serialPortData(pchannel, data, size);
-#endif
-        return;
-    }
-
     void * end = data + size;
     while (data < end || port.buffer == port.bufend) { // Special case: read 0 bytes
         // Fill the buffer
@@ -272,49 +252,6 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
 }
 
 
-static void channel_new(SpiceSession * s, SpiceChannel * channel) {
-    if (SPICE_IS_PORT_CHANNEL(channel)) {
-        g_signal_connect(channel, "notify::port-opened",
-                         G_CALLBACK(port_opened), NULL);
-        g_signal_connect(channel, "port-data",
-                         G_CALLBACK(port_data), NULL);
-    }
-}
-
-
-static void channel_destroy(SpiceSession * s, SpiceChannel * channel) {
-    if (SPICE_IS_PORT_CHANNEL(channel)) {
-        if (SPICE_PORT_CHANNEL(channel) == port.channel) {
-            port.channel = NULL;
-#ifdef ENABLE_SERIALREDIR
-        } else {
-            serialChannelDestroy(SPICE_PORT_CHANNEL(channel));
-#endif
-        }
-    }
-}
-
-
-void flexvdi_port_register_session(gpointer session) {
-    memset(agentCapabilities.caps, 0, sizeof(agentCapabilities));
-    // For backwards compatibility assume the agent supports printing
-    setCapability(&agentCapabilities, FLEXVDI_CAP_PRINTING);
-    g_signal_connect(session, "channel-new",
-                     G_CALLBACK(channel_new), NULL);
-    g_signal_connect(session, "channel-destroy",
-                     G_CALLBACK(channel_destroy), NULL);
-    //     g_signal_connect(session, "notify::migration-state",
-    //                      G_CALLBACK(migration_state), port);
-#ifdef ENABLE_PRINTING
-    initPrintClient();
-#endif
-}
-
-
-void flexvdi_cleanup() {
-}
-
-
 int flexvdi_is_agent_connected(void) {
     return port.connected;
 }
@@ -329,37 +266,25 @@ void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data) {
 
 
 int flexvdi_get_printer_list(GSList ** printer_list) {
-#ifdef ENABLE_PRINTING
     return flexvdiSpiceGetPrinterList(printer_list);
-#else
-    return FALSE;
-#endif
 }
 
 
 int flexvdi_share_printer(const char * printer) {
-#ifdef ENABLE_PRINTING
     if (port.connected) {
         return flexvdiSpiceSharePrinter(printer);
     } else {
         g_warning("The flexVDI guest agent is not connected");
         return FALSE;
     }
-#else
-    return FALSE;
-#endif
 }
 
 
 int flexvdi_unshare_printer(const char * printer) {
-#ifdef ENABLE_PRINTING
     if (port.connected) {
         return flexvdiSpiceUnsharePrinter(printer);
     } else {
         g_warning("The flexVDI guest agent is not connected");
         return FALSE;
     }
-#else
-    return FALSE;
-#endif
 }
