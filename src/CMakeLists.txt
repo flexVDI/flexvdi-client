@@ -1,6 +1,6 @@
 set(client_sources
     main.c client-app.c client-win.c client-conn.c
-    flexvdi-spice.c configuration.c client-request.c
+    flexvdi-port.c configuration.c client-request.c
     spice-win.c printclient.c PPDGenerator.c)
 if (WIN32)
     set(client_sources ${client_sources}
