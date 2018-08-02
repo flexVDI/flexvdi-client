@@ -16,7 +16,7 @@
 
 
 typedef struct SerialPort {
-    char * deviceName;
+    char * device_name;
     SpicePortChannel * channel;
     GCancellable * cancellable;
     int fd;
@@ -27,25 +27,25 @@ typedef struct SerialPort {
 
 
 static gchar ** serial_params;
-static SerialPort * serialPorts;
-static int numPorts;
+static SerialPort * serial_ports;
+static int num_ports;
 
 
 void serial_port_init(ClientConf * conf) {
     serial_params = client_conf_get_serial_params(conf);
-    numPorts = 0;
+    num_ports = 0;
     if (serial_params) {
-        while (serial_params[numPorts]) ++numPorts;
-        serialPorts = g_malloc0(sizeof(SerialPort) * numPorts);
+        while (serial_params[num_ports]) ++num_ports;
+        serial_ports = g_malloc0(sizeof(SerialPort) * num_ports);
     }
 }
 
 
-static SerialPort * getSerialPort(SpicePortChannel * channel) {
-    int portNumber;
-    for (portNumber = 0; portNumber < numPorts; ++portNumber)
-        if (serialPorts[portNumber].channel == channel)
-            return &serialPorts[portNumber];
+static SerialPort * get_serial_port(SpicePortChannel * channel) {
+    int port_number;
+    for (port_number = 0; port_number < num_ports; ++port_number)
+        if (serial_ports[port_number].channel == channel)
+            return &serial_ports[port_number];
     return NULL;
 }
 
@@ -56,14 +56,14 @@ typedef struct SerialPortBuffer {
 } SerialPortBuffer;
 
 
-static SerialPortBuffer * getBuffer(SerialPort * serial) {
+static SerialPortBuffer * get_buffer(SerialPort * serial) {
     SerialPortBuffer * buffer = g_malloc(sizeof(SerialPortBuffer));
     buffer->serial = serial;
     return buffer;
 }
 
 
-static void closeSerial(SerialPort * serial) {
+static void close_serial(SerialPort * serial) {
     SPICE_DEBUG("Closing serial device");
     g_cancellable_cancel(serial->cancellable);
     close(serial->fd);
@@ -73,13 +73,13 @@ static void closeSerial(SerialPort * serial) {
 }
 
 
-static void setSerialParams(SerialPort * serial, const char * device,
-                            const char * speedStr, const char * mode) {
+static void set_serial_params(SerialPort * serial, const char * device,
+                              const char * speed_str, const char * mode) {
     g_debug("Using serial device %s, with %sbps mode %.3s\n",
-            device, speedStr, mode);
+            device, speed_str, mode);
 
-    g_free(serial->deviceName);
-    serial->deviceName = g_strdup(device);
+    g_free(serial->device_name);
+    serial->device_name = g_strdup(device);
 
     memset(&serial->tio, 0, sizeof(struct termios));
     serial->tio.c_iflag = 0;
@@ -103,125 +103,122 @@ static void setSerialParams(SerialPort * serial, const char * device,
         if (mode[2] == '2') serial->tio.c_cflag |= CSTOPB;
     }
 
-    speed_t speedValue = B0;
-    int speed = atoi(speedStr);
+    speed_t speed_val = B0;
+    int speed = atoi(speed_str);
     switch (speed) {
-        case 50: speedValue = B50; break;
-        case 75: speedValue = B75; break;
-        case 110: speedValue = B110; break;
-        case 134: speedValue = B134; break;
-        case 150: speedValue = B150; break;
-        case 200: speedValue = B200; break;
-        case 300: speedValue = B300; break;
-        case 600: speedValue = B600; break;
-        case 1200: speedValue = B1200; break;
-        case 1800: speedValue = B1800; break;
-        case 2400: speedValue = B2400; break;
-        case 4800: speedValue = B4800; break;
-        case 9600: speedValue = B9600; break;
-        case 19200: speedValue = B19200; break;
-        case 38400: speedValue = B38400; break;
-        case 57600: speedValue = B57600; break;
-        case 115200: speedValue = B115200; break;
-        case 230400: speedValue = B230400; break;
-        case 460800: speedValue = B460800; break;
-        case 500000: speedValue = B500000; break;
-        case 576000: speedValue = B576000; break;
-        case 921600: speedValue = B921600; break;
-        case 1000000: speedValue = B1000000; break;
-        case 1152000: speedValue = B1152000; break;
-        case 1500000: speedValue = B1500000; break;
-        case 2000000: speedValue = B2000000; break;
-        case 2500000: speedValue = B2500000; break;
-        case 3000000: speedValue = B3000000; break;
-        case 3500000: speedValue = B3500000; break;
-        case 4000000: speedValue = B4000000; break;
-        default: speedValue = B0; break;
+        case 50: speed_val = B50; break;
+        case 75: speed_val = B75; break;
+        case 110: speed_val = B110; break;
+        case 134: speed_val = B134; break;
+        case 150: speed_val = B150; break;
+        case 200: speed_val = B200; break;
+        case 300: speed_val = B300; break;
+        case 600: speed_val = B600; break;
+        case 1200: speed_val = B1200; break;
+        case 1800: speed_val = B1800; break;
+        case 2400: speed_val = B2400; break;
+        case 4800: speed_val = B4800; break;
+        case 9600: speed_val = B9600; break;
+        case 19200: speed_val = B19200; break;
+        case 38400: speed_val = B38400; break;
+        case 57600: speed_val = B57600; break;
+        case 115200: speed_val = B115200; break;
+        case 230400: speed_val = B230400; break;
+        case 460800: speed_val = B460800; break;
+        case 500000: speed_val = B500000; break;
+        case 576000: speed_val = B576000; break;
+        case 921600: speed_val = B921600; break;
+        case 1000000: speed_val = B1000000; break;
+        case 1152000: speed_val = B1152000; break;
+        case 1500000: speed_val = B1500000; break;
+        case 2000000: speed_val = B2000000; break;
+        case 2500000: speed_val = B2500000; break;
+        case 3000000: speed_val = B3000000; break;
+        case 3500000: speed_val = B3500000; break;
+        case 4000000: speed_val = B4000000; break;
+        default: speed_val = B0; break;
     }
-    cfsetospeed(&serial->tio, speedValue);
-    cfsetispeed(&serial->tio, speedValue);
+    cfsetospeed(&serial->tio, speed_val);
+    cfsetispeed(&serial->tio, speed_val);
 }
 
 
-static void parseSerialParams(SerialPort * serial, const char * serialParams) {
-    char * tmp = g_strdup(serialParams);
+static void parse_serial_params(SerialPort * serial, const char * serial_params) {
+    char * tmp = g_strdup(serial_params);
     char * device = NULL, * speed = NULL, * mode = NULL;
     if (!(device = strtok(tmp, ",")) ||
-         !(speed = strtok(NULL, ",")) ||
-         !(mode = strtok(NULL, ","))) {
-        setSerialParams(serial, "/dev/ttyS0", "9600", "8N1");
+        !(speed = strtok(NULL, ",")) ||
+        !(mode = strtok(NULL, ","))) {
+        set_serial_params(serial, "/dev/ttyS0", "9600", "8N1");
     } else {
-        setSerialParams(serial, device, speed, mode);
+        set_serial_params(serial, device, speed, mode);
     }
     g_free(tmp);
 }
 
 
-static void sendCallback(GObject * sourceObject, GAsyncResult * res,
-                         gpointer userData) {
+static void send_cb(GObject * source, GAsyncResult * res, gpointer user_data) {
     GError *error = NULL;
-    SpicePortChannel * channel = (SpicePortChannel *)sourceObject;
-    SerialPortBuffer * buffer = (SerialPortBuffer *)userData;
+    SpicePortChannel * channel = (SpicePortChannel *)source;
+    SerialPortBuffer * buffer = (SerialPortBuffer *)user_data;
     spice_port_channel_write_finish(channel, res, &error);
-    g_debug("Data sent to serial port %d\n", (int)(buffer->serial - serialPorts));
+    g_debug("Data sent to serial port %d\n", (int)(buffer->serial - serial_ports));
     if (error) {
         g_warning("Error sending data to guest: %s", error->message);
         g_clear_error(&error);
     }
-    g_free(userData);
+    g_free(user_data);
 }
 
 
-static void readCallback(GObject * sourceObject, GAsyncResult * res,
-                         gpointer userData) {
+static void read_cb(GObject * source, GAsyncResult * res, gpointer user_data) {
     GError *error = NULL;
-    GInputStream * istream = (GInputStream *)sourceObject;
+    GInputStream * istream = (GInputStream *)source;
     SerialPortBuffer * buffer;
     SerialPort * serial;
     if (istream) {
-        buffer = (SerialPortBuffer *)userData;
+        buffer = (SerialPortBuffer *)user_data;
         serial = buffer->serial;
         if (g_input_stream_read_finish(istream, res, &error) == 1) {
             g_debug("Data from serial device %s: 0x%.2hhX\n",
-                       serial->deviceName, buffer->data);
+                       serial->device_name, buffer->data);
             spice_port_channel_write_async(serial->channel, &buffer->data, 1,
-                                           serial->cancellable, sendCallback, buffer);
+                                           serial->cancellable, send_cb, buffer);
         } else {
             g_warning("Error reading from serial device: %s", error->message);
-            g_free(userData);
+            g_free(user_data);
             g_clear_error(&error);
             return;
         }
     } else {
-        serial = (SerialPort *)userData;
+        serial = (SerialPort *)user_data;
     }
-    buffer = getBuffer(serial);
+    buffer = get_buffer(serial);
     g_input_stream_read_async(serial->istream, &buffer->data, 1, G_PRIORITY_DEFAULT,
-                              serial->cancellable, readCallback, buffer);
+                              serial->cancellable, read_cb, buffer);
 }
 
 
-static void writeCallback(GObject * sourceObject, GAsyncResult * res,
-                          gpointer userData) {
+static void write_cb(GObject * source, GAsyncResult * res, gpointer user_data) {
     GError * error = NULL;
-    GOutputStream * ostream = (GOutputStream *)sourceObject;
+    GOutputStream * ostream = (GOutputStream *)source;
     g_output_stream_write_finish(ostream, res, &error);
     if (error) {
         g_warning("Error writing to serial device: %s\n", error->message);
     }
     g_clear_error(&error);
-    g_free(userData);
+    g_free(user_data);
 }
 
 
-static void openSerial(SerialPort * serial) {
+static void open_serial(SerialPort * serial) {
     if (serial->fd > 0) {
-        closeSerial(serial);
+        close_serial(serial);
     }
 
-    serial->fd = open(serial->deviceName, O_RDWR | O_NONBLOCK);
+    serial->fd = open(serial->device_name, O_RDWR | O_NONBLOCK);
     if (serial->fd < 0) {
-        g_warning("Could not open %s\n", serial->deviceName);
+        g_warning("Could not open %s\n", serial->device_name);
         return;
     }
     if (tcsetattr(serial->fd, TCSANOW, &serial->tio) < 0) {
@@ -230,7 +227,7 @@ static void openSerial(SerialPort * serial) {
     }
     serial->istream = g_unix_input_stream_new(serial->fd, FALSE);
     serial->ostream = g_unix_output_stream_new(serial->fd, FALSE);
-    readCallback(NULL, NULL, serial);
+    read_cb(NULL, NULL, serial);
 }
 
 
@@ -241,19 +238,19 @@ void serial_port_open(SpiceChannel * channel) {
     gboolean opened = FALSE;
     g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
     if (!strncmp(name, "serialredir", 11)) {
-        int portNumber = atoi(&name[11]);
-        if (portNumber < 0 || portNumber >= numPorts) return;
-        SerialPort * serial = &serialPorts[portNumber];
+        int port_number = atoi(&name[11]);
+        if (port_number < 0 || port_number >= num_ports) return;
+        SerialPort * serial = &serial_ports[port_number];
         if (opened) {
             g_signal_connect(channel, "port-data", G_CALLBACK(serial_port_data), NULL);
-            g_debug("Opened channel %s for serial port %d\n", name, portNumber);
+            g_debug("Opened channel %s for serial port %d\n", name, port_number);
             serial->cancellable = g_cancellable_new();
             serial->channel = SPICE_PORT_CHANNEL(channel);
-            parseSerialParams(serial, serial_params[portNumber]);
-            openSerial(serial);
+            parse_serial_params(serial, serial_params[port_number]);
+            open_serial(serial);
         } else {
             serial->channel = NULL;
-            closeSerial(serial);
+            close_serial(serial);
             g_object_unref(serial->cancellable);
             serial->cancellable = NULL;
             g_signal_handlers_disconnect_by_func(channel, G_CALLBACK(serial_port_data), NULL);
@@ -263,11 +260,11 @@ void serial_port_open(SpiceChannel * channel) {
 
 
 static void serial_port_data(SpicePortChannel * channel, gpointer data, int size) {
-    SerialPort * serial = getSerialPort(channel);
+    SerialPort * serial = get_serial_port(channel);
     if (serial) {
         g_debug("Data to serial device: 0x%.2hhX\n", *((char *)data));
         gpointer wbuffer = g_memdup(data, size);
         g_output_stream_write_async(serial->ostream, wbuffer, size, G_PRIORITY_DEFAULT,
-                                    serial->cancellable, writeCallback, wbuffer);
+                                    serial->cancellable, write_cb, wbuffer);
     }
 }
