@@ -11,7 +11,7 @@
 #include "flexvdi-port.h"
 
 
-int flexvdiSpiceGetPrinterList(GSList ** printerList) {
+int flexvdi_get_printer_list(GSList ** printerList) {
     int i, result;
     DWORD needed = 0, returned = 0;
     DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;

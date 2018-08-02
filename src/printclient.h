@@ -16,19 +16,14 @@ typedef struct PrintJob {
 } PrintJob;
 
 void initPrintClient();
-
 void handlePrintJob(FlexVDIPrintJobMsg * msg);
-
 void handlePrintJobData(FlexVDIPrintJobDataMsg * msg);
-
 char * getPPDFile(const char * printer);
-
 void printJob(PrintJob * job);
-
 char * getJobOption(char * options, const char * opName);
 
-int flexvdiSpiceGetPrinterList(GSList ** printerList);
-int flexvdiSpiceSharePrinter(const char * printer);
-int flexvdiSpiceUnsharePrinter(const char * printer);
+int flexvdi_get_printer_list(GSList ** printerList);
+int flexvdi_share_printer(const char * printer);
+int flexvdi_unshare_printer(const char * printer);
 
 #endif /* _PRINTCLIENT_H_ */

@@ -10,7 +10,7 @@
 
 int main(int argc, char * argv[]) {
     GSList * printers, * i;
-    flexvdiSpiceGetPrinterList(&printers);
+    flexvdi_get_printer_list(&printers);
     for (i = printers; i != NULL; i = g_slist_next(i)) {
         char * fileName = getPPDFile((const char *)i->data);
         printf("Printer %s: %s\n", (const char *)i->data, fileName);

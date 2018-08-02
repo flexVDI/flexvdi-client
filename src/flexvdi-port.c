@@ -11,7 +11,6 @@
 #define FLEXVDI_PROTO_IMPL
 #include "flexdp.h"
 #include "flexvdi-port.h"
-#include "printclient.h"
 
 typedef enum {
     WAIT_NEW_MESSAGE,
@@ -259,29 +258,4 @@ void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data) {
     h->cb = cb;
     h->data = data;
     connection_handlers = g_slist_prepend(connection_handlers, h);
-}
-
-
-int flexvdi_get_printer_list(GSList ** printer_list) {
-    return flexvdiSpiceGetPrinterList(printer_list);
-}
-
-
-int flexvdi_share_printer(const char * printer) {
-    if (port.connected) {
-        return flexvdiSpiceSharePrinter(printer);
-    } else {
-        g_warning("The flexVDI guest agent is not connected");
-        return FALSE;
-    }
-}
-
-
-int flexvdi_unshare_printer(const char * printer) {
-    if (port.connected) {
-        return flexvdiSpiceUnsharePrinter(printer);
-    } else {
-        g_warning("The flexVDI guest agent is not connected");
-        return FALSE;
-    }
 }

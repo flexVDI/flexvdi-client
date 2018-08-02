@@ -8,7 +8,7 @@
 #include "flexvdi-port.h"
 
 
-int flexvdiSpiceGetPrinterList(GSList ** printerList) {
+int flexvdi_get_printer_list(GSList ** printerList) {
     int i;
     cups_dest_t * dests, * dest;
     int numDests = cupsGetDests(&dests);

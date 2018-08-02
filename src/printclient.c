@@ -105,7 +105,11 @@ void initPrintClient() {
 }
 
 
-int flexvdiSpiceSharePrinter(const char * printer) {
+int flexvdi_share_printer(const char * printer) {
+    if (!flexvdi_is_agent_connected()) {
+        g_warning("The flexVDI guest agent is not connected");
+        return FALSE;
+    }
     g_debug("Sharing printer %s", printer);
 
     int result = FALSE;
@@ -137,7 +141,11 @@ int flexvdiSpiceSharePrinter(const char * printer) {
 }
 
 
-int flexvdiSpiceUnsharePrinter(const char * printer) {
+int flexvdi_unshare_printer(const char * printer) {
+    if (!flexvdi_is_agent_connected()) {
+        g_warning("The flexVDI guest agent is not connected");
+        return FALSE;
+    }
     g_debug("Unsharing printer %s", printer);
     size_t nameLength = strnlen(printer, 1024);
     size_t bufSize = sizeof(FlexVDIUnsharePrinterMsg) + nameLength + 1;
