@@ -18,12 +18,12 @@ static __inline__ size_t strnlen(const char * start, size_t maxlen) {
 }
 #endif
 
-uint8_t * getMsgBuffer(size_t size);
-void deleteMsgBuffer(uint8_t * buffer);
-void sendMessage(uint32_t type, uint8_t * buffer);
-void sendMessageAsync(uint32_t type, uint8_t * buffer,
+uint8_t * flexvdi_port_get_msg_buffer(size_t size);
+void flexvdi_port_delete_msg_buffer(uint8_t * buffer);
+void flexvdi_port_send_msg(uint32_t type, uint8_t * buffer);
+void flexvdi_port_send_msg_async(uint32_t type, uint8_t * buffer,
                       GAsyncReadyCallback callback, gpointer user_data);
-void sendMessageFinish(GObject * source_object, GAsyncResult * res, GError ** error);
+void flexvdi_port_send_msg_finish(GObject * source_object, GAsyncResult * res, GError ** error);
 
 void flexvdi_port_open(SpiceChannel * channel);
 int flexvdi_is_agent_connected(void);

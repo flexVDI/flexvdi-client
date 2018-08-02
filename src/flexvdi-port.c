@@ -12,9 +12,6 @@
 #include "flexdp.h"
 #include "flexvdi-port.h"
 #include "printclient.h"
-#ifdef ENABLE_SERIALREDIR
-#include "serialredir.h"
-#endif
 
 typedef enum {
     WAIT_NEW_MESSAGE,
@@ -22,18 +19,18 @@ typedef enum {
 } WaitState;
 
 
-typedef struct flexvdi_port {
+typedef struct FlexvdiPort {
     SpicePortChannel * channel;
     gboolean connected;
     GCancellable * cancellable;
     WaitState state;
-    FlexVDIMessageHeader curHeader;
+    FlexVDIMessageHeader current_header;
     uint8_t * buffer, * bufpos, * bufend;
-    FlexVDICapabilitiesMsg agentCapabilities;
-} flexvdi_port;
+    FlexVDICapabilitiesMsg agent_caps;
+} FlexvdiPort;
 
 
-static flexvdi_port port;
+static FlexvdiPort port;
 
 
 typedef struct ConnectionHandler {
@@ -42,12 +39,12 @@ typedef struct ConnectionHandler {
 } ConnectionHandler;
 
 
-static GSList * connectionHandlers;
+static GSList * connection_handlers;
 
 
 static const size_t HEADER_SIZE = sizeof(FlexVDIMessageHeader);
 
-uint8_t * getMsgBuffer(size_t size) {
+uint8_t * flexvdi_port_get_msg_buffer(size_t size) {
     uint8_t * buf = (uint8_t *)g_malloc(size + HEADER_SIZE);
     if (buf) {
         ((FlexVDIMessageHeader *)buf)->size = size;
@@ -57,7 +54,7 @@ uint8_t * getMsgBuffer(size_t size) {
 }
 
 
-void deleteMsgBuffer(uint8_t * buffer) {
+void flexvdi_port_delete_msg_buffer(uint8_t * buffer) {
     g_free(buffer - HEADER_SIZE);
 }
 
@@ -68,7 +65,7 @@ typedef struct AsyncUserData {
 } AsyncUserData;
 
 
-static gpointer newAsyncUserData(GAsyncReadyCallback cb, gpointer u) {
+static gpointer new_async_user_data(GAsyncReadyCallback cb, gpointer u) {
     AsyncUserData * aud = g_malloc(sizeof(AsyncUserData));
     if (aud) {
         aud->callback = cb;
@@ -78,18 +75,18 @@ static gpointer newAsyncUserData(GAsyncReadyCallback cb, gpointer u) {
 }
 
 
-static void sendMessageCb(GObject * source_object, GAsyncResult * res, gpointer user_data) {
+static void send_message_cb(GObject * source_object, GAsyncResult * res, gpointer user_data) {
     GError * error = NULL;
-    sendMessageFinish(source_object, res, &error);
+    flexvdi_port_send_msg_finish(source_object, res, &error);
     if (error != NULL)
         g_warning("Error sending message, %s", error->message);
     g_clear_error(&error);
-    deleteMsgBuffer(user_data);
+    flexvdi_port_delete_msg_buffer(user_data);
 }
 
 
-static void sendMessageAsyncCb(GObject * source_object, GAsyncResult * res,
-                               gpointer user_data) {
+static void send_message_async_cb(GObject * source_object, GAsyncResult * res,
+                                  gpointer user_data) {
     AsyncUserData * aud = (AsyncUserData *)user_data;
     if (!g_cancellable_is_cancelled(port.cancellable)) {
         aud->callback(source_object, res, aud->user_data);
@@ -98,30 +95,30 @@ static void sendMessageAsyncCb(GObject * source_object, GAsyncResult * res,
 }
 
 
-void sendMessage(uint32_t type, uint8_t * buffer) {
-    sendMessageAsync(type, buffer, sendMessageCb, buffer);
+void flexvdi_port_send_msg(uint32_t type, uint8_t * buffer) {
+    flexvdi_port_send_msg_async(type, buffer, send_message_cb, buffer);
 }
 
 
-void sendMessageAsync(uint32_t type, uint8_t * buffer,
-                      GAsyncReadyCallback callback, gpointer user_data) {
+void flexvdi_port_send_msg_async(uint32_t type, uint8_t * buffer,
+                                 GAsyncReadyCallback callback, gpointer user_data) {
     FlexVDIMessageHeader * head = (FlexVDIMessageHeader *)(buffer - HEADER_SIZE);
     size_t size = head->size + HEADER_SIZE;
     g_debug("Sending message type %d, size %d", (int)type, (int)size);
     head->type = type;
     marshallMessage(type, buffer, head->size);
     marshallHeader(head);
-    spice_port_channel_write_async(port.channel, head, size, port.cancellable, sendMessageAsyncCb,
-                                   newAsyncUserData(callback, user_data));
+    spice_port_channel_write_async(port.channel, head, size, port.cancellable, send_message_async_cb,
+                                   new_async_user_data(callback, user_data));
 }
 
 
-void sendMessageFinish(GObject * source_object, GAsyncResult * res, GError ** error) {
+void flexvdi_port_send_msg_finish(GObject * source_object, GAsyncResult * res, GError ** error) {
     spice_port_channel_write_finish(SPICE_PORT_CHANNEL(source_object), res, error);
 }
 
 
-static void preparePortBuffer(size_t size) {
+static void prepare_port_buffer(size_t size) {
     g_free(port.buffer);
     port.buffer = port.bufpos = (uint8_t *)g_malloc(size);
     port.bufend = port.bufpos + size;
@@ -140,19 +137,19 @@ void flexvdi_port_open(SpiceChannel * channel) {
         port.channel = SPICE_PORT_CHANNEL(channel);
         port.cancellable = g_cancellable_new();
         port.buffer = NULL;
-        memset(port.agentCapabilities.caps, 0, sizeof(port.agentCapabilities));
-        preparePortBuffer(sizeof(FlexVDIMessageHeader));
+        memset(port.agent_caps.caps, 0, sizeof(port.agent_caps));
+        prepare_port_buffer(sizeof(FlexVDIMessageHeader));
         port.state = WAIT_NEW_MESSAGE;
-        uint8_t * buf = getMsgBuffer(sizeof(FlexVDIResetMsg));
+        uint8_t * buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDIResetMsg));
         if (buf) {
-            sendMessage(FLEXVDI_RESET, buf);
+            flexvdi_port_send_msg(FLEXVDI_RESET, buf);
         }
-        buf = getMsgBuffer(sizeof(FlexVDICapabilitiesMsg));
+        buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDICapabilitiesMsg));
         if (buf) {
             FlexVDICapabilitiesMsg * capMsg = (FlexVDICapabilitiesMsg *)buf;
             capMsg->caps[0] = capMsg->caps[1] = capMsg->caps[2] = capMsg->caps[3] = 0;
             setCapability(capMsg, FLEXVDI_CAP_PRINTING);
-            sendMessage(FLEXVDI_CAPABILITIES, buf);
+            flexvdi_port_send_msg(FLEXVDI_CAPABILITIES, buf);
         }
     } else {
         g_info("flexVDI guest agent disconnected");
@@ -167,27 +164,27 @@ void flexvdi_port_open(SpiceChannel * channel) {
 
 
 int flexvdi_agent_supports_capability(int cap) {
-    return supportsCapability(&port.agentCapabilities, cap);
+    return supportsCapability(&port.agent_caps, cap);
 }
 
 
-static void handleCapabilitiesMsg(FlexVDICapabilitiesMsg * msg) {
-    memcpy(&port.agentCapabilities, msg, sizeof(FlexVDICapabilitiesMsg));
+static void handle_capabilities_msg(FlexVDICapabilitiesMsg * msg) {
+    memcpy(&port.agent_caps, msg, sizeof(FlexVDICapabilitiesMsg));
     g_debug("flexVDI guest agent capabilities: %08x %08x %08x %08x",
-            port.agentCapabilities.caps[3], port.agentCapabilities.caps[2],
-            port.agentCapabilities.caps[1], port.agentCapabilities.caps[0]);
+            port.agent_caps.caps[3], port.agent_caps.caps[2],
+            port.agent_caps.caps[1], port.agent_caps.caps[0]);
     GSList * it;
-    for (it = connectionHandlers; it != NULL; it = g_slist_next(it)) {
+    for (it = connection_handlers; it != NULL; it = g_slist_next(it)) {
         ConnectionHandler * handler = (ConnectionHandler *)it->data;
         handler->cb(handler->data);
     }
 }
 
 
-static void handleMessage(uint32_t type, uint8_t * msg) {
+static void handle_message(uint32_t type, uint8_t * msg) {
     switch(type) {
     case FLEXVDI_CAPABILITIES:
-        handleCapabilitiesMsg((FlexVDICapabilitiesMsg *)msg);
+        handle_capabilities_msg((FlexVDICapabilitiesMsg *)msg);
         break;
     case FLEXVDI_PRINTJOB:
         handlePrintJob((FlexVDIPrintJobMsg *)msg);
@@ -199,7 +196,7 @@ static void handleMessage(uint32_t type, uint8_t * msg) {
 }
 
 
-static void prepareOneByte() {
+static void prepare_one_byte() {
     size_t i;
     uint8_t * p = port.buffer;
     for (i = 0; i < sizeof(FlexVDIMessageHeader) - 1; ++i)
@@ -221,30 +218,30 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
         if (port.bufpos < port.bufend) return; // Data consumed, buffer not filled
         switch (port.state) {
         case WAIT_NEW_MESSAGE:
-            port.curHeader = *((FlexVDIMessageHeader *)port.buffer);
-            unmarshallHeader(&port.curHeader);
-            if (port.curHeader.size > FLEXVDI_MAX_MESSAGE_LENGTH) {
+            port.current_header = *((FlexVDIMessageHeader *)port.buffer);
+            unmarshallHeader(&port.current_header);
+            if (port.current_header.size > FLEXVDI_MAX_MESSAGE_LENGTH) {
                 g_warning("Oversized message (%u > %u)",
-                           port.curHeader.size, FLEXVDI_MAX_MESSAGE_LENGTH);
-                prepareOneByte();
-            } else if (port.curHeader.type >= FLEXVDI_MAX_MESSAGE_TYPE) {
-                g_warning("Unknown message type %d", port.curHeader.type);
-                prepareOneByte();
+                           port.current_header.size, FLEXVDI_MAX_MESSAGE_LENGTH);
+                prepare_one_byte();
+            } else if (port.current_header.type >= FLEXVDI_MAX_MESSAGE_TYPE) {
+                g_warning("Unknown message type %d", port.current_header.type);
+                prepare_one_byte();
             } else {
-                preparePortBuffer(port.curHeader.size);
+                prepare_port_buffer(port.current_header.size);
                 port.state = WAIT_DATA;
             }
             break;
         case WAIT_DATA:
             g_debug("Received message type %u, size %u",
-                       port.curHeader.type, port.curHeader.size);
-            if (!unmarshallMessage(port.curHeader.type, port.buffer, port.curHeader.size)) {
+                       port.current_header.type, port.current_header.size);
+            if (!unmarshallMessage(port.current_header.type, port.buffer, port.current_header.size)) {
                 g_warning("Wrong message size on reception (%u)",
-                           port.curHeader.size);
+                           port.current_header.size);
             } else {
-                handleMessage(port.curHeader.type, port.buffer);
+                handle_message(port.current_header.type, port.buffer);
             }
-            preparePortBuffer(sizeof(FlexVDIMessageHeader));
+            prepare_port_buffer(sizeof(FlexVDIMessageHeader));
             port.state = WAIT_NEW_MESSAGE;
             break;
         }
@@ -261,7 +258,7 @@ void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data) {
     ConnectionHandler * h = g_malloc(sizeof(ConnectionHandler));
     h->cb = cb;
     h->data = data;
-    connectionHandlers = g_slist_prepend(connectionHandlers, h);
+    connection_handlers = g_slist_prepend(connection_handlers, h);
 }
 
 
