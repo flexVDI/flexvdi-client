@@ -8,12 +8,7 @@
 #include <glib.h>
 #include "flexdp.h"
 
-#cmakedefine ENABLE_PRINTING
-#cmakedefine ENABLE_SERIALREDIR
-
 void flexvdi_port_register_session(gpointer session);
-void flexvdi_cleanup(void);
-GOptionGroup * flexvdi_get_option_group(void);
 int flexvdi_is_agent_connected(void);
 typedef void (*flexvdi_agent_connected_cb)(gpointer data);
 void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data);
