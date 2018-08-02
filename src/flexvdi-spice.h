@@ -20,14 +20,6 @@ static __inline__ size_t strnlen(const char * start, size_t maxlen) {
 }
 #endif
 
-typedef enum {
-    L_DEBUG,
-    L_INFO,
-    L_WARN,
-    L_ERROR
-} FlexVDILogLevel;
-
-void flexvdiLog(FlexVDILogLevel level, const char * format, ...);
 uint8_t * getMsgBuffer(size_t size);
 void deleteMsgBuffer(uint8_t * buffer);
 void sendMessage(uint32_t type, uint8_t * buffer);

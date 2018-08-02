@@ -63,8 +63,8 @@ static void closeSerial(SerialPort * serial) {
 
 static void setSerialParams(SerialPort * serial, const char * device,
                             const char * speedStr, const char * mode) {
-    flexvdiLog(L_DEBUG, "Using serial device %s, with %sbps mode %.3s\n",
-               device, speedStr, mode);
+    g_debug("Using serial device %s, with %sbps mode %.3s\n",
+            device, speedStr, mode);
 
     g_free(serial->deviceName);
     serial->deviceName = g_strdup(device);
@@ -151,9 +151,9 @@ static void sendCallback(GObject * sourceObject, GAsyncResult * res,
     SpicePortChannel * channel = (SpicePortChannel *)sourceObject;
     SerialPortBuffer * buffer = (SerialPortBuffer *)userData;
     spice_port_write_finish(channel, res, &error);
-    flexvdiLog(L_DEBUG, "Data sent to serial port %d\n", buffer->serial - serialPorts);
+    g_debug("Data sent to serial port %d\n", (int)(buffer->serial - serialPorts));
     if (error) {
-        flexvdiLog(L_WARN, "Error sending data to guest: %s", error->message);
+        g_warning("Error sending data to guest: %s", error->message);
         g_clear_error(&error);
     }
     g_free(userData);
@@ -170,12 +170,12 @@ static void readCallback(GObject * sourceObject, GAsyncResult * res,
         buffer = (SerialPortBuffer *)userData;
         serial = buffer->serial;
         if (g_input_stream_read_finish(istream, res, &error) == 1) {
-            flexvdiLog(L_DEBUG, "Data from serial device %s: 0x%.2hhX\n",
+            g_debug("Data from serial device %s: 0x%.2hhX\n",
                        serial->deviceName, buffer->data);
             spice_port_write_async(serial->channel, &buffer->data, 1, serial->cancellable,
                                    sendCallback, buffer);
         } else {
-            flexvdiLog(L_WARN, "Error reading from serial device: %s", error->message);
+            g_warning("Error reading from serial device: %s", error->message);
             g_free(userData);
             g_clear_error(&error);
             return;
@@ -195,7 +195,7 @@ static void writeCallback(GObject * sourceObject, GAsyncResult * res,
     GOutputStream * ostream = (GOutputStream *)sourceObject;
     g_output_stream_write_finish(ostream, res, &error);
     if (error) {
-        flexvdiLog(L_WARN, "Error writing to serial device: %s\n", error->message);
+        g_warning("Error writing to serial device: %s\n", error->message);
     }
     g_clear_error(&error);
     g_free(userData);
@@ -209,11 +209,11 @@ static void openSerial(SerialPort * serial) {
 
     serial->fd = open(serial->deviceName, O_RDWR | O_NONBLOCK);
     if (serial->fd < 0) {
-        flexvdiLog(L_WARN, "Could not open %s\n", serial->deviceName);
+        g_warning("Could not open %s\n", serial->deviceName);
         return;
     }
     if (tcsetattr(serial->fd, TCSANOW, &serial->tio) < 0) {
-        flexvdiLog(L_WARN, "Could not set termios attributes\n");
+        g_warning("Could not set termios attributes\n");
         return;
     }
     serial->istream = g_unix_input_stream_new(serial->fd, FALSE);
@@ -240,7 +240,7 @@ void serialPortOpened(SpiceChannel * channel) {
         if (!serialPorts) allocSerialPorts();
         int portNumber = atoi(&name[11]);
         if (opened && portNumber >= 0 && portNumber < numPorts) {
-            flexvdiLog(L_DEBUG, "Opened channel %s for serial port %d\n", name, portNumber);
+            g_debug("Opened channel %s for serial port %d\n", name, portNumber);
             SerialPort * serial = &serialPorts[portNumber];
             serial->cancellable = g_cancellable_new();
             serial->channel = SPICE_PORT_CHANNEL(channel);
@@ -254,7 +254,7 @@ void serialPortOpened(SpiceChannel * channel) {
 void serialPortData(SpicePortChannel * channel, gpointer data, int size) {
     SerialPort * serial = getSerialPort(channel);
     if (serial) {
-        flexvdiLog(L_DEBUG, "Data to serial device: 0x%.2hhX\n", *((char *)data));
+        g_debug("Data to serial device: 0x%.2hhX\n", *((char *)data));
         gpointer wbuffer = g_memdup(data, size);
         g_output_stream_write_async(serial->ostream, wbuffer, size, G_PRIORITY_DEFAULT,
                                     serial->cancellable, writeCallback, wbuffer);

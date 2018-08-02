@@ -71,7 +71,7 @@ PPDGenerator * newPPDGenerator(const char * printerName) {
     int fd = g_file_open_tmp("fvXXXXXX.ppd", &result->fileName, NULL);
     result->file = fdopen(fd, "w");
     if (fd == -1 || result->file == NULL) {
-        flexvdiLog(L_WARN, "Failed to create temp PPD file for printer %s", printerName);
+        g_warning("Failed to create temp PPD file for printer %s", printerName);
         deletePPDGenerator(result);
         return NULL;
     }
@@ -502,7 +502,7 @@ static void generateFonts(PPDGenerator * ppd) {
 
 gchar * generatePPD(PPDGenerator * ppd) {
     if (!isValid(ppd)) {
-        flexvdiLog(L_WARN, "Invalid PPD data for printer %s", ppd->printerName);
+        g_warning("Invalid PPD data for printer %s", ppd->printerName);
         return NULL;
     }
     char * oldLocale = setlocale(LC_NUMERIC, "C");

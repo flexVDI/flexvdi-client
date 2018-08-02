@@ -26,7 +26,7 @@ int flexvdiSpiceGetPrinterList(GSList ** printerList) {
         }
         result = TRUE;
     } else {
-        flexvdiLog(L_WARN, "EnumPrinters failed");
+        g_warning("EnumPrinters failed");
         result = FALSE;
     }
     g_free(buffer);
@@ -253,10 +253,10 @@ void printJob(PrintJob * job) {
         // Wait until child process exits.
         WaitForSingleObject(pi.hProcess, INFINITE);
         result = GetExitCodeProcess(pi.hProcess, &exitCode) && !exitCode;
-        flexvdiLog(L_DEBUG, "CreateProcess succeeded with code %d", exitCode);
+        g_debug("CreateProcess succeeded with code %d", exitCode);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
-    } else flexvdiLog(L_WARN, "CreateProcess failed");
+    } else g_warning("CreateProcess failed");
     g_free(cmdLine);
 
     if (!result) {

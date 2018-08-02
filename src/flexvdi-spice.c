@@ -47,21 +47,6 @@ typedef struct ConnectionHandler {
 static GSList * connectionHandlers;
 
 
-void flexvdiLog(FlexVDILogLevel level, const char * format, ...) {
-    va_list args;
-    va_start(args, format);
-    GLogLevelFlags map[] = {
-        G_LOG_LEVEL_DEBUG,
-        G_LOG_LEVEL_INFO,
-        G_LOG_LEVEL_WARNING,
-        G_LOG_LEVEL_ERROR,
-        G_LOG_LEVEL_CRITICAL
-    };
-    g_logv(G_LOG_DOMAIN, map[level], format, args);
-    va_end(args);
-}
-
-
 static const size_t HEADER_SIZE = sizeof(FlexVDIMessageHeader);
 
 uint8_t * getMsgBuffer(size_t size) {
@@ -99,7 +84,7 @@ static void sendMessageCb(GObject * source_object, GAsyncResult * res, gpointer 
     GError * error = NULL;
     sendMessageFinish(source_object, res, &error);
     if (error != NULL)
-        flexvdiLog(L_WARN, "Error sending message, %s", error->message);
+        g_warning("Error sending message, %s", error->message);
     g_clear_error(&error);
     deleteMsgBuffer(user_data);
 }
@@ -124,7 +109,7 @@ void sendMessageAsync(uint32_t type, uint8_t * buffer,
                       GAsyncReadyCallback callback, gpointer user_data) {
     FlexVDIMessageHeader * head = (FlexVDIMessageHeader *)(buffer - HEADER_SIZE);
     size_t size = head->size + HEADER_SIZE;
-    flexvdiLog(L_DEBUG, "Sending message type %d, size %d", (int)type, (int)size);
+    g_debug("Sending message type %d, size %d", (int)type, (int)size);
     head->type = type;
     marshallMessage(type, buffer, head->size);
     marshallHeader(head);
@@ -151,7 +136,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
     g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
     if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
         if (opened) {
-            flexvdiLog(L_INFO, "flexVDI guest agent connected\n");
+            g_info("flexVDI guest agent connected\n");
             port.connected = TRUE;
             port.channel = SPICE_PORT_CHANNEL(channel);
             port.cancellable = g_cancellable_new();
@@ -172,7 +157,7 @@ static void port_opened(SpiceChannel *channel, GParamSpec *pspec) {
                 sendMessage(FLEXVDI_CAPABILITIES, buf);
             }
         } else {
-            flexvdiLog(L_INFO, "flexVDI guest agent disconnected\n");
+            g_info("flexVDI guest agent disconnected\n");
             port.connected = FALSE;
             g_cancellable_cancel(port.cancellable);
             g_object_unref(port.cancellable);
@@ -196,7 +181,7 @@ int flexvdi_agent_supports_capability(int cap) {
 
 static void handleCapabilitiesMsg(FlexVDICapabilitiesMsg * msg) {
     memcpy(&agentCapabilities, msg, sizeof(FlexVDICapabilitiesMsg));
-    flexvdiLog(L_DEBUG, "flexVDI guest agent capabilities: %08x %08x %08x %08x",
+    g_debug("flexVDI guest agent capabilities: %08x %08x %08x %08x",
                agentCapabilities.caps[3], agentCapabilities.caps[2],
                agentCapabilities.caps[1], agentCapabilities.caps[0]);
     // if (getDisablePrinting()) {
@@ -259,11 +244,11 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
             port.curHeader = *((FlexVDIMessageHeader *)port.buffer);
             unmarshallHeader(&port.curHeader);
             if (port.curHeader.size > FLEXVDI_MAX_MESSAGE_LENGTH) {
-                flexvdiLog(L_WARN, "Oversized message (%u > %u)",
+                g_warning("Oversized message (%u > %u)",
                            port.curHeader.size, FLEXVDI_MAX_MESSAGE_LENGTH);
                 prepareOneByte();
             } else if (port.curHeader.type >= FLEXVDI_MAX_MESSAGE_TYPE) {
-                flexvdiLog(L_WARN, "Unknown message type %d", port.curHeader.type);
+                g_warning("Unknown message type %d", port.curHeader.type);
                 prepareOneByte();
             } else {
                 preparePortBuffer(port.curHeader.size);
@@ -271,10 +256,10 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
             }
             break;
         case WAIT_DATA:
-            flexvdiLog(L_DEBUG, "Received message type %u, size %u",
+            g_debug("Received message type %u, size %u",
                        port.curHeader.type, port.curHeader.size);
             if (!unmarshallMessage(port.curHeader.type, port.buffer, port.curHeader.size)) {
-                flexvdiLog(L_WARN, "Wrong message size on reception (%u)",
+                g_warning("Wrong message size on reception (%u)",
                            port.curHeader.size);
             } else {
                 handleMessage(port.curHeader.type, port.buffer);
@@ -357,7 +342,7 @@ int flexvdi_share_printer(const char * printer) {
     if (port.connected) {
         return flexvdiSpiceSharePrinter(printer);
     } else {
-        flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
+        g_warning("The flexVDI guest agent is not connected");
         return FALSE;
     }
 #else
@@ -371,7 +356,7 @@ int flexvdi_unshare_printer(const char * printer) {
     if (port.connected) {
         return flexvdiSpiceUnsharePrinter(printer);
     } else {
-        flexvdiLog(L_WARN, "The flexVDI guest agent is not connected");
+        g_warning("The flexVDI guest agent is not connected");
         return FALSE;
     }
 #else
