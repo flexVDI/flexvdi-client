@@ -25,6 +25,9 @@ add_custom_command(OUTPUT ${resources_c}
                         icons/24x24/actions/system-log-out-cus.png
                         icons/24x24/actions/system-reboot-cus.png
                         icons/24x24/actions/system-shutdown-cus.png
+                        icons/24x24/actions/input-keyboard-cus.png
+                        icons/24x24/actions/drive-removable-usb-cus.png
+                        icons/24x24/actions/printer-cus.png
                   )
 
 add_library(resource_objects OBJECT ${resources_c})

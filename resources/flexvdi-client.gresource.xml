@@ -21,5 +21,8 @@
         <file>icons/24x24/actions/system-log-out-cus.png</file>
         <file>icons/24x24/actions/system-reboot-cus.png</file>
         <file>icons/24x24/actions/system-shutdown-cus.png</file>
+        <file>icons/24x24/actions/input-keyboard-cus.png</file>
+        <file>icons/24x24/actions/drive-removable-usb-cus.png</file>
+        <file>icons/24x24/actions/printer-cus.png</file>
     </gresource>
 </gresources>
