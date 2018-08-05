@@ -22,7 +22,7 @@ add_custom_command(OUTPUT ${resources_c}
                         icons/24x24/actions/view-fullscreen-cus.png
                         icons/24x24/actions/view-restore-cus.png
                         icons/24x24/actions/go-bottom-cus.png
-                        icons/24x24/actions/system-log-out-cus.png
+                        icons/24x24/actions/system-poweroff-cus.png
                         icons/24x24/actions/system-reboot-cus.png
                         icons/24x24/actions/system-shutdown-cus.png
                         icons/24x24/actions/input-keyboard-cus.png

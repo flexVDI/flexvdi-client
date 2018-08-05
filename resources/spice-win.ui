@@ -83,14 +83,14 @@
                 <child>
                   <object class="GtkToolButton" id="shutdown_button">
                     <property name="visible">True</property>
-                    <property name="icon-name">system-log-out-cus</property>
+                    <property name="icon-name">system-shutdown-cus</property>
                     <property name="tooltip-text" translatable="yes">Orderly shutdown</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="poweroff_button">
                     <property name="visible">True</property>
-                    <property name="icon-name">system-shutdown-cus</property>
+                    <property name="icon-name">system-poweroff-cus</property>
                     <property name="tooltip-text" translatable="yes">Immediately poweroff</property>
                   </object>
                 </child>
