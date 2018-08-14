@@ -210,7 +210,10 @@ void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gbool
         if (!g_strcmp0(child_name, "settings")) {
             gtk_widget_grab_focus(GTK_WIDGET(win->host));
         } else if (!g_strcmp0(child_name, "login")) {
-            gtk_widget_grab_focus(GTK_WIDGET(win->username));
+            if (!g_strcmp0(gtk_entry_get_text(win->username), ""))
+                gtk_widget_grab_focus(GTK_WIDGET(win->username));
+            else
+                gtk_widget_grab_focus(GTK_WIDGET(win->password));
         } else if (!g_strcmp0(child_name, "desktops")) {
             gtk_widget_grab_focus(GTK_WIDGET(win->desktops));
         }
