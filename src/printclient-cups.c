@@ -107,66 +107,27 @@ static void getResolutions(PPDGenerator * ppd, CupsConnection * cups) {
 }
 
 
-static double g_match_info_fetch_double(GMatchInfo * matchInfo, int index) {
-    gchar * word = g_match_info_fetch(matchInfo, index);
-    double result = strtod(word, NULL);
-    g_free(word);
-    return result;
-}
-
-
-static void getPapers(PPDGenerator * ppd, const char * printer) {
-    const char * ppdFileName = cupsGetPPD(printer);
-    char * ppdContents = NULL;
-    if (g_file_get_contents(ppdFileName, &ppdContents, NULL, NULL)) {
-        GRegex * pdRegex = g_regex_new("\\*PaperDimension\\s+([^:]+):\\s*\""
-                                       "([0-9.]+)\\s+([0-9.]+)",
-                                       0, 0, NULL);
-        GMatchInfo * pdMatchInfo;
-        g_regex_match(pdRegex, ppdContents, 0, &pdMatchInfo);
-        while (g_match_info_matches(pdMatchInfo)) {
-            gchar * paperName = g_match_info_fetch(pdMatchInfo, 1);
-            double width = g_match_info_fetch_double(pdMatchInfo, 2);
-            double length = g_match_info_fetch_double(pdMatchInfo, 3);
-            double left = 0.0, bottom = 0.0, right = width, top = length;
-
-            gchar * iaRegexStr = g_strconcat("\\*ImageableArea\\s+", paperName, ":\\s*\""
-                                             "([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)\\s+([0-9.]+)", NULL);
-            GRegex * iaRegex = g_regex_new(iaRegexStr, 0, 0, NULL);
-            GMatchInfo * iaMatchInfo;
-            g_regex_match(iaRegex, ppdContents, 0, &iaMatchInfo);
-            if (g_match_info_matches(iaMatchInfo)) {
-                left = g_match_info_fetch_double(iaMatchInfo, 1);
-                bottom = g_match_info_fetch_double(iaMatchInfo, 2);
-                right = g_match_info_fetch_double(iaMatchInfo, 3);
-                top = g_match_info_fetch_double(iaMatchInfo, 4);
-            }
-            g_match_info_free(iaMatchInfo);
-            g_regex_unref(iaRegex);
-            g_free(iaRegexStr);
-
-            char * delim = strchr(paperName, '/');
-            if (delim) {
-                delim = g_strdup(delim + 1);
-                g_free(paperName);
-                paperName = delim;
-            }
-            ppdAddPaperSize(ppd, paperName, width, length,
-                            left, bottom, right, top);
-            g_match_info_next(pdMatchInfo, NULL);
+static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
+    cups_size_t size;
+    double f = 29704.0 / 842.0;
+    int i, count = cupsGetDestMediaCount(cups->http, cups->dest, cups->dinfo, 0);
+    for (i = 0; i < count; ++i) {
+        if (cupsGetDestMediaByIndex(cups->http, cups->dest, cups->dinfo, i, 0, &size)) {
+            const char * name = cupsLocalizeDestMedia(cups->http, cups->dest, cups->dinfo, 0, &size);
+            // XXX There is a bug until Cups 2.2 that adds (Borderless) in the wrong case
+            gchar ** name_parts = g_strsplit(name, " (", -1);
+            ppdAddPaperSize(ppd, g_strdup(name_parts[0]),
+                round(size.width / f), round(size.length / f),
+                round(size.left / f), round(size.bottom / f),
+                round((size.width - size.right) / f),
+                round((size.length - size.top) / f));
+            g_strfreev(name_parts);
         }
-        g_match_info_free(pdMatchInfo);
-        g_regex_unref(pdRegex);
-
-        pdRegex = g_regex_new("\\*DefaultPaperDimension:\\s+(\\S+)", 0, 0, NULL);
-        g_regex_match(pdRegex, ppdContents, 0, &pdMatchInfo);
-        if (g_match_info_matches(pdMatchInfo)) {
-            ppdSetDefaultPaperSize(ppd, g_match_info_fetch(pdMatchInfo, 1));
-        }
-        g_match_info_free(pdMatchInfo);
-        g_regex_unref(pdRegex);
     }
-    unlink(ppdFileName);
+
+    ipp_attribute_t * attr = ippGetDefault(cups, CUPS_MEDIA);
+    const char * defaultMedia = attr ? ippGetString(attr, 0, NULL) : "a4";
+    ppdSetDefaultPaperSize(ppd, g_strdup(defaultMedia));
 }
 
 
@@ -214,7 +175,7 @@ char * getPPDFile(const char * printer) {
             ppdSetColor(ppd, ippHasOtherThan(cups, CUPS_PRINT_COLOR_MODE, "monochrome"));
             ppdSetDuplex(ppd, ippHasOtherThan(cups, CUPS_SIDES, "one-sided"));
             getResolutions(ppd, cups);
-            getPapers(ppd, printer);
+            getPapers(ppd, cups);
             getMediaSources(ppd, cups);
             getMediaTypes(ppd, cups);
             result = g_strdup(generatePPD(ppd));
