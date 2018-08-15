@@ -381,12 +381,27 @@ static void spice_window_get_printers(SpiceWindow * win) {
     gtk_widget_hide(GTK_WIDGET(win->printers_button));
 }
 
-static void share_printer_thread(const gchar * printer) {
+static gboolean set_printer_menu_item_sensitive(gpointer user_data) {
+    GtkMenuItem * printer_item = GTK_MENU_ITEM(user_data);
+    gtk_widget_set_sensitive(GTK_WIDGET(printer_item), TRUE);
+    return G_SOURCE_REMOVE;
+}
+
+static gpointer share_printer_thread(gpointer user_data) {
+    GtkMenuItem * printer_item = GTK_MENU_ITEM(user_data);
+    const char * printer = gtk_menu_item_get_label(printer_item);
+    flexvdi_share_printer(printer);
+    g_idle_add(set_printer_menu_item_sensitive, printer_item);
+    return NULL;
+}
+
+static void share_printer_async(GtkMenuItem * printer_item) {
     // flexvdi_share_printer can be a bit slow and "hang" the GUI
-    GThread * thread = g_thread_try_new(NULL,
-        (GThreadFunc)flexvdi_share_printer, (gpointer)printer, NULL);
+    gtk_widget_set_sensitive(GTK_WIDGET(printer_item), FALSE);
+    GThread * thread = g_thread_try_new(NULL, share_printer_thread,
+                                        printer_item, NULL);
     if (!thread)
-        flexvdi_share_printer(printer);
+        share_printer_thread(printer_item);
     else
         g_thread_unref(thread);
 }
@@ -397,7 +412,7 @@ static void printer_toggled(GtkWidget * widget, gpointer user_data) {
     gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
     client_conf_share_printer(win->conf, printer, active);
     if (active) {
-        share_printer_thread(printer);
+        share_printer_async(GTK_MENU_ITEM(widget));
     } else {
         flexvdi_unshare_printer(printer);
     }
@@ -413,8 +428,7 @@ static void share_current_printers(gpointer user_data) {
               * child;
         for (child = children; child != NULL; child = g_list_next(child)) {
             if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(child->data))) {
-                const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(child->data));
-                share_printer_thread(printer);
+                share_printer_async(GTK_MENU_ITEM(child->data));
             }
         }
         g_list_free(children);
