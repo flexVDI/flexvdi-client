@@ -39,6 +39,7 @@ struct _ClientConf {
     gchar * usb_auto_filter;
     gchar * usb_connect_filter;
     gchar ** serial_params;
+    gchar ** printers;
 };
 
 G_DEFINE_TYPE(ClientConf, client_conf, G_TYPE_OBJECT);
@@ -126,6 +127,9 @@ static void client_conf_init(ClientConf * conf) {
         { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, &conf->serial_params,
         "Add serial port redirection. Can appear multiple times. "
         "Example: /dev/ttyS0,9600,8N1", "<device,speed,mode>" },
+        { "share-printer", 'P', 0, G_OPTION_ARG_STRING_ARRAY, &conf->printers,
+        "Share a client's printer with the virtual desktop. Can appear multiple times",
+        "<printer_name>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -156,6 +160,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->usb_connect_filter);
     g_free(conf->preferred_compression);
     g_free(conf->terminal_id);
+    g_strfreev(conf->printers);
     g_key_file_free(conf->file);
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
 }
@@ -331,6 +336,10 @@ gboolean client_conf_get_disable_power_actions(ClientConf * conf) {
     return conf->disable_power_actions;
 }
 
+gboolean client_conf_is_printer_shared(ClientConf * conf, const gchar * printer) {
+    return conf->printers && g_strv_contains((const gchar * const *)conf->printers, printer);
+}
+
 void set_modified(GOptionEntry * option, const gchar * name) {
     while (option->long_name != NULL) {
         if (!g_strcmp0(option->long_name, name)) {
@@ -373,6 +382,27 @@ void client_conf_set_username(ClientConf * conf, const gchar * username) {
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
     conf->fullscreen = fs;
     set_modified(conf->session_options, "fullscreen");
+}
+
+void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolean share) {
+    gchar ** sel_printer = conf->printers;
+    while (*sel_printer && g_strcmp0(*sel_printer, printer)) ++sel_printer;
+
+    if (share && sel_printer == NULL) {
+        int i = g_strv_length(conf->printers);
+        gchar ** new_printers = g_malloc_n(i + 1, sizeof(gchar *));
+        new_printers[i--] = g_strdup(printer);
+        while (i >= 0) {
+            new_printers[i] = g_strdup(conf->printers[i]);
+            --i;
+        }
+        g_strfreev(conf->printers);
+        conf->printers = new_printers;
+    } else if (!share && sel_printer != NULL) {
+        g_free(*sel_printer);
+        while (*sel_printer != NULL)
+            *sel_printer = *(sel_printer + 1);
+    }
 }
 
 static void read_string(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
