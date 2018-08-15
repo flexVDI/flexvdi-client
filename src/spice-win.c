@@ -3,10 +3,13 @@
  **/
 
 #include "spice-win.h"
+#include "flexvdi-port.h"
+#include "printclient.h"
 
 struct _SpiceWindow {
     GtkWindow parent;
     ClientConn * conn;
+    ClientConf * conf;
     gint id;
     SpiceChannel * display_channel;
     gboolean fullscreen;
@@ -25,6 +28,8 @@ struct _SpiceWindow {
     GtkToolButton * shutdown_button;
     GtkToolButton * poweroff_button;
     GtkMenu * keys_menu;
+    GtkMenu * printers_menu;
+    GtkMenuButton * printers_button;
     gulong channel_event_handler_id;
 };
 
@@ -54,6 +59,8 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, shutdown_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, poweroff_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, keys_menu);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, printers_menu);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, printers_button);
 }
 
 static void realize_window(GtkWidget * toplevel, gpointer user_data);
@@ -69,6 +76,9 @@ static void keystroke_cb(GtkMenuItem * menuitem, gpointer user_data);
 static void set_keystroke_cb(GtkWidget * widget, gpointer data) {
     g_signal_connect(widget, "activate", G_CALLBACK(keystroke_cb), data);
 }
+
+static void spice_window_get_printers(SpiceWindow * win);
+static void share_current_printers(gpointer user_data);
 
 static void spice_window_init(SpiceWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
@@ -91,6 +101,7 @@ static void spice_window_init(SpiceWindow * win) {
 static void spice_window_dispose(GObject * obj) {
     SpiceWindow * win = SPICE_WIN(obj);
     g_clear_object(&win->conn);
+    g_clear_object(&win->conf);
     if (win->display_channel)
         g_signal_handler_disconnect(win->display_channel, win->channel_event_handler_id);
     g_clear_object(&win->display_channel);
@@ -116,6 +127,7 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                                      NULL);
     win->id = id;
     win->conn = g_object_ref(conn);
+    win->conf = g_object_ref(conf);
     win->display_channel = g_object_ref(channel);
     win->channel_event_handler_id =
         g_signal_connect(channel, "channel-event", G_CALLBACK(channel_event), win);
@@ -141,6 +153,13 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->reboot_button));
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->poweroff_button));
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->shutdown_button));
+    }
+    spice_window_get_printers(win);
+    if (win->id == 0) {
+        if (flexvdi_is_agent_connected())
+            share_current_printers(win);
+        else
+            flexvdi_on_agent_connected(share_current_printers, win);
     }
 
     return win;
@@ -339,4 +358,65 @@ static void keystroke_cb(GtkMenuItem * menuitem, gpointer user_data) {
 void spice_win_set_cp_sensitive(SpiceWindow * win, gboolean copy, gboolean paste) {
     gtk_widget_set_sensitive(GTK_WIDGET(win->copy_button), copy);
     gtk_widget_set_sensitive(GTK_WIDGET(win->paste_button), paste);
+}
+
+static void printer_toggled(GtkWidget * widget, gpointer user_data);
+
+static void spice_window_get_printers(SpiceWindow * win) {
+    GSList * printers, * printer;
+    g_debug("Getting printer list:");
+    flexvdi_get_printer_list(&printers);
+    for (printer = printers; printer != NULL; printer = g_slist_next(printer)) {
+        const char * printer_name = (const char *)printer->data;
+        GtkWidget * item = gtk_check_menu_item_new_with_label(printer_name);
+        gboolean state = client_conf_is_printer_shared(win->conf, printer_name);
+        g_debug("  %s, %s", printer_name, state ? "shared" : "not shared");
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), state);
+        gtk_menu_shell_append(GTK_MENU_SHELL(win->printers_menu), item);
+        gtk_widget_set_visible(item, TRUE);
+        g_signal_connect(G_OBJECT(item), "activate",
+                         G_CALLBACK(printer_toggled), win);
+    }
+    g_slist_free_full(printers, g_free);
+    gtk_widget_hide(GTK_WIDGET(win->printers_button));
+}
+
+static void share_printer_thread(const gchar * printer) {
+    // flexvdi_share_printer can be a bit slow and "hang" the GUI
+    GThread * thread = g_thread_try_new(NULL,
+        (GThreadFunc)flexvdi_share_printer, (gpointer)printer, NULL);
+    if (!thread)
+        flexvdi_share_printer(printer);
+    else
+        g_thread_unref(thread);
+}
+
+static void printer_toggled(GtkWidget * widget, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
+    gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
+    client_conf_share_printer(win->conf, printer, active);
+    if (active) {
+        share_printer_thread(printer);
+    } else {
+        flexvdi_unshare_printer(printer);
+    }
+}
+
+static void share_current_printers(gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    if (!flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING)) {
+        gtk_widget_hide(GTK_WIDGET(win->printers_button));
+    } else {
+        gtk_widget_show(GTK_WIDGET(win->printers_button));
+        GList * children = gtk_container_get_children(GTK_CONTAINER(win->printers_menu)),
+              * child;
+        for (child = children; child != NULL; child = g_list_next(child)) {
+            if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(child->data))) {
+                const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(child->data));
+                share_printer_thread(printer);
+            }
+        }
+        g_list_free(children);
+    }
 }
