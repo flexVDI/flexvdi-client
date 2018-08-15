@@ -56,27 +56,27 @@ static void client_conf_init(ClientConf * conf) {
     GOptionEntry main_options[] = {
         // { long_name, short_name, flags, arg, arg_data, description, arg_description },
         { "host", 'h', 0, G_OPTION_ARG_STRING, &conf->host,
-        "Connection host address", NULL },
+        "Connection host address", "<hostname or IP>" },
         { "port", 'p', 0, G_OPTION_ARG_STRING, &conf->port,
-        "Connection port (default 443)", NULL },
+        "Connection port (default 443)", "<port number>" },
         { "username", 'u', 0, G_OPTION_ARG_STRING, &conf->username,
-        "User name", NULL },
+        "User name", "<user name>" },
         { "password", 'w', 0, G_OPTION_ARG_STRING, &conf->password,
-        "Password", NULL },
+        "Password", "<password>" },
         { "terminal_id", 0, 0, G_OPTION_ARG_STRING, &conf->terminal_id,
-        "Use a given Terminal ID instead of calculating it automatically", NULL },
+        "Use a given Terminal ID instead of calculating it automatically", "<terminal ID>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
     GOptionEntry session_options[] = {
         { "desktop", 'd', 0, G_OPTION_ARG_STRING, &conf->desktop,
-        "Desktop name to connect to", NULL },
+        "Desktop name to connect to", "<desktop name>" },
         { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, &conf->fullscreen,
         "Show desktop in fullscreen mode", NULL },
         { "no-fullscreen", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
         G_OPTION_ARG_NONE, &conf->fullscreen, "", NULL },
         { "inactivity-timeout", 0, 0, G_OPTION_ARG_INT, &conf->inactivity_timeout,
-        "Close the client after a certain time of inactivity", "seconds" },
+        "Close the client after a certain time of inactivity", "<seconds>" },
         { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, &conf->disable_printing,
         "Disable printing support", NULL },
         { "auto-clipboard", 0, 0, G_OPTION_ARG_NONE, &conf->auto_clipboard,
@@ -109,23 +109,22 @@ static void client_conf_init(ClientConf * conf) {
         "Disable audio playback from guest", NULL },
         { "disable-audio-record", 0, 0, G_OPTION_ARG_NONE, &conf->disable_audio_record,
         "Disable audio record to guest", NULL },
-        { "preferred-compression", 'd', 0, G_OPTION_ARG_STRING, &conf->preferred_compression,
+        { "preferred-compression", 0, 0, G_OPTION_ARG_STRING, &conf->preferred_compression,
         "Preferred image compression algorithm", "<auto-glz,auto-lz,quic,glz,lz,lz4,off>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
     GOptionEntry device_options[] = {
         { "redirect-rport", 'R', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_rports,
-        "Redirect a remote TCP port", "[bind_address:]guest_port:host:host_port" },
+        "Redirect a remote TCP port. Can appear multiple times", "[bind_address:]guest_port:host:host_port" },
         { "redirect-lport", 'L', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_lports,
-        "Redirect a local TCP port", "[bind_address:]local_port:host:host_port", },
+        "Redirect a local TCP port. Can appear multiple times", "[bind_address:]local_port:host:host_port", },
         { "usbredir-auto-redirect-filter", 0, 0, G_OPTION_ARG_STRING, &conf->usb_auto_filter,
           "Filter selecting USB devices to be auto-redirected when plugged in", "<filter-string>" },
         { "usbredir-redirect-on-connect", 0, 0, G_OPTION_ARG_STRING, &conf->usb_connect_filter,
           "Filter selecting USB devices to redirect on connect", "<filter-string>" },
         { "flexvdi-serial-port", 0, 0, G_OPTION_ARG_STRING_ARRAY, &conf->serial_params,
-        "Add serial port redirection. "
-        "The Nth use of this option is attached to channel serialredirN. "
+        "Add serial port redirection. Can appear multiple times. "
         "Example: /dev/ttyS0,9600,8N1", "<device,speed,mode>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
