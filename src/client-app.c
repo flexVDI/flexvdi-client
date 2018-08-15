@@ -303,6 +303,8 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
 }
 
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data);
+static void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
+                               GError * error, gpointer user_data);
 
 static void client_app_connect(ClientApp * app, JsonObject * params) {
     client_conf_get_options_from_response(app->conf, params);
@@ -311,6 +313,14 @@ static void client_app_connect(ClientApp * app, JsonObject * params) {
     SpiceSession * session = client_conn_get_session(app->connection);
     g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), app);
+
+    SpiceUsbDeviceManager * manager = spice_usb_device_manager_get(session, NULL);
+    if (manager) {
+        g_signal_connect(manager, "auto-connect-failed",
+                         G_CALLBACK(usb_connect_failed), app);
+        g_signal_connect(manager, "device-error",
+                         G_CALLBACK(usb_connect_failed), app);
+    }
 
     client_conn_connect(app->connection);
 }
@@ -477,4 +487,18 @@ static void port_opened(SpiceChannel * channel, GParamSpec * pspec) {
         serial_port_open(channel);
 #endif
     }
+}
+
+static void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
+                               GError * error, gpointer user_data) {
+    if (error->domain == G_IO_ERROR && error->code == G_IO_ERROR_CANCELLED)
+        return;
+
+    ClientApp * app = CLIENT_APP(user_data);
+    GtkWindow * parent = gtk_application_get_active_window(GTK_APPLICATION(app));
+    GtkWidget * dialog = gtk_message_dialog_new(parent, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR,
+                                                GTK_BUTTONS_CLOSE, "USB redirection error");
+    gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog), "%s", error->message);
+    gtk_dialog_run(GTK_DIALOG(dialog));
+    gtk_widget_destroy(dialog);
 }
