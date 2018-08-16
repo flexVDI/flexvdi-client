@@ -440,10 +440,18 @@ static void read_int(GKeyFile * file, const gchar * group, const gchar * key, gi
     } else g_error_free(error);
 }
 
-gchar * get_config_filename() {
+gchar * get_config_dir() {
     return g_build_filename(
         g_get_user_config_dir(),
         "flexVDI Client",
+        NULL
+    );
+}
+
+gchar * get_config_filename() {
+    g_autofree gchar * config_dir = get_config_dir();
+    return g_build_filename(
+        config_dir,
         "settings.ini",
         NULL
     );
@@ -521,6 +529,7 @@ static void write_int(GKeyFile * file, const gchar * group, const gchar * key, g
 void client_conf_save(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = get_config_filename();
+    g_autofree gchar * config_dir = get_config_dir();
 
     struct { const gchar * group; GOptionEntry * options; } groups[] = {
         { "General", conf->main_options },
@@ -555,6 +564,7 @@ void client_conf_save(ClientConf * conf) {
         }
     }
 
+    g_mkdir_with_parents(config_dir, 0755);
     if (!g_key_file_save_to_file(conf->file, config_filename, &error)) {
         g_warning("Error saving settings file: %s", error->message);
         g_error_free(error);

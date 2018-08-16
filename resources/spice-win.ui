@@ -119,22 +119,10 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkToolItem">
+                  <object class="GtkToolButton" id="usb_button">
                     <property name="visible">True</property>
-                    <child>
-                      <object class="GtkMenuButton" id="usb_button">
-                        <property name="name">usb-button</property>
-                        <property name="visible">True</property>
-                        <property name="popup">usb_menu</property>
-                        <property name="tooltip-text" translatable="yes">Share USB devices</property>
-                        <child>
-                          <object class="GtkImage">
-                            <property name="visible">True</property>
-                            <property name="icon-name">drive-removable-usb-cus</property>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
+                    <property name="icon-name">drive-removable-usb-cus</property>
+                    <property name="tooltip-text" translatable="yes">Share USB devices</property>
                   </object>
                 </child>
                 <child>
@@ -254,9 +242,6 @@
         <property name="label">Ctrl+Alt+F12</property>
       </object>
     </child>
-  </object>
-  <object class="GtkMenu" id="usb_menu">
-    <property name="visible">True</property>
   </object>
   <object class="GtkMenu" id="printers_menu">
     <property name="visible">True</property>
