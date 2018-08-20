@@ -23,6 +23,7 @@ typedef enum {
 G_DECLARE_FINAL_TYPE(ClientConn, client_conn, CLIENT, CONN, GObject)
 
 ClientConn * client_conn_new(ClientConf * conf, JsonObject * params);
+ClientConn * client_conn_new_with_uri(ClientConf * conf, const char * uri);
 void client_conn_connect(ClientConn * conn);
 void client_conn_disconnect(ClientConn * conn, ClientConnDisconnectReason reason);
 SpiceSession * client_conn_get_session(ClientConn * conn);

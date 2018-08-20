@@ -67,6 +67,14 @@ ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
     return conn;
 }
 
+ClientConn * client_conn_new_with_uri(ClientConf * conf, const char * uri) {
+    ClientConn * conn = CLIENT_CONN(g_object_new(CLIENT_CONN_TYPE, NULL));
+    g_object_set(conn->session, "uri", uri, NULL);
+    client_conf_set_session_options(conf, conn->session);
+
+    return conn;
+}
+
 void client_conn_connect(ClientConn * conn) {
     conn->disconnecting = FALSE;
     spice_session_connect(conn->session);
