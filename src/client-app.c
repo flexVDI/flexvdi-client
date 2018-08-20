@@ -45,6 +45,11 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
         return 0;
     }
 
+    initPrintClient();
+#ifdef ENABLE_SERIALREDIR
+    serial_port_init(app->conf);
+#endif
+
     return -1;
 }
 
@@ -78,11 +83,6 @@ static void client_app_activate(GApplication * gapp) {
     ClientApp * app = CLIENT_APP(gapp);
     app->main_window = client_app_window_new(app);
     gtk_window_present(GTK_WINDOW(app->main_window));
-
-    initPrintClient();
-#ifdef ENABLE_SERIALREDIR
-    serial_port_init(app->conf);
-#endif
 
     const gchar * tid = client_conf_get_terminal_id(app->conf);
     g_autofree gchar * text = g_strconcat("Terminal ID: ", tid, NULL);
