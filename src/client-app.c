@@ -32,9 +32,12 @@ struct _ClientApp {
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
 
 static void client_app_activate(GApplication * gapp);
+static void client_app_open(GApplication * application, GFile ** files,
+                            gint n_files, const gchar * hint);
 
 static void client_app_class_init(ClientAppClass * class) {
     G_APPLICATION_CLASS(class)->activate = client_app_activate;
+    G_APPLICATION_CLASS(class)->open = client_app_open;
 }
 
 static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {
@@ -65,7 +68,7 @@ static void client_app_init(ClientApp * app) {
 ClientApp * client_app_new(void) {
     return g_object_new(CLIENT_APP_TYPE,
                         "application-id", "com.flexvdi.client",
-                        "flags", G_APPLICATION_NON_UNIQUE,
+                        "flags", G_APPLICATION_NON_UNIQUE | G_APPLICATION_HANDLES_OPEN,
                         NULL);
 }
 
@@ -78,6 +81,7 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
 
 static void client_app_configure(ClientApp * app);
 static void client_app_show_login(ClientApp * app);
+static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri);
 
 static void client_app_activate(GApplication * gapp) {
     ClientApp * app = CLIENT_APP(gapp);
@@ -102,13 +106,26 @@ static void client_app_activate(GApplication * gapp) {
     g_signal_connect(app->main_window, "delete-event",
         G_CALLBACK(delete_cb), app);
 
-    if (client_conf_get_host(app->conf) != NULL) {
+    if (client_conf_get_uri(app->conf) != NULL) {
+        client_app_connect_with_spice_uri(app, client_conf_get_uri(app->conf));
+        client_app_window_set_status(app->main_window, FALSE,
+                                     "Connecting to desktop...");
+        client_app_window_set_central_widget(app->main_window, "login");
+        client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+    } else if (client_conf_get_host(app->conf) != NULL) {
         client_app_show_login(app);
         if (client_conf_get_username(app->conf) && client_conf_get_password(app->conf)) {
             login_button_pressed_handler(app->main_window, app);
         }
     } else
         client_app_configure(app);
+}
+
+static void client_app_open(GApplication * application, GFile ** files,
+                            gint n_files, const gchar * hint) {
+    ClientApp * app = CLIENT_APP(application);
+    client_conf_set_uri(app->conf, g_file_get_uri(*files));
+    client_app_activate(application);
 }
 
 static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
@@ -238,7 +255,7 @@ static gboolean client_app_repeat_request_desktop(gpointer user_data) {
 }
 
 static void client_app_show_desktops(ClientApp * app, JsonObject * desktop);
-static void client_app_connect(ClientApp * app, JsonObject * params);
+static void client_app_connect_with_response(ClientApp * app, JsonObject * params);
 
 static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
@@ -255,7 +272,7 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
         if (g_strcmp0(status, "OK") == 0) {
             client_app_window_set_status(app->main_window, FALSE,
                 "Connecting to desktop...");
-            client_app_connect(app, response);
+            client_app_connect_with_response(app, response);
         } else if (g_strcmp0(status, "Pending") == 0) {
             client_app_window_set_status(app->main_window, FALSE,
                 "Preparing desktop...");
@@ -306,10 +323,7 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
 void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
                         GError * error, gpointer user_data);
 
-static void client_app_connect(ClientApp * app, JsonObject * params) {
-    client_conf_get_options_from_response(app->conf, params);
-    app->connection = client_conn_new(app->conf, params);
-
+static void client_app_connect(ClientApp * app) {
     SpiceSession * session = client_conn_get_session(app->connection);
     g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), app);
@@ -323,6 +337,17 @@ static void client_app_connect(ClientApp * app, JsonObject * params) {
     }
 
     client_conn_connect(app->connection);
+}
+
+static void client_app_connect_with_response(ClientApp * app, JsonObject * params) {
+    client_conf_get_options_from_response(app->conf, params);
+    app->connection = client_conn_new(app->conf, params);
+    client_app_connect(app);
+}
+
+static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri) {
+    app->connection = client_conn_new_with_uri(app->conf, uri);
+    client_app_connect(app);
 }
 
 static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
