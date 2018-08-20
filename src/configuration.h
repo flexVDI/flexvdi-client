@@ -25,6 +25,7 @@ const gchar * client_conf_get_port(ClientConf * conf);
 const gchar * client_conf_get_username(ClientConf * conf);
 const gchar * client_conf_get_password(ClientConf * conf);
 const gchar * client_conf_get_desktop(ClientConf * conf);
+const gchar * client_conf_get_uri(ClientConf * conf);
 gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path);
 gboolean client_conf_get_fullscreen(ClientConf * conf);
 gchar ** client_conf_get_serial_params(ClientConf * conf);
@@ -38,6 +39,7 @@ gboolean client_conf_is_printer_shared(ClientConf * conf, const gchar * printer)
 void client_conf_set_host(ClientConf * conf, const gchar * host);
 void client_conf_set_port(ClientConf * conf, const gchar * port);
 void client_conf_set_username(ClientConf * conf, const gchar * username);
+void client_conf_set_uri(ClientConf * conf, const gchar * uri);
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs);
 void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolean share);
 void client_conf_save(ClientConf * conf);

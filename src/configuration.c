@@ -16,6 +16,7 @@ struct _ClientConf {
     gchar * username;
     gchar * password;
     gchar * terminal_id;
+    gchar * uri;
     // Session options
     gchar * desktop;
     gboolean fullscreen;
@@ -304,6 +305,10 @@ const gchar * client_conf_get_desktop(ClientConf * conf) {
     return conf->desktop;
 }
 
+const gchar * client_conf_get_uri(ClientConf * conf) {
+    return conf->uri;
+}
+
 gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path) {
     if (!conf->host) return NULL;
     if (!conf->port)
@@ -377,6 +382,11 @@ void client_conf_set_port(ClientConf * conf, const gchar * port) {
 void client_conf_set_username(ClientConf * conf, const gchar * username) {
     conf->username = g_strdup(username);
     set_modified(conf->main_options, "username");
+}
+
+void client_conf_set_uri(ClientConf * conf, const gchar * uri) {
+    conf->uri = g_strdup(uri);
+    // Parse flexvdi:// URIs
 }
 
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
