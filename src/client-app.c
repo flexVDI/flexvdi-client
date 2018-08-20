@@ -364,6 +364,13 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
     }
 }
 
+static void client_app_close_windows(ClientApp * app) {
+    GList * windows = gtk_application_get_windows(GTK_APPLICATION(app)), * window = windows;
+    for (; window != NULL; window = window->next) {
+        gtk_widget_destroy(GTK_WIDGET(window->data));
+    }
+}
+
 static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
                                gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
@@ -392,10 +399,12 @@ static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
             g_debug("channel error: %s", error->message);
         }
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_CONN_ERROR);
+        client_app_close_windows(app);
         break;
     case SPICE_CHANNEL_ERROR_AUTH:
         g_warning("main channel: auth failure (wrong password?)");
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_AUTH_ERROR);
+        client_app_close_windows(app);
         break;
     default:
         g_warning("unknown main channel event: %u", event);
