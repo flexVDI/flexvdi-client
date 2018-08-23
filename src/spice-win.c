@@ -251,8 +251,8 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
 
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
-    const gchar * action_name;
-    int event_type;
+    const gchar * action_name = "";
+    int event_type = 0;
     if (toolbutton == win->reboot_button) {
         action_name = "reset";
         event_type = SPICE_POWER_EVENT_RESET;

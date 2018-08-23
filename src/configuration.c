@@ -470,6 +470,7 @@ gchar * get_config_filename() {
 static void client_conf_load(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = get_config_filename();
+    int i;
 
     if (!g_key_file_load_from_file(conf->file, config_filename,
             G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
@@ -485,7 +486,7 @@ static void client_conf_load(ClientConf * conf) {
         { "Devices", conf->device_options }
     };
 
-    for (int i = 0; i < G_N_ELEMENTS(groups); ++i) {
+    for (i = 0; i < G_N_ELEMENTS(groups); ++i) {
         GOptionEntry * option = groups[i].options;
         for (; option->long_name != NULL; ++option) {
             switch (option->arg) {
@@ -540,6 +541,7 @@ void client_conf_save(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = get_config_filename();
     g_autofree gchar * config_dir = get_config_dir();
+    int i;
 
     struct { const gchar * group; GOptionEntry * options; } groups[] = {
         { "General", conf->main_options },
@@ -547,7 +549,7 @@ void client_conf_save(ClientConf * conf) {
         { "Devices", conf->device_options }
     };
 
-    for (int i = 0; i < G_N_ELEMENTS(groups); ++i) {
+    for (i = 0; i < G_N_ELEMENTS(groups); ++i) {
         GOptionEntry * option = groups[i].options;
         for (; option->long_name != NULL; ++option) {
             if (!option->flags) continue;

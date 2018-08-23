@@ -9,6 +9,7 @@
 #include <glib.h>
 
 gchar * discover_terminal_id() {
+    int i;
     struct ifconf ifc;
     struct ifreq ifr[10];
     ifc.ifc_len = sizeof(ifr);
@@ -16,7 +17,7 @@ gchar * discover_terminal_id() {
 
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (sock != -1 && ioctl(sock, SIOCGIFCONF, &ifc) != -1 && ifc.ifc_len > 0) {
-        for (int i = 0; i < ifc.ifc_len / sizeof(struct ifreq); ++i) {
+        for (i = 0; i < ifc.ifc_len / sizeof(struct ifreq); ++i) {
             if (ioctl(sock, SIOCGIFFLAGS, &ifr[i]) == 0
                 && !(ifr[i].ifr_flags & IFF_LOOPBACK) // don't count loopback
                 && ioctl(sock, SIOCGIFHWADDR, &ifr[i]) == 0) {

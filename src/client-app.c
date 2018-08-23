@@ -169,9 +169,10 @@ static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data) 
 
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
+    int i;
     if (app->connection)
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
-    for (int i = 0; i < MAX_WINDOWS; ++i) {
+    for (i = 0; i < MAX_WINDOWS; ++i) {
         if (GTK_WIDGET(app->windows[i]) == widget) {
             app->windows[i] = NULL;
         }
@@ -502,7 +503,8 @@ static void set_cp_sensitive(SpiceWindow * win, ClientApp * app) {
 }
 
 static void main_agent_update(SpiceChannel * channel, ClientApp * app) {
-    for (int i = 0; i < MAX_WINDOWS; ++i) {
+    int i;
+    for (i = 0; i < MAX_WINDOWS; ++i) {
         if (app->windows[i]) {
             set_cp_sensitive(app->windows[i], app);
         }
