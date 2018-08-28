@@ -4,7 +4,7 @@
     color: #444;
 }
 
-#main-window * {
+window.main-window * {
     font-size: x-large;
 }
 
