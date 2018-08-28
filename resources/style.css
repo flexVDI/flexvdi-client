@@ -74,6 +74,10 @@ stack button label {
     color: #ffffff;
 }
 
+label.subtitle {
+    font-size: 120%;
+}
+
 treeview:hover, treeview:selected {
     background-color: #5db9cc;
     color: #ffffff;
