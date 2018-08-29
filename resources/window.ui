@@ -118,7 +118,7 @@
                         <property name="name">address</property>
                         <property name="hexpand">True</property>
                         <property name="width-request">250</property>
-                        <property name="placeholder-text" translatable="yes">name/IP : port</property>
+                        <property name="placeholder-text" translatable="yes">name/IP</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
@@ -129,11 +129,35 @@
                       <object class="GtkLabel">
                         <property name="visible">True</property>
                         <property name="halign">GTK_ALIGN_END</property>
-                        <property name="label" translatable="yes">Fullscreen:</property>
+                        <property name="label" translatable="yes">Port:</property>
                       </object>
                       <packing>
                         <property name="left_attach">0</property>
                         <property name="top_attach">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="port">
+                        <property name="visible">True</property>
+                        <property name="name">port</property>
+                        <property name="hexpand">True</property>
+                        <property name="width-request">50</property>
+                        <property name="placeholder-text" translatable="yes">port</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="halign">GTK_ALIGN_END</property>
+                        <property name="label" translatable="yes">Fullscreen:</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">2</property>
                       </packing>
                     </child>
                     <child>
@@ -143,7 +167,7 @@
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
-                        <property name="top_attach">1</property>
+                        <property name="top_attach">2</property>
                       </packing>
                     </child>
                   </object>
@@ -160,6 +184,7 @@
                 </child>
                 <focus-chain>
                   <widget name="host" />
+                  <widget name="port" />
                   <widget name="fullscreen" />
                   <widget name="save" />
                 </focus-chain>

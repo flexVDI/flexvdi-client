@@ -11,6 +11,7 @@ struct _ClientAppWindow {
     GtkLabel * status;
     GtkStack * stack;
     GtkEntry * host;
+    GtkEntry * port;
     GtkCheckButton * fullscreen;
     GtkButton * config;
     GtkButton * save;
@@ -45,6 +46,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, status);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, stack);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, host);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, port);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, fullscreen);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, config);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, save);
@@ -154,14 +156,9 @@ static void load_config(ClientAppWindow * win) {
     const gchar * port = client_conf_get_port(win->conf);
     const gchar * username = client_conf_get_username(win->conf);
     const gchar * password = client_conf_get_password(win->conf);
-    if (host) {
-        if (!port) {
-            gtk_entry_set_text(win->host, host);
-        } else {
-            g_autofree gchar * host_str = g_strdup_printf("%s:%s", host, port);
-            gtk_entry_set_text(win->host, host_str);
-        }
-    }
+    if (host)
+        gtk_entry_set_text(win->host, host);
+    gtk_entry_set_text(win->port, port ? port : "443");
     if (username)
         gtk_entry_set_text(win->username, username);
     if (password)
@@ -171,13 +168,12 @@ static void load_config(ClientAppWindow * win) {
 }
 
 static void save_config(ClientAppWindow * win) {
-    const gchar * host_port = gtk_entry_get_text(win->host);
-    char ** tokens = g_strsplit(host_port, ":", 2);
-    client_conf_set_host(win->conf, tokens[0]);
-    client_conf_set_port(win->conf, tokens[1]);
+    const gchar * host = gtk_entry_get_text(win->host);
+    const gchar * port = gtk_entry_get_text(win->port);
+    client_conf_set_host(win->conf, host);
+    client_conf_set_port(win->conf, g_strcmp0(port, "443") ? port : NULL);
     client_conf_set_fullscreen(win->conf,
         gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(win->fullscreen)));
-    g_strfreev(tokens);
 }
 
 void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {
