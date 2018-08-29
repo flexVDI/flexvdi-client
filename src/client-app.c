@@ -86,7 +86,7 @@ static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri
 static void client_app_activate(GApplication * gapp) {
     ClientApp * app = CLIENT_APP(gapp);
     app->main_window = client_app_window_new(app);
-    gtk_window_present(GTK_WINDOW(app->main_window));
+    gtk_widget_show_all(GTK_WIDGET(app->main_window));
 
     const gchar * tid = client_conf_get_terminal_id(app->conf);
     g_autofree gchar * text = g_strconcat("Terminal ID: ", tid, NULL);
@@ -466,7 +466,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
                 g_signal_connect(win, "delete-event", G_CALLBACK(delete_cb), app);
             if (monitors->len == 1)
                 gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER_ALWAYS);
-            gtk_widget_show(GTK_WIDGET(win));
+            gtk_widget_show_all(GTK_WIDGET(win));
             set_cp_sensitive(win, app);
             if (app->main_window) {
                 gtk_widget_destroy(GTK_WIDGET(app->main_window));

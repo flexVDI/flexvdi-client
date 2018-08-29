@@ -171,8 +171,16 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
 
 static void realize_window(GtkWidget * toplevel, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
-    if (win->fullscreen)
+    if (win->fullscreen) {
         gtk_window_fullscreen(GTK_WINDOW(win));
+        gtk_widget_hide(GTK_WIDGET(win->fullscreen_button));
+        gtk_widget_show(GTK_WIDGET(win->restore_button));
+        gtk_widget_show(GTK_WIDGET(win->minimize_button));
+    } else {
+        gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
+        gtk_widget_hide(GTK_WIDGET(win->restore_button));
+        gtk_widget_hide(GTK_WIDGET(win->minimize_button));
+    }
 }
 
 static void channel_event(SpiceChannel * channel, SpiceChannelEvent event, gpointer user_data) {

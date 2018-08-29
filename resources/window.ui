@@ -11,11 +11,9 @@
     <child type="titlebar">
       <object class="GtkHeaderBar" id="header">
         <property name="name">header</property>
-        <property name="visible">True</property>
         <property name="show-close-button">True</property>
         <child>
           <object class="GtkImage" id="logo">
-            <property name="visible">True</property>
             <property name="resource">/com/flexvdi/client/images/logo-flexVDI-toolbar.png</property>
           </object>
           <packing>
@@ -24,7 +22,6 @@
         </child>
         <child>
           <object class="GtkButton" id="config">
-            <property name="visible">True</property>
             <property name="image">gears-icon</property>
             <property name="can-focus">False</property>
             <style>
@@ -40,16 +37,13 @@
     <child>
       <object class="GtkBox" id="content_box">
         <property name="name">content-box</property>
-        <property name="visible">True</property>
         <property name="orientation">vertical</property>
         <child>
           <object class="GtkBox">
-            <property name="visible">True</property>
             <property name="orientation">horizontal</property>
             <property name="name">status</property>
             <child>
               <object class="GtkLabel" id="status">
-                <property name="visible">True</property>
                 <property name="xalign">0</property>
                 <property name="hexpand">True</property>
                 <property name="margin">10</property>
@@ -63,7 +57,6 @@
         </child>
         <child>
           <object class="GtkImage" id="logo-client">
-            <property name="visible">True</property>
             <property name="resource">/com/flexvdi/client/images/logo-client.png</property>
             <property name="margin">40</property>
           </object>
@@ -73,7 +66,6 @@
         </child>
         <child>
           <object class="GtkStack" id="stack">
-            <property name="visible">True</property>
             <property name="homogeneous">True</property>
             <property name="transition-duration">200</property>
             <property name="transition-type">GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT</property>
@@ -84,13 +76,11 @@
             <child>
               <object class="GtkBox">
                 <property name="name">settings</property>
-                <property name="visible">True</property>
                 <property name="orientation">vertical</property>
                 <property name="spacing">30</property>
                 <property name="halign">GTK_ALIGN_CENTER</property>
                 <child>
                   <object class="GtkLabel">
-                    <property name="visible">True</property>
                     <style><class name="subtitle"/></style>
                     <property name="label" translatable="yes">Settings</property>
                   </object>
@@ -98,12 +88,10 @@
                 <child>
                   <object class="GtkGrid">
                     <property name="name">settings</property>
-                    <property name="visible">True</property>
                     <property name="row_spacing">10</property>
                     <property name="column_spacing">10</property>
                     <child>
                       <object class="GtkLabel">
-                        <property name="visible">True</property>
                         <property name="halign">GTK_ALIGN_END</property>
                         <property name="label" translatable="yes">Connection address:</property>
                       </object>
@@ -114,7 +102,6 @@
                     </child>
                     <child>
                       <object class="GtkEntry" id="host">
-                        <property name="visible">True</property>
                         <property name="name">address</property>
                         <property name="hexpand">True</property>
                         <property name="width-request">250</property>
@@ -127,7 +114,6 @@
                     </child>
                     <child>
                       <object class="GtkLabel">
-                        <property name="visible">True</property>
                         <property name="halign">GTK_ALIGN_END</property>
                         <property name="label" translatable="yes">Port:</property>
                       </object>
@@ -138,7 +124,6 @@
                     </child>
                     <child>
                       <object class="GtkEntry" id="port">
-                        <property name="visible">True</property>
                         <property name="name">port</property>
                         <property name="hexpand">True</property>
                         <property name="width-request">50</property>
@@ -151,7 +136,6 @@
                     </child>
                     <child>
                       <object class="GtkLabel">
-                        <property name="visible">True</property>
                         <property name="halign">GTK_ALIGN_END</property>
                         <property name="label" translatable="yes">Fullscreen:</property>
                       </object>
@@ -162,7 +146,6 @@
                     </child>
                     <child>
                       <object class="GtkCheckButton" id="fullscreen">
-                        <property name="visible">True</property>
                         <property name="name">fullscreen</property>
                       </object>
                       <packing>
@@ -174,7 +157,6 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="save">
-                    <property name="visible">True</property>
                     <property name="name">save-btn</property>
                     <property name="label" translatable="yes">save settings</property>
                     <property name="hexpand">False</property>
@@ -196,27 +178,23 @@
             <child>
               <object class="GtkBox">
                 <property name="name">login</property>
-                <property name="visible">True</property>
                 <property name="orientation">vertical</property>
                 <property name="spacing">10</property>
                 <property name="hexpand">False</property>
                 <property name="halign">GTK_ALIGN_CENTER</property>
                 <child>
                   <object class="GtkLabel">
-                    <property name="visible">True</property>
                     <style><class name="subtitle"/></style>
                     <property name="label" translatable="yes">Fill in your credentials</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkAlignment">
-                    <property name="visible">True</property>
                     <property name="height-request">20</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkEntry" id="username">
-                    <property name="visible">True</property>
                     <property name="name">username</property>
                     <property name="placeholder-text" translatable="yes">username</property>
                     <property name="primary-icon-name">user</property>
@@ -227,7 +205,6 @@
                 </child>
                 <child>
                   <object class="GtkEntry" id="password">
-                    <property name="visible">True</property>
                     <property name="name">password</property>
                     <property name="placeholder-text" translatable="yes">password</property>
                     <property name="caps-lock-warning">True</property>
@@ -240,7 +217,6 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="login">
-                    <property name="visible">True</property>
                     <property name="name">login-btn</property>
                     <property name="label">login</property>
                     <property name="width-request">250</property>
@@ -256,27 +232,23 @@
             <child>
               <object class="GtkBox">
                 <property name="name">desktops</property>
-                <property name="visible">True</property>
                 <property name="orientation">vertical</property>
                 <property name="spacing">10</property>
                 <property name="hexpand">False</property>
                 <property name="halign">GTK_ALIGN_CENTER</property>
                 <child>
                   <object class="GtkLabel">
-                    <property name="visible">True</property>
                     <style><class name="subtitle"/></style>
                     <property name="label" translatable="yes">Select your desktop</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkAlignment">
-                    <property name="visible">True</property>
                     <property name="height-request">20</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkScrolledWindow" id="desktop-scroll">
-                    <property name="visible">True</property>
                     <property name="hexpand">False</property>
                     <property name="halign">GTK_ALIGN_CENTER</property>
                     <property name="min-content-width">250</property>
@@ -285,14 +257,12 @@
                     <property name="shadow-type">GTK_SHADOW_ETCHED_IN</property>
                     <child>
                       <object class="GtkTreeView" id="desktops">
-                        <property name="visible">True</property>
                         <property name="activate-on-single-click">False</property>
                         <property name="fixed-height-mode">True</property>
                         <property name="headers-visible">False</property>
                         <property name="show-expanders">False</property>
                         <child>
                           <object class="GtkTreeViewColumn">
-                            <property name="visible">True</property>
                             <property name="sizing">GTK_TREE_VIEW_COLUMN_FIXED</property>
                             <child>
                               <object class="GtkCellRendererText"/>
@@ -308,7 +278,6 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="connect">
-                    <property name="visible">True</property>
                     <property name="name">connect-btn</property>
                     <property name="label">connect</property>
                     <property name="width-request">250</property>
@@ -325,13 +294,11 @@
         </child>
         <child>
           <object class="GtkBox">
-            <property name="visible">True</property>
             <property name="orientation">horizontal</property>
             <property name="margin">20</property>
             <child>
               <object class="GtkLabel" id="info">
                 <property name="name">info</property>
-                <property name="visible">True</property>
                 <property name="label">Info</property>
                 <property name="xalign">0</property>
               </object>
@@ -342,7 +309,6 @@
             <child>
               <object class="GtkLabel" id="version">
                 <property name="name">version</property>
-                <property name="visible">True</property>
                 <property name="label">v3.0.0</property>
                 <property name="xalign">1</property>
               </object>
@@ -359,7 +325,6 @@
     </child>
   </template>
   <object class="GtkImage" id="gears-icon">
-    <property name="visible">True</property>
     <property name="resource">/com/flexvdi/client/images/button-settings.png</property>
   </object>
 </interface>

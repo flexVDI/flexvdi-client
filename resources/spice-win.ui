@@ -6,40 +6,33 @@
     <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>
     <child>
       <object class="GtkOverlay" id="overlay">
-        <property name="visible">True</property>
         <child>
           <object class="GtkBox" id="content_box">
             <property name="name">content-box</property>
-            <property name="visible">True</property>
             <property name="orientation">vertical</property>
             <child>
               <object class="GtkToolbar" id="toolbar">
                 <property name="name">toolbar</property>
-                <property name="visible">True</property>
                 <property name="toolbar-style">GTK_TOOLBAR_ICONS</property>
                 <property name="icon-size">GTK_ICON_SIZE_LARGE_TOOLBAR</property>
                 <child>
                   <object class="GtkToolButton" id="close_button">
-                    <property name="visible">True</property>
                     <property name="icon-name">window-close-cus</property>
                     <property name="tooltip-text" translatable="yes">Close connection</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkSeparatorToolItem">
-                    <property name="visible">True</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="copy_button">
-                    <property name="visible">True</property>
                     <property name="icon-name">edit-copy-cus</property>
                     <property name="tooltip-text" translatable="yes">Copy from guest</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="paste_button">
-                    <property name="visible">True</property>
                     <property name="icon-name">edit-paste-cus</property>
                     <property name="tooltip-text" translatable="yes">Paste to guest</property>
                   </object>
@@ -47,7 +40,6 @@
                 <child>
                   <object class="GtkToolButton" id="fullscreen_button">
                     <property name="name">fullscreen-button</property>
-                    <property name="visible">True</property>
                     <property name="icon-name">view-fullscreen-cus</property>
                     <property name="tooltip-text" translatable="yes">Go fullstreen</property>
                   </object>
@@ -55,7 +47,6 @@
                 <child>
                   <object class="GtkToolButton" id="restore_button">
                     <property name="name">restore-button</property>
-                    <property name="visible">False</property>
                     <property name="icon-name">view-restore-cus</property>
                     <property name="tooltip-text" translatable="yes">Restore view</property>
                   </object>
@@ -63,54 +54,45 @@
                 <child>
                   <object class="GtkToolButton" id="minimize_button">
                     <property name="name">minimize-button</property>
-                    <property name="visible">False</property>
                     <property name="icon-name">go-bottom-cus</property>
                     <property name="tooltip-text" translatable="yes">Minimize</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkSeparatorToolItem" id="power_actions_separator">
-                    <property name="visible">True</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="reboot_button">
-                    <property name="visible">True</property>
                     <property name="icon-name">system-reboot-cus</property>
                     <property name="tooltip-text" translatable="yes">Reset</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="shutdown_button">
-                    <property name="visible">True</property>
                     <property name="icon-name">system-shutdown-cus</property>
                     <property name="tooltip-text" translatable="yes">Orderly shutdown</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="poweroff_button">
-                    <property name="visible">True</property>
                     <property name="icon-name">system-poweroff-cus</property>
                     <property name="tooltip-text" translatable="yes">Immediately poweroff</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkSeparatorToolItem">
-                    <property name="visible">True</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolItem">
-                    <property name="visible">True</property>
                     <child>
                       <object class="GtkMenuButton" id="keys_button">
                         <property name="name">keys-button</property>
-                        <property name="visible">True</property>
                         <property name="popup">keys_menu</property>
                         <property name="tooltip-text" translatable="yes">Send key combinations</property>
                         <child>
                           <object class="GtkImage">
-                            <property name="visible">True</property>
                             <property name="icon-name">input-keyboard-cus</property>
                           </object>
                         </child>
@@ -120,23 +102,19 @@
                 </child>
                 <child>
                   <object class="GtkToolButton" id="usb_button">
-                    <property name="visible">True</property>
                     <property name="icon-name">drive-removable-usb-cus</property>
                     <property name="tooltip-text" translatable="yes">Share USB devices</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolItem">
-                    <property name="visible">True</property>
                     <child>
                       <object class="GtkMenuButton" id="printers_button">
                         <property name="name">printers-button</property>
-                        <property name="visible">True</property>
                         <property name="popup">printers_menu</property>
                         <property name="tooltip-text" translatable="yes">Share printers</property>
                         <child>
                           <object class="GtkImage">
-                            <property name="visible">True</property>
                             <property name="icon-name">printer-cus</property>
                           </object>
                         </child>
@@ -153,7 +131,6 @@
         </child>
         <child type="overlay">
           <object class="GtkRevealer" id="revealer">
-            <property name="visible">True</property>
             <property name="transition-type">GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN</property>
             <property name="valign">GTK_ALIGN_START</property>
             <property name="halign">GTK_ALIGN_CENTER</property>
@@ -163,87 +140,72 @@
     </child>
   </template>
   <object class="GtkMenu" id="keys_menu">
-    <property name="visible">True</property>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+Supr</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F1</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F2</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F3</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F4</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F5</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F6</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F7</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F8</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F9</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F10</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F11</property>
       </object>
     </child>
     <child>
       <object class="GtkMenuItem">
-        <property name="visible">True</property>
         <property name="label">Ctrl+Alt+F12</property>
       </object>
     </child>
   </object>
   <object class="GtkMenu" id="printers_menu">
-    <property name="visible">True</property>
   </object>
 </interface>
