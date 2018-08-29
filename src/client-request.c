@@ -66,14 +66,15 @@ JsonNode * client_request_get_result(ClientRequest * req, GError ** error) {
 }
 
 static void request_parsed_cb(GObject * object, GAsyncResult * res, gpointer user_data) {
+    ClientRequest * req = CLIENT_REQUEST(user_data);
     GError * error = NULL;
     json_parser_load_from_stream_finish(JSON_PARSER(object), res, &error);
     if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
         g_debug("Request cancelled");
+        g_object_unref(req);
         return;
     }
 
-    ClientRequest * req = CLIENT_REQUEST(user_data);
     req->error = error;
     if (!req->error) {
         g_autoptr(JsonGenerator) gen = json_generator_new();
@@ -83,21 +84,24 @@ static void request_parsed_cb(GObject * object, GAsyncResult * res, gpointer use
     }
     req->cb(req, req->user_data);
     g_input_stream_close(req->stream, NULL, NULL);
+    g_object_unref(req);
 }
 
 static void request_finished_cb(GObject * object, GAsyncResult * result, gpointer user_data) {
+    ClientRequest * req = CLIENT_REQUEST(user_data);
     GError * error = NULL;
     GInputStream * stream = soup_session_send_finish(SOUP_SESSION(object), result, &error);
     if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
         g_debug("Request cancelled");
+        g_object_unref(req);
         return;
     }
 
-    ClientRequest * req = CLIENT_REQUEST(user_data);
     req->error = error;
     req->stream = g_object_ref(stream);
     if (req->error) {
         req->cb(req, req->user_data);
+        g_object_unref(req);
     } else {
         req->parser = json_parser_new();
         json_parser_load_from_stream_async(req->parser, stream, req->cancel_mgr_request,
@@ -114,7 +118,7 @@ ClientRequest * client_request_new(ClientConf * conf, const gchar * path,
     SoupMessage * msg = soup_message_new("GET", uri);
     g_debug("GET request to %s", uri);
     soup_session_send_async(soup, msg, req->cancel_mgr_request,
-                            request_finished_cb, req);
+                            request_finished_cb, g_object_ref(req));
     return req;
 }
 
@@ -128,6 +132,6 @@ ClientRequest * client_request_new_with_data(ClientConf * conf, const gchar * pa
     g_debug("POST request to %s, body:\n%s", uri, post_data);
     soup_message_set_request(msg, "text/json", SOUP_MEMORY_COPY, post_data, strlen(post_data));
     soup_session_send_async(soup, msg, req->cancel_mgr_request,
-                            request_finished_cb, req);
+                            request_finished_cb, g_object_ref(req));
     return req;
 }
