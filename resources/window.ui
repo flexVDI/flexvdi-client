@@ -86,20 +86,13 @@
                 <property name="name">settings</property>
                 <property name="visible">True</property>
                 <property name="orientation">vertical</property>
-                <property name="spacing">10</property>
-                <property name="hexpand">False</property>
+                <property name="spacing">30</property>
                 <property name="halign">GTK_ALIGN_CENTER</property>
                 <child>
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <style><class name="subtitle"/></style>
                     <property name="label" translatable="yes">Settings</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkAlignment">
-                    <property name="visible">True</property>
-                    <property name="height-request">20</property>
                   </object>
                 </child>
                 <child>
@@ -124,6 +117,7 @@
                         <property name="visible">True</property>
                         <property name="name">address</property>
                         <property name="hexpand">True</property>
+                        <property name="width-request">250</property>
                         <property name="placeholder-text" translatable="yes">name/IP : port</property>
                       </object>
                       <packing>
@@ -152,27 +146,23 @@
                         <property name="top_attach">1</property>
                       </packing>
                     </child>
-                    <child>
-                      <object class="GtkButton" id="save">
-                        <property name="visible">True</property>
-                        <property name="name">save-btn</property>
-                        <property name="label" translatable="yes">save config</property>
-                        <property name="halign">GTK_ALIGN_START</property>
-                        <property name="hexpand">False</property>
-                        <property name="width-request">250</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">2</property>
-                      </packing>
-                    </child>
-                    <focus-chain>
-                      <widget name="host" />
-                      <widget name="fullscreen" />
-                      <widget name="save" />
-                    </focus-chain>
                   </object>
                 </child>
+                <child>
+                  <object class="GtkButton" id="save">
+                    <property name="visible">True</property>
+                    <property name="name">save-btn</property>
+                    <property name="label" translatable="yes">save settings</property>
+                    <property name="hexpand">False</property>
+                    <property name="halign">GTK_ALIGN_CENTER</property>
+                    <property name="width-request">250</property>
+                  </object>
+                </child>
+                <focus-chain>
+                  <widget name="host" />
+                  <widget name="fullscreen" />
+                  <widget name="save" />
+                </focus-chain>
               </object>
               <packing>
                 <property name="name">settings</property>
