@@ -16,6 +16,7 @@ struct _ClientAppWindow {
     GtkButton * config;
     GtkButton * save;
     GtkButton * login;
+    GtkButton * connect;
     GtkEntry * username;
     GtkEntry * password;
     GtkTreeView * desktops;
@@ -51,6 +52,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, config);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, save);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, login);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, connect);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, username);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, password);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, desktops);
@@ -113,6 +115,7 @@ static void client_app_window_init(ClientAppWindow * win) {
     g_signal_connect(win->config, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->save, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->login, "clicked", G_CALLBACK(button_pressed_handler), win);
+    g_signal_connect(win->connect, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->password, "activate", G_CALLBACK(entry_activate_handler), win);
     win->desk_store = gtk_list_store_new(1, G_TYPE_STRING);
     gtk_tree_view_set_model(win->desktops, GTK_TREE_MODEL(win->desk_store));
@@ -137,6 +140,8 @@ static void button_pressed_handler(GtkButton * button, gpointer user_data) {
         g_signal_emit(win, signals[CLIENT_APP_SAVE_BUTTON_PRESSED], 0);
     } else if (button == win->login)
         g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
+    else if (button == win->connect)
+        g_signal_emit(win, signals[CLIENT_APP_DESKTOP_SELECTED], 0);
 }
 
 static void entry_activate_handler(GtkEntry * entry, gpointer user_data) {

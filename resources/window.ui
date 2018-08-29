@@ -286,7 +286,7 @@
                     <child>
                       <object class="GtkTreeView" id="desktops">
                         <property name="visible">True</property>
-                        <property name="activate-on-single-click">True</property>
+                        <property name="activate-on-single-click">False</property>
                         <property name="fixed-height-mode">True</property>
                         <property name="headers-visible">False</property>
                         <property name="show-expanders">False</property>
@@ -304,6 +304,16 @@
                         </child>
                       </object>
                     </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="connect">
+                    <property name="visible">True</property>
+                    <property name="name">connect-btn</property>
+                    <property name="label">connect</property>
+                    <property name="width-request">250</property>
+                    <property name="hexpand">False</property>
+                    <property name="halign">GTK_ALIGN_CENTER</property>
                   </object>
                 </child>
               </object>
