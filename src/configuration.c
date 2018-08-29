@@ -311,7 +311,7 @@ const gchar * client_conf_get_uri(ClientConf * conf) {
 
 gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path) {
     if (!conf->host) return NULL;
-    if (!conf->port)
+    if (!conf->port || !g_strcmp0(conf->port, ""))
         return g_strdup_printf("https://%s%s", conf->host, path);
     else
         return g_strdup_printf("https://%s:%s%s", conf->host, conf->port, path);
@@ -375,7 +375,7 @@ void client_conf_set_host(ClientConf * conf, const gchar * host) {
 }
 
 void client_conf_set_port(ClientConf * conf, const gchar * port) {
-    conf->port = port ? g_strdup(port) : NULL;
+    conf->port = (port && port[0]) ? g_strdup(port) : NULL;
     set_modified(conf->main_options, "port");
 }
 
