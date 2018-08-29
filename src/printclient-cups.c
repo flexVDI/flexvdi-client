@@ -98,10 +98,10 @@ static void getResolutions(PPDGenerator * ppd, CupsConnection * cups) {
         int i = ippGetCount(attr) - 1, yres;
         ipp_res_t units;
         while (i >= 0) {
-            ppdAddResolution(ppd, ippGetResolution(attr, i--, &yres, &units));
+            ppd_generator_add_resolution(ppd, ippGetResolution(attr, i--, &yres, &units));
         }
         if ((attr = ippGetDefault(cups, "printer-resolution"))) {
-            ppdSetDefaultResolution(ppd, ippGetResolution(attr, 0, &yres, &units));
+            ppd_generator_set_default_resolution(ppd, ippGetResolution(attr, 0, &yres, &units));
         }
     }
 }
@@ -116,7 +116,7 @@ static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
             const char * name = cupsLocalizeDestMedia(cups->http, cups->dest, cups->dinfo, 0, &size);
             // XXX There is a bug until Cups 2.2 that adds (Borderless) in the wrong case
             gchar ** name_parts = g_strsplit(name, " (", -1);
-            ppdAddPaperSize(ppd, g_strdup(name_parts[0]),
+            ppd_generator_add_paper_size(ppd, g_strdup(name_parts[0]),
                 round(size.width / f), round(size.length / f),
                 round(size.left / f), round(size.bottom / f),
                 round((size.width - size.right) / f),
@@ -127,7 +127,7 @@ static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
 
     ipp_attribute_t * attr = ippGetDefault(cups, CUPS_MEDIA);
     const char * defaultMedia = attr ? ippGetString(attr, 0, NULL) : "a4";
-    ppdSetDefaultPaperSize(ppd, g_strdup(defaultMedia));
+    ppd_generator_set_default_paper_size(ppd, g_strdup(defaultMedia));
 }
 
 
@@ -143,10 +143,10 @@ static void getMediaSources(PPDGenerator * ppd, CupsConnection * cups) {
     if (attr) {
         int i, count = ippGetCount(attr);
         for (i = 0; i < count; ++i) {
-            ppdAddTray(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
+            ppd_generator_add_tray(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
         }
         if ((attr = ippGetDefault(cups, CUPS_MEDIA_SOURCE))) {
-            ppdSetDefaultTray(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
+            ppd_generator_set_default_tray(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
         }
     }
 }
@@ -157,10 +157,10 @@ static void getMediaTypes(PPDGenerator * ppd, CupsConnection * cups) {
     if (attr) {
         int i, count = ippGetCount(attr);
         for (i = 0; i < count; ++i) {
-            ppdAddMediaType(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
+            ppd_generator_add_media_type(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
         }
         if ((attr = ippGetDefault(cups, CUPS_MEDIA_TYPE))) {
-            ppdSetDefaultMediaType(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
+            ppd_generator_set_default_media_type(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
         }
     }
 }
@@ -168,21 +168,21 @@ static void getMediaTypes(PPDGenerator * ppd, CupsConnection * cups) {
 
 char * getPPDFile(const char * printer) {
     char * result = NULL;
-    PPDGenerator * ppd = newPPDGenerator(printer);
+    PPDGenerator * ppd = ppd_generator_new(printer);
     if (ppd) {
         CupsConnection * cups = openCups(printer);
         if (cups->dinfo) {
-            ppdSetColor(ppd, ippHasOtherThan(cups, CUPS_PRINT_COLOR_MODE, "monochrome"));
-            ppdSetDuplex(ppd, ippHasOtherThan(cups, CUPS_SIDES, "one-sided"));
+            ppd_generator_set_color(ppd, ippHasOtherThan(cups, CUPS_PRINT_COLOR_MODE, "monochrome"));
+            ppd_generator_set_duplex(ppd, ippHasOtherThan(cups, CUPS_SIDES, "one-sided"));
             getResolutions(ppd, cups);
             getPapers(ppd, cups);
             getMediaSources(ppd, cups);
             getMediaTypes(ppd, cups);
-            result = g_strdup(generatePPD(ppd));
+            result = g_strdup(ppd_generator_run(ppd));
         }
         closeCups(cups);
     }
-    deletePPDGenerator(ppd);
+    g_object_unref(ppd);
     return result;
 }
 

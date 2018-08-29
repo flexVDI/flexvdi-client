@@ -103,12 +103,12 @@ static void getResolutions(ClientPrinter * printer, PPDGenerator * ppd) {
         LONG resolutions[numResolutions * 2];
         getPrinterCap(printer, DC_ENUMRESOLUTIONS, (wchar_t *)resolutions);
         for (i = 0; i < numResolutions; ++i) {
-            ppdAddResolution(ppd, resolutions[i*2]);
+            ppd_generator_add_resolution(ppd, resolutions[i*2]);
         }
     }
     int defaultResolution = getDefaultResolution(printer);
     if (defaultResolution > 0)
-        ppdSetDefaultResolution(ppd, defaultResolution);
+        ppd_generator_set_default_resolution(ppd, defaultResolution);
 }
 
 
@@ -150,12 +150,12 @@ static void getPaper(ClientPrinter * printer, PPDGenerator * ppd) {
                 double width = paperSizes[i].x * 72.0 / 254.0;
                 double length = paperSizes[i].y * 72.0 / 254.0;
                 getPaperMargins(printer, paperIds[i], &left, &bottom);
-                ppdAddPaperSize(ppd, paperNameUtf8, width, length,
+                ppd_generator_add_paper_size(ppd, paperNameUtf8, width, length,
                                 left, bottom, width - left, length - bottom);
             }
             else g_free(paperNameUtf8);
         }
-        ppdSetDefaultPaperSize(ppd, g_strdup("A4")); // TODO
+        ppd_generator_set_default_paper_size(ppd, g_strdup("A4")); // TODO
     }
 }
 
@@ -168,7 +168,7 @@ static void getMediaSources(ClientPrinter * printer, PPDGenerator * ppd) {
         for (i = 0; i < numTrays; ++i) {
             // TODO: Auto may be included more than once
             char * trayNameUtf8 = g_utf16_to_utf8(&trayNames[i*24], 24, NULL, NULL, NULL);
-            ppdAddTray(ppd, trayNameUtf8);
+            ppd_generator_add_tray(ppd, trayNameUtf8);
         }
         int defaultTray = 0;
         DEVMODE * defaults = printer->pinfo->pDevMode;
@@ -179,7 +179,7 @@ static void getMediaSources(ClientPrinter * printer, PPDGenerator * ppd) {
         }
         char * trayNameUtf8 = g_utf16_to_utf8(&trayNames[defaultTray*24], 24,
                                               NULL, NULL, NULL);
-        ppdSetDefaultTray(ppd, trayNameUtf8);
+        ppd_generator_set_default_tray(ppd, trayNameUtf8);
     }
 }
 
@@ -192,7 +192,7 @@ static void getMediaTypes(ClientPrinter * printer, PPDGenerator * ppd) {
         for (i = 0; i < numMediaTypes; ++i) {
             char * mediaTypeNameUtf8 = g_utf16_to_utf8(&mediaTypeNames[i*64], 64,
                                                        NULL, NULL, NULL);
-            ppdAddMediaType(ppd, mediaTypeNameUtf8);
+            ppd_generator_add_media_type(ppd, mediaTypeNameUtf8);
         }
         int defaultType = 0;
         DEVMODE * defaults = printer->pinfo->pDevMode;
@@ -203,7 +203,7 @@ static void getMediaTypes(ClientPrinter * printer, PPDGenerator * ppd) {
         }
         char * mediaTypeNameUtf8 = g_utf16_to_utf8(&mediaTypeNames[defaultType*64], 64,
                                                    NULL, NULL, NULL);
-        ppdSetDefaultMediaType(ppd, mediaTypeNameUtf8);
+        ppd_generator_set_default_media_type(ppd, mediaTypeNameUtf8);
     }
 }
 
@@ -216,22 +216,22 @@ static wchar_t * asUtf16(char * utf8) {
 
 
 char * getPPDFile(const char * printer) {
-    PPDGenerator * ppd = newPPDGenerator(printer);
+    PPDGenerator * ppd = ppd_generator_new(printer);
     char * result = NULL;
 
     ClientPrinter * cprinter = newClientPrinter(asUtf16(g_strdup(printer)));
     if (cprinter) {
-        ppdSetColor(ppd, getPrinterCap(cprinter, DC_COLORDEVICE, NULL));
-        ppdSetDuplex(ppd, getPrinterCap(cprinter, DC_DUPLEX, NULL));
+        ppd_generator_set_color(ppd, getPrinterCap(cprinter, DC_COLORDEVICE, NULL));
+        ppd_generator_set_duplex(ppd, getPrinterCap(cprinter, DC_DUPLEX, NULL));
         getResolutions(cprinter, ppd);
         getPaper(cprinter, ppd);
         getMediaSources(cprinter, ppd);
         getMediaTypes(cprinter, ppd);
         deleteClientPrinter(cprinter);
-        result = g_strdup(generatePPD(ppd));
+        result = g_strdup(ppd_generator_run(ppd));
     }
 
-    deletePPDGenerator(ppd);
+    g_object_unref(ppd);
     return result;
 }
 
