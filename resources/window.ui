@@ -39,15 +39,31 @@
         <property name="name">content-box</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkBox">
-            <property name="orientation">horizontal</property>
-            <property name="name">status</property>
+          <object class="GtkOverlay" id="overlay">
             <child>
-              <object class="GtkLabel" id="status">
-                <property name="xalign">0</property>
-                <property name="hexpand">True</property>
-                <property name="margin">10</property>
-                <property name="margin-left">20</property>
+              <object class="GtkAlignment">
+                <property name="height-request">40</property>
+              </object>
+            </child>
+            <child type="overlay">
+              <object class="GtkRevealer" id="status_revealer">
+                <property name="transition-type">GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN</property>
+                <property name="transition-duration">100</property>
+                <property name="valign">GTK_ALIGN_START</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">horizontal</property>
+                    <property name="name">status</property>
+                    <child>
+                      <object class="GtkLabel" id="status">
+                        <property name="xalign">0</property>
+                        <property name="hexpand">True</property>
+                        <property name="margin">10</property>
+                        <property name="margin-left">20</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
               </object>
             </child>
           </object>

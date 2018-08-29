@@ -181,8 +181,6 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
 }
 
 static void client_app_configure(ClientApp * app) {
-    client_app_window_set_status(app->main_window, FALSE,
-        "Please, provide the manager's address (and port, if it is not 443)");
     client_app_window_set_central_widget(app->main_window, "settings");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
     if (app->current_request) {
@@ -222,8 +220,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
             client_app_window_set_status(app->main_window, TRUE,
                 "Access denied");
         } else if (g_strcmp0(auth_mode, "active_directory") == 0) {
-            client_app_window_set_status(app->main_window, FALSE,
-                "Fill in your credentials");
+            client_app_window_hide_status(app->main_window);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
         } else {
             client_app_request_desktop(app);
@@ -314,8 +311,6 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
         g_list_sort(g_hash_table_get_keys(app->desktops), (GCompareFunc)g_strcmp0);
     client_app_window_set_desktops(app->main_window, desktop_names);
 
-    client_app_window_set_status(app->main_window, FALSE,
-        "Select your desktop");
     client_app_window_set_central_widget(app->main_window, "desktops");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
 }

@@ -13,6 +13,7 @@ ClientAppWindow * client_app_window_new(ClientApp * app);
 void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf);
 void client_app_window_set_info(ClientAppWindow * win, const gchar * text);
 void client_app_window_set_status(ClientAppWindow * win, gboolean error, const gchar * text);
+void client_app_window_hide_status(ClientAppWindow * win);
 void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * name);
 void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gboolean sensitive);
 const gchar * client_app_window_get_username(ClientAppWindow * win);

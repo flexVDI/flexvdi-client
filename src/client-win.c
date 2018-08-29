@@ -9,6 +9,7 @@ struct _ClientAppWindow {
     GtkLabel * version;
     GtkLabel * info;
     GtkLabel * status;
+    GtkRevealer * status_revealer;
     GtkStack * stack;
     GtkEntry * host;
     GtkEntry * port;
@@ -45,6 +46,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, version);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, info);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, status);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, status_revealer);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, stack);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, host);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, port);
@@ -198,10 +200,16 @@ void client_app_window_set_status(ClientAppWindow * win, gboolean error, const g
     } else {
         gtk_style_context_remove_class(style, "error");
     }
+    gtk_revealer_set_reveal_child(win->status_revealer, TRUE);
+}
+
+void client_app_window_hide_status(ClientAppWindow * win) {
+    gtk_revealer_set_reveal_child(win->status_revealer, FALSE);
 }
 
 void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * name) {
     gtk_stack_set_visible_child_name(win->stack, name);
+    gtk_revealer_set_reveal_child(win->status_revealer, FALSE);
 }
 
 void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gboolean sensitive) {
