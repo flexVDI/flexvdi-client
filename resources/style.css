@@ -1,3 +1,6 @@
+@define-color main_color #00a1c1;
+@define-color selection_color #5db9cc;
+
 * {
     font-family: Lato, Tahoma, Geneva, sans-serif;
     font-style: normal;
@@ -9,7 +12,7 @@ window.main-window * {
 }
 
 #header {
-    background-image: linear-gradient(to right, #00a1c1 60%, #356879 100%);
+    background-image: linear-gradient(to right, @main_color 60%, darker(@main_color) 100%);
     border: 0;
 }
 
@@ -37,7 +40,7 @@ window.main-window * {
 }
 
 entry:focus {
-    border-color: #00a1c1;
+    border-color: @main_color;
 }
 
 button {
@@ -58,12 +61,12 @@ button {
 }
 
 stack button {
-    background-color: #00a1c1;
+    background-color: @main_color;
     border-color: transparent;
 }
 
 stack button:hover {
-    background-color: #5db9cc;
+    background-color: @selection_color;
 }
 
 stack button:focus {
@@ -79,7 +82,7 @@ label.subtitle {
 }
 
 treeview:hover, treeview:selected {
-    background-color: #5db9cc;
+    background-color: @selection_color;
     color: #ffffff;
 }
 
