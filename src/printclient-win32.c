@@ -11,17 +11,17 @@
 #include "flexvdi-port.h"
 
 
-int flexvdi_get_printer_list(GSList ** printerList) {
+int flexvdi_get_printer_list(GSList ** printer_list) {
     int i, result;
     DWORD needed = 0, returned = 0;
     DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
-    *printerList = NULL;
+    *printer_list = NULL;
     EnumPrinters(flags, NULL, 2, NULL, 0, &needed, &returned);
     BYTE * buffer = (BYTE *)g_malloc(needed);
     PRINTER_INFO_2 * pinfo = (PRINTER_INFO_2 *)buffer;
     if (needed && EnumPrinters(flags, NULL, 2, buffer, needed, &needed, &returned)) {
         for (i = returned - 1; i >= 0; --i) {
-            *printerList = g_slist_prepend(*printerList,
+            *printer_list = g_slist_prepend(*printer_list,
                 g_utf16_to_utf8(pinfo[i].pPrinterName, -1, NULL, NULL, NULL));
         }
         result = TRUE;
@@ -41,7 +41,7 @@ typedef struct ClientPrinter {
 } ClientPrinter;
 
 
-static void deleteClientPrinter(ClientPrinter * printer) {
+static void client_printer_delete(ClientPrinter * printer) {
     g_free(printer->name);
     ClosePrinter(printer->handle);
     g_free(printer->pinfo);
@@ -49,7 +49,7 @@ static void deleteClientPrinter(ClientPrinter * printer) {
 }
 
 
-static ClientPrinter * newClientPrinter(wchar_t * name) {
+static ClientPrinter * client_printer_new(wchar_t * name) {
     DWORD needed = 0;
     ClientPrinter * printer = g_malloc0(sizeof(ClientPrinter));
     if (printer) {
@@ -63,19 +63,19 @@ static ClientPrinter * newClientPrinter(wchar_t * name) {
                 }
             }
         }
-        deleteClientPrinter(printer);
+        client_printer_delete(printer);
     }
     return NULL;
 }
 
 
-static int getPrinterCap(ClientPrinter * printer, WORD cap, wchar_t * buffer) {
+static int client_printer_get_capabilities(ClientPrinter * printer, WORD cap, wchar_t * buffer) {
     return DeviceCapabilities(printer->name, printer->pinfo->pPortName,
                               cap, buffer, printer->pinfo->pDevMode);
 }
 
 
-static DEVMODE * getDocumentProperties(ClientPrinter * printer) {
+static DEVMODE * client_printer_get_doc_props(ClientPrinter * printer) {
     LONG size = DocumentProperties(NULL, printer->handle, printer->name, NULL, NULL, 0);
     DEVMODE * options = (DEVMODE *)g_malloc(size);
     if (DocumentProperties(NULL, printer->handle, printer->name,
@@ -87,7 +87,7 @@ static DEVMODE * getDocumentProperties(ClientPrinter * printer) {
 }
 
 
-static int getDefaultResolution(ClientPrinter * printer) {
+static int client_printer_get_default_res(ClientPrinter * printer) {
     int result = 0;
     if (printer->pinfo->pDevMode->dmFields | DM_PRINTQUALITY)
         result = printer->pinfo->pDevMode->dmPrintQuality;
@@ -97,36 +97,36 @@ static int getDefaultResolution(ClientPrinter * printer) {
 }
 
 
-static void getResolutions(ClientPrinter * printer, PPDGenerator * ppd) {
-    int i, numResolutions = getPrinterCap(printer, DC_ENUMRESOLUTIONS, NULL);
-    if (numResolutions > 0) {
-        LONG resolutions[numResolutions * 2];
-        getPrinterCap(printer, DC_ENUMRESOLUTIONS, (wchar_t *)resolutions);
-        for (i = 0; i < numResolutions; ++i) {
+static void client_printer_get_resolutions(ClientPrinter * printer, PPDGenerator * ppd) {
+    int i, num_res = client_printer_get_capabilities(printer, DC_ENUMRESOLUTIONS, NULL);
+    if (num_res > 0) {
+        LONG resolutions[num_res * 2];
+        client_printer_get_capabilities(printer, DC_ENUMRESOLUTIONS, (wchar_t *)resolutions);
+        for (i = 0; i < num_res; ++i) {
             ppd_generator_add_resolution(ppd, resolutions[i*2]);
         }
     }
-    int defaultResolution = getDefaultResolution(printer);
-    if (defaultResolution > 0)
-        ppd_generator_set_default_resolution(ppd, defaultResolution);
+    int default_res = client_printer_get_default_res(printer);
+    if (default_res > 0)
+        ppd_generator_set_default_resolution(ppd, default_res);
 }
 
 
-static void getPaperMargins(ClientPrinter * printer, int paper, double * left, double * down) {
-    DEVMODE * options = getDocumentProperties(printer);
+static void client_printer_get_paper_margins(ClientPrinter * printer, int paper, double * left, double * down) {
+    DEVMODE * options = client_printer_get_doc_props(printer);
     if (options) {
         options->dmFields |= DM_PAPERSIZE | DM_SCALE | DM_ORIENTATION |
                              DM_PRINTQUALITY | DM_YRESOLUTION;
         options->dmScale = 100;
         options->dmOrientation = DMORIENT_PORTRAIT;
         options->dmPaperSize = paper;
-        int defaultResolution = getDefaultResolution(printer);
-        if (defaultResolution <= 0) defaultResolution = 300;
-        options->dmPrintQuality = options->dmYResolution = defaultResolution;
+        int default_res = client_printer_get_default_res(printer);
+        if (default_res <= 0) default_res = 300;
+        options->dmPrintQuality = options->dmYResolution = default_res;
         HDC dc = CreateDC(NULL, printer->name, NULL, options);
         if (dc) {
-            *left = GetDeviceCaps(dc, PHYSICALOFFSETX) * 72.0 / defaultResolution;
-            *down = GetDeviceCaps(dc, PHYSICALOFFSETY) * 72.0 / defaultResolution;
+            *left = GetDeviceCaps(dc, PHYSICALOFFSETX) * 72.0 / default_res;
+            *down = GetDeviceCaps(dc, PHYSICALOFFSETY) * 72.0 / default_res;
         }
         DeleteDC(dc);
         g_free(options);
@@ -134,81 +134,81 @@ static void getPaperMargins(ClientPrinter * printer, int paper, double * left, d
 }
 
 
-static void getPaper(ClientPrinter * printer, PPDGenerator * ppd) {
-    int i, numPaperSizes = getPrinterCap(printer, DC_PAPERNAMES, NULL);
-    if (numPaperSizes > 0) {
-        wchar_t paperNames[numPaperSizes * 64];
-        WORD paperIds[numPaperSizes];
-        POINT paperSizes[numPaperSizes];
-        getPrinterCap(printer, DC_PAPERNAMES, paperNames);
-        getPrinterCap(printer, DC_PAPERS, (wchar_t *)paperIds);
-        getPrinterCap(printer, DC_PAPERSIZE, (wchar_t *)paperSizes);
-        for (i = 0; i < numPaperSizes; ++i) {
-            char * paperNameUtf8 = g_utf16_to_utf8(&paperNames[i*64], 64, NULL, NULL, NULL);
-            if (!strstr(paperNameUtf8, "Custom")) {
+static void client_printer_get_paper(ClientPrinter * printer, PPDGenerator * ppd) {
+    int i, num_sizes = client_printer_get_capabilities(printer, DC_PAPERNAMES, NULL);
+    if (num_sizes > 0) {
+        wchar_t paper_names[num_sizes * 64];
+        WORD paper_ids[num_sizes];
+        POINT paper_sizes[num_sizes];
+        client_printer_get_capabilities(printer, DC_PAPERNAMES, paper_names);
+        client_printer_get_capabilities(printer, DC_PAPERS, (wchar_t *)paper_ids);
+        client_printer_get_capabilities(printer, DC_PAPERSIZE, (wchar_t *)paper_sizes);
+        for (i = 0; i < num_sizes; ++i) {
+            char * paper_name_utf8 = g_utf16_to_utf8(&paper_names[i*64], 64, NULL, NULL, NULL);
+            if (!strstr(paper_name_utf8, "Custom")) {
                 double left = 0.0, bottom = 0.0;
-                double width = paperSizes[i].x * 72.0 / 254.0;
-                double length = paperSizes[i].y * 72.0 / 254.0;
-                getPaperMargins(printer, paperIds[i], &left, &bottom);
-                ppd_generator_add_paper_size(ppd, paperNameUtf8, width, length,
+                double width = paper_sizes[i].x * 72.0 / 254.0;
+                double length = paper_sizes[i].y * 72.0 / 254.0;
+                client_printer_get_paper_margins(printer, paper_ids[i], &left, &bottom);
+                ppd_generator_add_paper_size(ppd, paper_name_utf8, width, length,
                                 left, bottom, width - left, length - bottom);
             }
-            else g_free(paperNameUtf8);
+            else g_free(paper_name_utf8);
         }
         ppd_generator_set_default_paper_size(ppd, g_strdup("A4")); // TODO
     }
 }
 
 
-static void getMediaSources(ClientPrinter * printer, PPDGenerator * ppd) {
-    int i, numTrays = getPrinterCap(printer, DC_BINNAMES, NULL);
-    if (numTrays > 0) {
-        wchar_t trayNames[numTrays * 24];
-        getPrinterCap(printer, DC_BINNAMES, trayNames);
-        for (i = 0; i < numTrays; ++i) {
+static void client_printer_get_media_sources(ClientPrinter * printer, PPDGenerator * ppd) {
+    int i, num_trays = client_printer_get_capabilities(printer, DC_BINNAMES, NULL);
+    if (num_trays > 0) {
+        wchar_t tray_names[num_trays * 24];
+        client_printer_get_capabilities(printer, DC_BINNAMES, tray_names);
+        for (i = 0; i < num_trays; ++i) {
             // TODO: Auto may be included more than once
-            char * trayNameUtf8 = g_utf16_to_utf8(&trayNames[i*24], 24, NULL, NULL, NULL);
-            ppd_generator_add_tray(ppd, trayNameUtf8);
+            char * tray_name_utf8 = g_utf16_to_utf8(&tray_names[i*24], 24, NULL, NULL, NULL);
+            ppd_generator_add_tray(ppd, tray_name_utf8);
         }
-        int defaultTray = 0;
+        int default_tray = 0;
         DEVMODE * defaults = printer->pinfo->pDevMode;
         if (defaults->dmFields | DM_DEFAULTSOURCE) {
-            defaultTray = defaults->dmDefaultSource - DMBIN_USER;
-            if (defaultTray < 0 || defaultTray >= numTrays)
-                defaultTray = 0;
+            default_tray = defaults->dmDefaultSource - DMBIN_USER;
+            if (default_tray < 0 || default_tray >= num_trays)
+                default_tray = 0;
         }
-        char * trayNameUtf8 = g_utf16_to_utf8(&trayNames[defaultTray*24], 24,
-                                              NULL, NULL, NULL);
-        ppd_generator_set_default_tray(ppd, trayNameUtf8);
+        char * tray_name_utf8 = g_utf16_to_utf8(&tray_names[default_tray*24], 24,
+                                                NULL, NULL, NULL);
+        ppd_generator_set_default_tray(ppd, tray_name_utf8);
     }
 }
 
 
-static void getMediaTypes(ClientPrinter * printer, PPDGenerator * ppd) {
-    int i, numMediaTypes = getPrinterCap(printer, DC_MEDIATYPENAMES, NULL);
-    if (numMediaTypes > 0) {
-        wchar_t mediaTypeNames[numMediaTypes * 64];
-        getPrinterCap(printer, DC_MEDIATYPENAMES, mediaTypeNames);
-        for (i = 0; i < numMediaTypes; ++i) {
-            char * mediaTypeNameUtf8 = g_utf16_to_utf8(&mediaTypeNames[i*64], 64,
-                                                       NULL, NULL, NULL);
-            ppd_generator_add_media_type(ppd, mediaTypeNameUtf8);
+static void client_printer_get_media_types(ClientPrinter * printer, PPDGenerator * ppd) {
+    int i, num_media_types = client_printer_get_capabilities(printer, DC_MEDIATYPENAMES, NULL);
+    if (num_media_types > 0) {
+        wchar_t media_names[num_media_types * 64];
+        client_printer_get_capabilities(printer, DC_MEDIATYPENAMES, media_names);
+        for (i = 0; i < num_media_types; ++i) {
+            char * media_name_utf8 = g_utf16_to_utf8(&media_names[i*64], 64,
+                                                     NULL, NULL, NULL);
+            ppd_generator_add_media_type(ppd, media_name_utf8);
         }
-        int defaultType = 0;
+        int default_type = 0;
         DEVMODE * defaults = printer->pinfo->pDevMode;
         if (defaults->dmFields | DM_MEDIATYPE) {
-            defaultType = defaults->dmMediaType - DMMEDIA_USER;
-            if (defaultType < 0 || defaultType >= numMediaTypes)
-                defaultType = 0;
+            default_type = defaults->dmMediaType - DMMEDIA_USER;
+            if (default_type < 0 || default_type >= num_media_types)
+                default_type = 0;
         }
-        char * mediaTypeNameUtf8 = g_utf16_to_utf8(&mediaTypeNames[defaultType*64], 64,
-                                                   NULL, NULL, NULL);
-        ppd_generator_set_default_media_type(ppd, mediaTypeNameUtf8);
+        char * media_name_utf8 = g_utf16_to_utf8(&media_names[default_type*64], 64,
+                                                 NULL, NULL, NULL);
+        ppd_generator_set_default_media_type(ppd, media_name_utf8);
     }
 }
 
 
-static wchar_t * asUtf16(char * utf8) {
+static wchar_t * as_utf16(char * utf8) {
     wchar_t * result = g_utf8_to_utf16(utf8, -1, NULL, NULL, NULL);
     g_free(utf8);
     return result;
@@ -219,15 +219,15 @@ char * get_ppd_file(const char * printer) {
     PPDGenerator * ppd = ppd_generator_new(printer);
     char * result = NULL;
 
-    ClientPrinter * cprinter = newClientPrinter(asUtf16(g_strdup(printer)));
+    ClientPrinter * cprinter = client_printer_new(as_utf16(g_strdup(printer)));
     if (cprinter) {
-        ppd_generator_set_color(ppd, getPrinterCap(cprinter, DC_COLORDEVICE, NULL));
-        ppd_generator_set_duplex(ppd, getPrinterCap(cprinter, DC_DUPLEX, NULL));
-        getResolutions(cprinter, ppd);
-        getPaper(cprinter, ppd);
-        getMediaSources(cprinter, ppd);
-        getMediaTypes(cprinter, ppd);
-        deleteClientPrinter(cprinter);
+        ppd_generator_set_color(ppd, client_printer_get_capabilities(cprinter, DC_COLORDEVICE, NULL));
+        ppd_generator_set_duplex(ppd, client_printer_get_capabilities(cprinter, DC_DUPLEX, NULL));
+        client_printer_get_resolutions(cprinter, ppd);
+        client_printer_get_paper(cprinter, ppd);
+        client_printer_get_media_sources(cprinter, ppd);
+        client_printer_get_media_types(cprinter, ppd);
+        client_printer_delete(cprinter);
         result = g_strdup(ppd_generator_run(ppd));
     }
 
@@ -242,27 +242,25 @@ void print_job(PrintJob * job) {
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
-    size_t envSize = strlen(job->options) + 13; // "JOBOPTIONS=...\0\0"
-    char env[envSize];
-    g_snprintf(env, envSize, "JOBOPTIONS=%s", job->options);
-    env[envSize - 1] = '\0';
-    wchar_t * cmdLine = asUtf16(g_strdup_printf("print-pdf \"%s\"", job->name));
-    DWORD exitCode = 1;
+    size_t env_size = strlen(job->options) + 13; // "JOBOPTIONS=...\0\0"
+    char env[env_size];
+    g_snprintf(env, env_size, "JOBOPTIONS=%s", job->options);
+    env[env_size - 1] = '\0';
+    g_autofree wchar_t * cmd_line = as_utf16(g_strdup_printf("print-pdf \"%s\"", job->name));
+    DWORD exit_code = 1;
     BOOL result = FALSE;
-    if (CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, 0, env, NULL, &si, &pi)) {
+    if (CreateProcess(NULL, cmd_line, NULL, NULL, FALSE, 0, env, NULL, &si, &pi)) {
         // Wait until child process exits.
         WaitForSingleObject(pi.hProcess, INFINITE);
-        result = GetExitCodeProcess(pi.hProcess, &exitCode) && !exitCode;
-        g_debug("CreateProcess succeeded with code %d", exitCode);
+        result = GetExitCodeProcess(pi.hProcess, &exit_code) && !exit_code;
+        g_debug("CreateProcess succeeded with code %d", exit_code);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
     } else g_warning("CreateProcess failed");
-    g_free(cmdLine);
 
     if (!result) {
-        wchar_t * fileW = asUtf16(job->name);
+        g_autofree wchar_t * fileW = as_utf16(job->name);
         ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
-        g_free(fileW);
     }
 }
 
