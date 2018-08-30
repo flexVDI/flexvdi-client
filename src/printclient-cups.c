@@ -8,40 +8,40 @@
 #include "flexvdi-port.h"
 
 
-int flexvdi_get_printer_list(GSList ** printerList) {
+int flexvdi_get_printer_list(GSList ** printers) {
     int i;
     cups_dest_t * dests, * dest;
-    int numDests = cupsGetDests(&dests);
-    *printerList = NULL;
-    for (i = numDests, dest = dests; i > 0; --i, ++dest) {
+    int num_dests = cupsGetDests(&dests);
+    *printers = NULL;
+    for (i = num_dests, dest = dests; i > 0; --i, ++dest) {
         if (dest->instance) {
-            char * fullInstance = g_strconcat(dest->name, "/", dest->instance, NULL);
-            *printerList = g_slist_prepend(*printerList, fullInstance);
+            char * full_instance = g_strconcat(dest->name, "/", dest->instance, NULL);
+            *printers = g_slist_prepend(*printers, full_instance);
         } else {
-            *printerList = g_slist_prepend(*printerList, g_strdup(dest->name));
+            *printers = g_slist_prepend(*printers, g_strdup(dest->name));
         }
     }
-    cupsFreeDests(numDests, dests);
+    cupsFreeDests(num_dests, dests);
     return TRUE;
 }
 
 
-typedef struct CupsConnection {
+typedef struct CupsPrinter {
     cups_dest_t * dests, * dest;
-    int numDests;
+    int num_dests;
     cups_dinfo_t * dinfo;
     http_t * http;
-} CupsConnection;
+} CupsPrinter;
 
 
-static CupsConnection * openCups(const char * printer) {
-    CupsConnection * cups = (CupsConnection *)g_malloc0(sizeof(CupsConnection));
-    char * name = g_strdup(printer), * instance;
+static CupsPrinter * cups_printer_new(const char * printer) {
+    CupsPrinter * cups = (CupsPrinter *)g_malloc0(sizeof(CupsPrinter));
+    g_autofree gchar * name = g_strdup(printer), * instance;
     if ((instance = g_strrstr(name, "/")) != NULL)
         *instance++ = '\0';
-    cups->numDests = cupsGetDests(&cups->dests);
+    cups->num_dests = cupsGetDests(&cups->dests);
     if (cups->dests) {
-        cups->dest = cupsGetDest(name, instance, cups->numDests, cups->dests);
+        cups->dest = cupsGetDest(name, instance, cups->num_dests, cups->dests);
         if (cups->dest) {
             cups->http = cupsConnectDest(cups->dest, CUPS_DEST_FLAGS_NONE,
                                          30000, NULL, NULL, 0, NULL, NULL);
@@ -52,62 +52,59 @@ static CupsConnection * openCups(const char * printer) {
     }
     if (!cups->dinfo)
         g_warning("Failed to contact CUPS for printer %s", printer);
-    g_free(name);
     return cups;
 }
 
 
-static void closeCups(CupsConnection * cups) {
+static void cups_printer_delete(CupsPrinter * cups) {
     cupsFreeDestInfo(cups->dinfo);
     httpClose(cups->http);
-    cupsFreeDests(cups->numDests, cups->dests);
+    cupsFreeDests(cups->num_dests, cups->dests);
     g_free(cups);
 }
 
 
-static ipp_attribute_t * ippIsSupported(CupsConnection * cups, const char * attrName) {
-    return cupsFindDestSupported(cups->http, cups->dest, cups->dinfo, attrName);
+static ipp_attribute_t * cups_printer_attr_supported(CupsPrinter * cups, const char * attr_name) {
+    return cupsFindDestSupported(cups->http, cups->dest, cups->dinfo, attr_name);
 }
 
 
-static ipp_attribute_t * ippGetDefault(CupsConnection * cups, const char * attrName) {
-    return cupsFindDestDefault(cups->http, cups->dest, cups->dinfo, attrName);
+static ipp_attribute_t * cups_printer_attr_default(CupsPrinter * cups, const char * attr_name) {
+    return cupsFindDestDefault(cups->http, cups->dest, cups->dinfo, attr_name);
 }
 
 
-static int ippHasOtherThan(CupsConnection * cups, const char * attrName, const char * value) {
-    ipp_attribute_t * attr = ippIsSupported(cups, attrName);
+static int cups_printer_attr_has_others(CupsPrinter * cups, const char * attr_name, const char * value) {
+    ipp_attribute_t * attr = cups_printer_attr_supported(cups, attr_name);
     if (attr) {
-        int i = ippGetCount(attr) - 1, isEqual = 1;
-        char * ivalue = g_utf8_casefold(value, -1);
-        for (; i >= 0 && isEqual; --i) {
-            char * cmpString = g_utf8_casefold(ippGetString(attr, i, NULL), -1);
-            isEqual = !strcmp(cmpString, ivalue);
-            g_free(cmpString);
+        int i = ippGetCount(attr) - 1;
+        g_autofree gchar * ivalue = g_utf8_casefold(value, -1);
+        for (; i >= 0; --i) {
+            g_autofree gchar * cmpString = g_utf8_casefold(ippGetString(attr, i, NULL), -1);
+            if (strcmp(cmpString, ivalue) != 0)
+                return TRUE;
         }
-        g_free(ivalue);
-        return i >= 0;
     }
     return FALSE;
 }
 
 
-static void getResolutions(PPDGenerator * ppd, CupsConnection * cups) {
-    ipp_attribute_t * attr = ippIsSupported(cups, "printer-resolution");
+static void cups_printer_get_resolutions(PPDGenerator * ppd, CupsPrinter * cups) {
+    ipp_attribute_t * attr = cups_printer_attr_supported(cups, "printer-resolution");
     if (attr) {
         int i = ippGetCount(attr) - 1, yres;
         ipp_res_t units;
         while (i >= 0) {
             ppd_generator_add_resolution(ppd, ippGetResolution(attr, i--, &yres, &units));
         }
-        if ((attr = ippGetDefault(cups, "printer-resolution"))) {
+        if ((attr = cups_printer_attr_default(cups, "printer-resolution"))) {
             ppd_generator_set_default_resolution(ppd, ippGetResolution(attr, 0, &yres, &units));
         }
     }
 }
 
 
-static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
+static void cups_printer_get_papers(PPDGenerator * ppd, CupsPrinter * cups) {
     cups_size_t size;
     double f = 29704.0 / 842.0;
     int i, count = cupsGetDestMediaCount(cups->http, cups->dest, cups->dinfo, 0);
@@ -125,42 +122,42 @@ static void getPapers(PPDGenerator * ppd, CupsConnection * cups) {
         }
     }
 
-    ipp_attribute_t * attr = ippGetDefault(cups, CUPS_MEDIA);
-    const char * defaultMedia = attr ? ippGetString(attr, 0, NULL) : "a4";
-    ppd_generator_set_default_paper_size(ppd, g_strdup(defaultMedia));
+    ipp_attribute_t * attr = cups_printer_attr_default(cups, CUPS_MEDIA);
+    const char * default_media = attr ? ippGetString(attr, 0, NULL) : "a4";
+    ppd_generator_set_default_paper_size(ppd, g_strdup(default_media));
 }
 
 
-static char * capitalizeFirst(const char * str) {
+static char * capitalize_first(const char * str) {
     char tmp[7];
     tmp[g_unichar_to_utf8(g_unichar_toupper(g_utf8_get_char(str)), tmp)] = '\0';
     return g_strconcat(tmp, g_utf8_next_char(str), NULL);
 }
 
 
-static void getMediaSources(PPDGenerator * ppd, CupsConnection * cups) {
-    ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_SOURCE);
+static void cups_printer_get_media_sources(PPDGenerator * ppd, CupsPrinter * cups) {
+    ipp_attribute_t * attr = cups_printer_attr_supported(cups, CUPS_MEDIA_SOURCE);
     if (attr) {
         int i, count = ippGetCount(attr);
         for (i = 0; i < count; ++i) {
-            ppd_generator_add_tray(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
+            ppd_generator_add_tray(ppd, capitalize_first(ippGetString(attr, i, NULL)));
         }
-        if ((attr = ippGetDefault(cups, CUPS_MEDIA_SOURCE))) {
-            ppd_generator_set_default_tray(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
+        if ((attr = cups_printer_attr_default(cups, CUPS_MEDIA_SOURCE))) {
+            ppd_generator_set_default_tray(ppd, capitalize_first(ippGetString(attr, 0, NULL)));
         }
     }
 }
 
 
-static void getMediaTypes(PPDGenerator * ppd, CupsConnection * cups) {
-    ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_TYPE);
+static void cups_printer_get_media_types(PPDGenerator * ppd, CupsPrinter * cups) {
+    ipp_attribute_t * attr = cups_printer_attr_supported(cups, CUPS_MEDIA_TYPE);
     if (attr) {
         int i, count = ippGetCount(attr);
         for (i = 0; i < count; ++i) {
-            ppd_generator_add_media_type(ppd, capitalizeFirst(ippGetString(attr, i, NULL)));
+            ppd_generator_add_media_type(ppd, capitalize_first(ippGetString(attr, i, NULL)));
         }
-        if ((attr = ippGetDefault(cups, CUPS_MEDIA_TYPE))) {
-            ppd_generator_set_default_media_type(ppd, capitalizeFirst(ippGetString(attr, 0, NULL)));
+        if ((attr = cups_printer_attr_default(cups, CUPS_MEDIA_TYPE))) {
+            ppd_generator_set_default_media_type(ppd, capitalize_first(ippGetString(attr, 0, NULL)));
         }
     }
 }
@@ -170,26 +167,26 @@ char * get_ppd_file(const char * printer) {
     char * result = NULL;
     PPDGenerator * ppd = ppd_generator_new(printer);
     if (ppd) {
-        CupsConnection * cups = openCups(printer);
+        CupsPrinter * cups = cups_printer_new(printer);
         if (cups->dinfo) {
-            ppd_generator_set_color(ppd, ippHasOtherThan(cups, CUPS_PRINT_COLOR_MODE, "monochrome"));
-            ppd_generator_set_duplex(ppd, ippHasOtherThan(cups, CUPS_SIDES, "one-sided"));
-            getResolutions(ppd, cups);
-            getPapers(ppd, cups);
-            getMediaSources(ppd, cups);
-            getMediaTypes(ppd, cups);
+            ppd_generator_set_color(ppd, cups_printer_attr_has_others(cups, CUPS_PRINT_COLOR_MODE, "monochrome"));
+            ppd_generator_set_duplex(ppd, cups_printer_attr_has_others(cups, CUPS_SIDES, "one-sided"));
+            cups_printer_get_resolutions(ppd, cups);
+            cups_printer_get_papers(ppd, cups);
+            cups_printer_get_media_sources(ppd, cups);
+            cups_printer_get_media_types(ppd, cups);
             result = g_strdup(ppd_generator_run(ppd));
         }
-        closeCups(cups);
+        cups_printer_delete(cups);
     }
     g_object_unref(ppd);
     return result;
 }
 
 
-static int getMediaOption(CupsConnection * cups, char * jobOptions,
-                          int numOptions, cups_option_t ** options) {
-    char * media = get_job_options(jobOptions, "media");
+static int cups_printer_get_media_option(CupsPrinter * cups, char * job_options,
+                                         int num_options, cups_option_t ** options) {
+    g_autofree gchar * media = get_job_options(job_options, "media");
     if (media) {
         int width, length, result;
         cups_size_t size;
@@ -200,110 +197,98 @@ static int getMediaOption(CupsConnection * cups, char * jobOptions,
             result = cupsGetDestMediaBySize(cups->http, cups->dest, cups->dinfo,
                                             width, length, CUPS_MEDIA_FLAGS_DEFAULT, &size);
         }
-        g_free(media);
         if (result) {
-            return cupsAddOption("media", size.media, numOptions, options);
+            return cupsAddOption("media", size.media, num_options, options);
         }
     }
-    ipp_attribute_t * attr = ippGetDefault(cups, "media");
-    const char * defaultMedia = attr ? ippGetString(attr, 0, NULL) : "a4";
-    return cupsAddOption("media", defaultMedia, numOptions, options);
+    ipp_attribute_t * attr = cups_printer_attr_default(cups, "media");
+    const char * default_media = attr ? ippGetString(attr, 0, NULL) : "a4";
+    return cupsAddOption("media", default_media, num_options, options);
 }
 
 
-static int getMediaSourceOption(CupsConnection * cups, char * jobOptions,
-                                int numOptions, cups_option_t ** options) {
-    char * media_source = get_job_options(jobOptions, "media-source");
-    ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_SOURCE);
+static int cups_printer_get_media_source_opt(CupsPrinter * cups, char * job_options,
+                                             int num_options, cups_option_t ** options) {
+    g_autofree gchar * media_source = get_job_options(job_options, "media-source");
+    ipp_attribute_t * attr = cups_printer_attr_supported(cups, CUPS_MEDIA_SOURCE);
     if (media_source) {
         int value = atoi(media_source);
         if (attr) {
             if (value < 0 || value >= ippGetCount(attr)) value = 0;
-            numOptions = cupsAddOption(CUPS_MEDIA_SOURCE, ippGetString(attr, value, NULL),
-                                       numOptions, options);
+            num_options = cupsAddOption(CUPS_MEDIA_SOURCE, ippGetString(attr, value, NULL),
+                                        num_options, options);
         }
-        g_free(media_source);
     }
-    return numOptions;
+    return num_options;
 }
 
 
-static int getMediaTypeOption(CupsConnection * cups, char * jobOptions,
-                              int numOptions, cups_option_t ** options) {
-    char * media_type = get_job_options(jobOptions, "media-type");
-    ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_TYPE);
+static int cups_printer_get_media_type_opt(CupsPrinter * cups, char * job_options,
+                                           int num_options, cups_option_t ** options) {
+    g_autofree gchar * media_type = get_job_options(job_options, "media-type");
+    ipp_attribute_t * attr = cups_printer_attr_supported(cups, CUPS_MEDIA_TYPE);
     if (media_type) {
         int value = atoi(media_type);
         if (attr) {
             if (value < 0 || value >= ippGetCount(attr)) value = 0;
-            numOptions = cupsAddOption(CUPS_MEDIA_TYPE, ippGetString(attr, value, NULL),
-                                       numOptions, options);
+            num_options = cupsAddOption(CUPS_MEDIA_TYPE, ippGetString(attr, value, NULL),
+                                        num_options, options);
         }
-        g_free(media_type);
     }
-    return numOptions;
+    return num_options;
 }
 
 
-static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
-                            cups_option_t ** options) {
-    char * sides = get_job_options(jobOptions, "sides"),
-         * copies = get_job_options(jobOptions, "copies"),
-         * nocollate = get_job_options(jobOptions, "noCollate"),
-         * resolution = get_job_options(jobOptions, "Resolution"),
-         * color = get_job_options(jobOptions, "color");
+static int cups_printer_job_options_to_cups(CupsPrinter * cups, char * job_options,
+                                            cups_option_t ** options) {
+    g_autofree gchar * sides = get_job_options(job_options, "sides"),
+                     * copies = get_job_options(job_options, "copies"),
+                     * nocollate = get_job_options(job_options, "noCollate"),
+                     * resolution = get_job_options(job_options, "Resolution"),
+                     * color = get_job_options(job_options, "color");
 
     *options = NULL;
-    int numOptions = 0;
+    int num_options = 0;
 
     // Media size
-    numOptions = getMediaOption(cups, jobOptions, numOptions, options);
-    numOptions = getMediaSourceOption(cups, jobOptions, numOptions, options);
-    numOptions = getMediaTypeOption(cups, jobOptions, numOptions, options);
-    if (sides) numOptions = cupsAddOption("sides", sides, numOptions, options);
-    if (nocollate) numOptions = cupsAddOption("Collate", "False", numOptions, options);
-    else numOptions = cupsAddOption("Collate", "True", numOptions, options);
-    if (resolution) numOptions = cupsAddOption("Resolution", resolution, numOptions, options);
-    if (copies) numOptions = cupsAddOption("copies", copies, numOptions, options);
-    if (color) numOptions = cupsAddOption(CUPS_PRINT_COLOR_MODE, "color", numOptions, options);
-    else numOptions = cupsAddOption(CUPS_PRINT_COLOR_MODE, "monochrome", numOptions, options);
+    num_options = cups_printer_get_media_option(cups, job_options, num_options, options);
+    num_options = cups_printer_get_media_source_opt(cups, job_options, num_options, options);
+    num_options = cups_printer_get_media_type_opt(cups, job_options, num_options, options);
+    if (sides) num_options = cupsAddOption("sides", sides, num_options, options);
+    if (nocollate) num_options = cupsAddOption("Collate", "False", num_options, options);
+    else num_options = cupsAddOption("Collate", "True", num_options, options);
+    if (resolution) num_options = cupsAddOption("Resolution", resolution, num_options, options);
+    if (copies) num_options = cupsAddOption("copies", copies, num_options, options);
+    if (color) num_options = cupsAddOption(CUPS_PRINT_COLOR_MODE, "color", num_options, options);
+    else num_options = cupsAddOption(CUPS_PRINT_COLOR_MODE, "monochrome", num_options, options);
 
-    g_free(sides);
-    g_free(nocollate);
-    g_free(resolution);
-    g_free(copies);
-    g_free(color);
-    g_debug("%d options", numOptions);
-    return numOptions;
+    g_debug("%d options", num_options);
+    return num_options;
 }
 
 
-static void openWithApp(const char * file) {
-    char command[1024];
-    snprintf(command, 1024, "xdg-open %s", file);
+static void open_with_default_app(const char * file) {
+    g_autofree gchar * command = g_strdup_printf("xdg-open %s", file);
     // TODO: on Mac OS X, the command is 'open'
     system(command);
 }
 
 
 void print_job(PrintJob * job) {
-    char * printer = get_job_options(job->options, "printer");
-    char * title = get_job_options(job->options, "title");
+    g_autofree gchar * printer = get_job_options(job->options, "printer");
+    g_autofree gchar * title = get_job_options(job->options, "title");
 
     if (printer) {
-        CupsConnection * cups = openCups(printer);
+        CupsPrinter * cups = cups_printer_new(printer);
         if (cups->dinfo) {
             cups_option_t * options;
-            int numOptions = jobOptionsToCups(cups, job->options, &options), i;
+            int num_options = cups_printer_job_options_to_cups(cups, job->options, &options), i;
             cupsPrintFile2(cups->http, printer, job->name, title ? title : "",
-                           numOptions, options);
-            for (i = 0; i < numOptions; ++i) {
+                           num_options, options);
+            for (i = 0; i < num_options; ++i) {
                 g_debug("%s = %s", options[i].name, options[i].value);
             }
-        } else openWithApp(job->name);
-        closeCups(cups);
-    } else openWithApp(job->name);
-
-    g_free(printer);
-    g_free(title);
+        } else open_with_default_app(job->name);
+        cups_printer_delete(cups);
+    } else open_with_default_app(job->name);
 }
