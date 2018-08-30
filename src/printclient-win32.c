@@ -215,7 +215,7 @@ static wchar_t * asUtf16(char * utf8) {
 }
 
 
-char * getPPDFile(const char * printer) {
+char * get_ppd_file(const char * printer) {
     PPDGenerator * ppd = ppd_generator_new(printer);
     char * result = NULL;
 
@@ -236,7 +236,7 @@ char * getPPDFile(const char * printer) {
 }
 
 
-void printJob(PrintJob * job) {
+void print_job(PrintJob * job) {
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
     ZeroMemory(&si, sizeof(si));

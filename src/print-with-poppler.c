@@ -175,7 +175,7 @@ static void getMediaSizeOptionFromFile(ClientPrinter * printer, const char * pdf
 }
 
 
-static char * getJobOption(char * options, const char * opName) {
+static char * get_job_options(char * options, const char * opName) {
     gunichar equalSign = g_utf8_get_char("="),
              space = g_utf8_get_char(" "),
              quotes = g_utf8_get_char("\"");
@@ -213,7 +213,7 @@ static char * getJobOption(char * options, const char * opName) {
 
 
 static int getIntJobOption(char * options, const char * opName, int defaultValue) {
-    char * option = getJobOption(options, opName);
+    char * option = get_job_options(options, opName);
     int value = option ? atoi(option) : defaultValue;
     g_free(option);
     return value;
@@ -247,7 +247,7 @@ static void getMediaTypeOption(ClientPrinter * printer, char * jobOptions,
 
 
 static void getDuplexOption(char * jobOptions, DEVMODE * options) {
-    char * sides = getJobOption(jobOptions, "sides");
+    char * sides = get_job_options(jobOptions, "sides");
     if (sides) {
         options->dmFields |= DM_DUPLEX;
         if (!strcmp(sides, "two-sided-short-edge")) {
@@ -263,13 +263,13 @@ static void getDuplexOption(char * jobOptions, DEVMODE * options) {
 
 
 static void getCollateOption(char * jobOptions, DEVMODE * options) {
-    char * nocollate = getJobOption(jobOptions, "noCollate");
+    char * nocollate = get_job_options(jobOptions, "noCollate");
     if (nocollate) {
         options->dmFields |= DM_COLLATE;
         options->dmCollate = DMCOLLATE_FALSE;
         g_free(nocollate);
     } else {
-        char * collate = getJobOption(jobOptions, "Collate");
+        char * collate = get_job_options(jobOptions, "Collate");
         if (collate) {
             options->dmFields |= DM_COLLATE;
             options->dmCollate = DMCOLLATE_TRUE;
@@ -301,7 +301,7 @@ static DEVMODE * jobOptionsToDevMode(ClientPrinter * printer, const char * pdf,
         getResolutionOption(jobOptions, options);
         options->dmFields |= DM_COPIES;
         options->dmCopies = getIntJobOption(jobOptions, "copies", 1);
-        color = getJobOption(jobOptions, "color");
+        color = get_job_options(jobOptions, "color");
         options->dmFields |= DM_COLOR;
         options->dmColor = color ? DMCOLOR_COLOR : DMCOLOR_MONOCHROME;
         g_free(color);
@@ -396,7 +396,7 @@ int main(int argc, char * argv[]) {
     GetEnvironmentVariableA("JOBOPTIONS", options, optionsSize);
 
     g_debug("Printing file %s with options %s", name, options);
-    ClientPrinter * printer = newClientPrinter(asUtf16(getJobOption(options, "printer")));
+    ClientPrinter * printer = newClientPrinter(asUtf16(get_job_options(options, "printer")));
     if (!printer) {
         return 1;
     }
@@ -404,7 +404,7 @@ int main(int argc, char * argv[]) {
     int result = FALSE;
     DEVMODE * dm = jobOptionsToDevMode(printer, name, options);
     if (dm) {
-        wchar_t * title = asUtf16(getJobOption(options, "title"));
+        wchar_t * title = asUtf16(get_job_options(options, "title"));
         result = printFile(printer, name, title ? title : L"", dm);
         g_free(title);
         g_free(dm);

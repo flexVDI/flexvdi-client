@@ -48,7 +48,7 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
         return 0;
     }
 
-    initPrintClient();
+    init_print_client();
 #ifdef ENABLE_SERIALREDIR
     serial_port_init(app->conf);
 #endif

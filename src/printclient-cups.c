@@ -166,7 +166,7 @@ static void getMediaTypes(PPDGenerator * ppd, CupsConnection * cups) {
 }
 
 
-char * getPPDFile(const char * printer) {
+char * get_ppd_file(const char * printer) {
     char * result = NULL;
     PPDGenerator * ppd = ppd_generator_new(printer);
     if (ppd) {
@@ -189,7 +189,7 @@ char * getPPDFile(const char * printer) {
 
 static int getMediaOption(CupsConnection * cups, char * jobOptions,
                           int numOptions, cups_option_t ** options) {
-    char * media = getJobOption(jobOptions, "media");
+    char * media = get_job_options(jobOptions, "media");
     if (media) {
         int width, length, result;
         cups_size_t size;
@@ -213,7 +213,7 @@ static int getMediaOption(CupsConnection * cups, char * jobOptions,
 
 static int getMediaSourceOption(CupsConnection * cups, char * jobOptions,
                                 int numOptions, cups_option_t ** options) {
-    char * media_source = getJobOption(jobOptions, "media-source");
+    char * media_source = get_job_options(jobOptions, "media-source");
     ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_SOURCE);
     if (media_source) {
         int value = atoi(media_source);
@@ -230,7 +230,7 @@ static int getMediaSourceOption(CupsConnection * cups, char * jobOptions,
 
 static int getMediaTypeOption(CupsConnection * cups, char * jobOptions,
                               int numOptions, cups_option_t ** options) {
-    char * media_type = getJobOption(jobOptions, "media-type");
+    char * media_type = get_job_options(jobOptions, "media-type");
     ipp_attribute_t * attr = ippIsSupported(cups, CUPS_MEDIA_TYPE);
     if (media_type) {
         int value = atoi(media_type);
@@ -247,11 +247,11 @@ static int getMediaTypeOption(CupsConnection * cups, char * jobOptions,
 
 static int jobOptionsToCups(CupsConnection * cups, char * jobOptions,
                             cups_option_t ** options) {
-    char * sides = getJobOption(jobOptions, "sides"),
-         * copies = getJobOption(jobOptions, "copies"),
-         * nocollate = getJobOption(jobOptions, "noCollate"),
-         * resolution = getJobOption(jobOptions, "Resolution"),
-         * color = getJobOption(jobOptions, "color");
+    char * sides = get_job_options(jobOptions, "sides"),
+         * copies = get_job_options(jobOptions, "copies"),
+         * nocollate = get_job_options(jobOptions, "noCollate"),
+         * resolution = get_job_options(jobOptions, "Resolution"),
+         * color = get_job_options(jobOptions, "color");
 
     *options = NULL;
     int numOptions = 0;
@@ -286,9 +286,9 @@ static void openWithApp(const char * file) {
 }
 
 
-void printJob(PrintJob * job) {
-    char * printer = getJobOption(job->options, "printer");
-    char * title = getJobOption(job->options, "title");
+void print_job(PrintJob * job) {
+    char * printer = get_job_options(job->options, "printer");
+    char * title = get_job_options(job->options, "title");
 
     if (printer) {
         CupsConnection * cups = openCups(printer);

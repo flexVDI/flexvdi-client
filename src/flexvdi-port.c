@@ -187,10 +187,10 @@ static void handle_message(uint32_t type, uint8_t * msg) {
         handle_capabilities_msg((FlexVDICapabilitiesMsg *)msg);
         break;
     case FLEXVDI_PRINTJOB:
-        handlePrintJob((FlexVDIPrintJobMsg *)msg);
+        handle_print_job((FlexVDIPrintJobMsg *)msg);
         break;
     case FLEXVDI_PRINTJOBDATA:
-        handlePrintJobData((FlexVDIPrintJobDataMsg *)msg);
+        handle_print_job_data((FlexVDIPrintJobDataMsg *)msg);
         break;
     }
 }

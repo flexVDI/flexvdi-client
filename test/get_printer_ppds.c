@@ -12,7 +12,7 @@ int main(int argc, char * argv[]) {
     GSList * printers, * i;
     flexvdi_get_printer_list(&printers);
     for (i = printers; i != NULL; i = g_slist_next(i)) {
-        char * fileName = getPPDFile((const char *)i->data);
+        char * fileName = get_ppd_file((const char *)i->data);
         printf("Printer %s: %s\n", (const char *)i->data, fileName);
         g_free(fileName);
     }
