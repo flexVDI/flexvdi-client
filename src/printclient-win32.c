@@ -2,10 +2,13 @@
  * Copyright Flexible Software Solutions S.L. 2014
  **/
 
+#include <stdlib.h>
 #include <string.h>
 #include <windows.h>
 #include <winspool.h>
 #include <shellapi.h>
+#include <poppler.h>
+#include <cairo/cairo-win32.h>
 #include "printclient.h"
 #include "PPDGenerator.h"
 #include "flexvdi-port.h"
@@ -17,7 +20,7 @@ int flexvdi_get_printer_list(GSList ** printer_list) {
     DWORD flags = PRINTER_ENUM_CONNECTIONS | PRINTER_ENUM_LOCAL;
     *printer_list = NULL;
     EnumPrinters(flags, NULL, 2, NULL, 0, &needed, &returned);
-    BYTE * buffer = (BYTE *)g_malloc(needed);
+    g_autofree BYTE * buffer = (BYTE *)g_malloc(needed);
     PRINTER_INFO_2 * pinfo = (PRINTER_INFO_2 *)buffer;
     if (needed && EnumPrinters(flags, NULL, 2, buffer, needed, &needed, &returned)) {
         for (i = returned - 1; i >= 0; --i) {
@@ -29,7 +32,6 @@ int flexvdi_get_printer_list(GSList ** printer_list) {
         g_warning("EnumPrinters failed");
         result = FALSE;
     }
-    g_free(buffer);
     return result;
 }
 
@@ -113,7 +115,7 @@ static void client_printer_get_resolutions(ClientPrinter * printer, PPDGenerator
 
 
 static void client_printer_get_paper_margins(ClientPrinter * printer, int paper, double * left, double * down) {
-    DEVMODE * options = client_printer_get_doc_props(printer);
+    g_autofree DEVMODE * options = client_printer_get_doc_props(printer);
     if (options) {
         options->dmFields |= DM_PAPERSIZE | DM_SCALE | DM_ORIENTATION |
                              DM_PRINTQUALITY | DM_YRESOLUTION;
@@ -129,7 +131,6 @@ static void client_printer_get_paper_margins(ClientPrinter * printer, int paper,
             *down = GetDeviceCaps(dc, PHYSICALOFFSETY) * 72.0 / default_res;
         }
         DeleteDC(dc);
-        g_free(options);
     }
 }
 
@@ -208,6 +209,72 @@ static void client_printer_get_media_types(ClientPrinter * printer, PPDGenerator
 }
 
 
+static LONG client_printer_best_paper_match(ClientPrinter * printer, double width, double length) {
+    int i, numPaperSizes = client_printer_get_capabilities(printer, DC_PAPERNAMES, NULL);
+    int bestMatch = 0;
+    if (numPaperSizes > 0) {
+        WORD paperIds[numPaperSizes];
+        POINT paperSizes[numPaperSizes];
+        client_printer_get_capabilities(printer, DC_PAPERS, (wchar_t *) paperIds);
+        client_printer_get_capabilities(printer, DC_PAPERSIZE, (wchar_t *) paperSizes);
+        double minError = -1;
+        for (i = 0; i < numPaperSizes; ++i) {
+            POINT p = paperSizes[i];
+            double error = abs(width - p.x) * (length < p.y ? length : p.y) +
+                           abs(length - p.y) * (width < p.x ? width : p.x);
+            if (minError < 0.0 || minError > error) {
+                minError = error;
+                bestMatch = paperIds[i];
+            }
+        }
+        if (minError > 1000000.0) {
+            bestMatch = 0;
+        }
+        g_debug("Best match is paper %d with error %f", bestMatch, minError);
+    }
+    return bestMatch;
+}
+
+
+static void client_printer_get_media_size_from_file(ClientPrinter * printer,
+                                                    const char * pdf,
+                                                    DEVMODE * options) {
+    PopplerDocument * document = NULL;
+    GError * error = NULL;
+    g_autofree gchar * uri = g_filename_to_uri(pdf, NULL, &error);
+    double width, length;
+
+    if (uri) {
+        document = poppler_document_new_from_file(uri, NULL, &error);
+    }
+
+    if (document) {
+        PopplerPage * page = poppler_document_get_page(document, 0);
+
+        if (page) {
+            poppler_page_get_size(page, &width, &length);
+            g_object_unref(page);
+            width *= 254.0 / 72.0;
+            length *= 254.0 / 72.0;
+            options->dmFields |= DM_PAPERSIZE | DM_SCALE | DM_ORIENTATION;
+            options->dmScale = 100;
+            options->dmOrientation = DMORIENT_PORTRAIT;
+            options->dmPaperSize = client_printer_best_paper_match(printer, width, length);
+            if (!options->dmPaperSize) {
+                options->dmFields |= DM_PAPERLENGTH | DM_PAPERWIDTH;
+                options->dmPaperWidth = width;
+                options->dmPaperLength = length;
+                g_info("Pagesize set to %fx%f", width, length);
+            } else {
+                g_info("Pagesize set to %d", options->dmPaperSize);
+            }
+        }
+
+        g_object_unref(document);
+    }
+}
+
+
 static wchar_t * as_utf16(char * utf8) {
     wchar_t * result = g_utf8_to_utf16(utf8, -1, NULL, NULL, NULL);
     g_free(utf8);
@@ -221,8 +288,10 @@ char * get_ppd_file(const char * printer) {
 
     ClientPrinter * cprinter = client_printer_new(as_utf16(g_strdup(printer)));
     if (cprinter) {
-        ppd_generator_set_color(ppd, client_printer_get_capabilities(cprinter, DC_COLORDEVICE, NULL));
-        ppd_generator_set_duplex(ppd, client_printer_get_capabilities(cprinter, DC_DUPLEX, NULL));
+        ppd_generator_set_color(ppd,
+            client_printer_get_capabilities(cprinter, DC_COLORDEVICE, NULL));
+        ppd_generator_set_duplex(ppd,
+            client_printer_get_capabilities(cprinter, DC_DUPLEX, NULL));
         client_printer_get_resolutions(cprinter, ppd);
         client_printer_get_paper(cprinter, ppd);
         client_printer_get_media_sources(cprinter, ppd);
@@ -236,31 +305,183 @@ char * get_ppd_file(const char * printer) {
 }
 
 
-void print_job(PrintJob * job) {
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    ZeroMemory(&pi, sizeof(pi));
-    size_t env_size = strlen(job->options) + 13; // "JOBOPTIONS=...\0\0"
-    char env[env_size];
-    g_snprintf(env, env_size, "JOBOPTIONS=%s", job->options);
-    env[env_size - 1] = '\0';
-    g_autofree wchar_t * cmd_line = as_utf16(g_strdup_printf("print-pdf \"%s\"", job->name));
-    DWORD exit_code = 1;
-    BOOL result = FALSE;
-    if (CreateProcess(NULL, cmd_line, NULL, NULL, FALSE, 0, env, NULL, &si, &pi)) {
-        // Wait until child process exits.
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        result = GetExitCodeProcess(pi.hProcess, &exit_code) && !exit_code;
-        g_debug("CreateProcess succeeded with code %d", exit_code);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-    } else g_warning("CreateProcess failed");
+static int job_option_get_int(char * options, const char * opName, int defaultValue) {
+    g_autofree gchar * option = get_job_options(options, opName);
+    return option ? atoi(option) : defaultValue;
+}
 
-    if (!result) {
-        g_autofree wchar_t * fileW = as_utf16(job->name);
-        ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
+
+static void client_printer_get_media_source_option(ClientPrinter * printer,
+                                                   char * jobOptions,
+                                                   DEVMODE * options) {
+    int mediaSource = job_option_get_int(jobOptions, "media-source", 0);
+    if (mediaSource < 0 || mediaSource >= client_printer_get_capabilities(printer, DC_BINNAMES, NULL)) {
+        g_debug("Media source %d outside [0,%d)",
+                   mediaSource, client_printer_get_capabilities(printer, DC_BINNAMES, NULL));
+        mediaSource = 0;
     }
+    options->dmFields |= DM_DEFAULTSOURCE;
+    options->dmDefaultSource = DMBIN_USER + mediaSource;
+}
+
+
+static void client_printer_get_media_type_option(ClientPrinter * printer,
+                                                 char * jobOptions,
+                                                 DEVMODE * options) {
+    int mediaType = job_option_get_int(jobOptions, "media-type", 0);
+    if (mediaType < 0 || mediaType >= client_printer_get_capabilities(printer, DC_MEDIATYPENAMES, NULL)) {
+        g_debug("Media type %d outside [0,%d)",
+                   mediaType, client_printer_get_capabilities(printer, DC_MEDIATYPENAMES, NULL));
+        mediaType = 0;
+    }
+    options->dmFields |= DM_MEDIATYPE;
+    options->dmMediaType = DMMEDIA_USER + mediaType;
+}
+
+
+static void client_printer_get_duplex_option(char * jobOptions, DEVMODE * options) {
+    g_autofree gchar * sides = get_job_options(jobOptions, "sides");
+    if (sides) {
+        options->dmFields |= DM_DUPLEX;
+        if (!strcmp(sides, "two-sided-short-edge")) {
+            options->dmDuplex = DMDUP_HORIZONTAL;
+        } else if (!strcmp(sides, "two-sided-long-edge")) {
+            options->dmDuplex = DMDUP_VERTICAL;
+        } else {
+            options->dmDuplex = DMDUP_SIMPLEX;
+        }
+    }
+}
+
+
+static void client_printer_get_collate_option(char * jobOptions, DEVMODE * options) {
+    g_autofree gchar * nocollate = get_job_options(jobOptions, "noCollate");
+    if (nocollate) {
+        options->dmFields |= DM_COLLATE;
+        options->dmCollate = DMCOLLATE_FALSE;
+    } else {
+        g_autofree gchar * collate = get_job_options(jobOptions, "Collate");
+        if (collate) {
+            options->dmFields |= DM_COLLATE;
+            options->dmCollate = DMCOLLATE_TRUE;
+        }
+    }
+}
+
+
+static void client_printer_get_resolution_option(char * jobOptions, DEVMODE * options) {
+    int resolution = job_option_get_int(jobOptions, "Resolution", 0);
+    if (resolution) {
+        options->dmFields |= DM_PRINTQUALITY | DM_YRESOLUTION;
+        options->dmPrintQuality = options->dmYResolution = resolution;
+    }
+}
+
+
+static DEVMODE * job_options_to_DevMode(ClientPrinter * printer, const char * pdf,
+                                        char * jobOptions) {
+    DEVMODE * options = client_printer_get_doc_props(printer);
+    if (options) {
+        client_printer_get_media_size_from_file(printer, pdf, options);
+        client_printer_get_media_source_option(printer, jobOptions, options);
+        client_printer_get_media_type_option(printer, jobOptions, options);
+        client_printer_get_duplex_option(jobOptions, options);
+        client_printer_get_collate_option(jobOptions, options);
+        client_printer_get_resolution_option(jobOptions, options);
+        options->dmFields |= DM_COPIES;
+        options->dmCopies = job_option_get_int(jobOptions, "copies", 1);
+        g_autofree gchar * color = get_job_options(jobOptions, "color");
+        options->dmFields |= DM_COLOR;
+        options->dmColor = color ? DMCOLOR_COLOR : DMCOLOR_MONOCHROME;
+    }
+    return options;
+}
+
+
+static void print_file(ClientPrinter * printer, const char * pdf,
+                       const wchar_t * title, DEVMODE * options) {
+    PopplerDocument * document = NULL;
+    GError * error = NULL;
+
+    g_info("Printing %s", pdf);
+    g_autofree gchar * uri = g_filename_to_uri(pdf, NULL, &error);
+    if (uri) {
+        document = poppler_document_new_from_file(uri, NULL, &error);
+    }
+    if (!document) {
+        g_error("%s", error->message);
+        return;
+    }
+
+    HDC dc = CreateDC(NULL, printer->name, NULL, options);
+    if (!dc) {
+        g_error("Could not create DC");
+        return;
+    }
+
+    cairo_status_t status;
+    cairo_surface_t * surface = cairo_win32_printing_surface_create(dc);
+    cairo_t * cr = cairo_create(surface);
+    if ((status = cairo_surface_status(surface))) {
+        g_error("Failed to start printing: %s", cairo_status_to_string(status));
+    } else if ((status = cairo_status(cr))) {
+        g_error("Failed to start printing: %s", cairo_status_to_string(status));
+    } else {
+        cairo_surface_set_fallback_resolution(surface, options->dmYResolution,
+                                              options->dmYResolution);
+        double scale, xOffset = 0.0, yOffset = 0.0;
+        scale = options->dmYResolution / 72.0;
+        client_printer_get_paper_margins(printer, options->dmPaperSize, &xOffset, &yOffset);
+        cairo_scale(cr, scale, scale);
+        cairo_translate(cr, -xOffset, -yOffset);
+        DOCINFO docinfo = { sizeof(DOCINFO), title, NULL, NULL, 0 };
+        StartDoc(dc, &docinfo);
+        int i, num_pages = poppler_document_get_n_pages(document);
+        for (i = 0; i < num_pages; i++) {
+            StartPage(dc);
+            PopplerPage * page = poppler_document_get_page(document, i);
+            if (!page) {
+                g_error("poppler fail: page not found");
+                break;
+            }
+            poppler_page_render_for_printing(page, cr);
+            cairo_surface_show_page(surface);
+            g_object_unref(page);
+            EndPage(dc);
+        }
+        EndDoc(dc);
+    }
+
+    cairo_destroy(cr);
+    cairo_surface_finish(surface);
+    cairo_surface_destroy(surface);
+    g_object_unref(document);
+    DeleteDC(dc);
+}
+
+
+static void open_with_default_app(const char * file) {
+    g_autofree wchar_t * fileW = g_utf8_to_utf16(file, -1, NULL, NULL, NULL);
+    ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
+}
+
+
+void print_job(PrintJob * job) {
+    g_debug("Printing file %s with options %s", job->name, job->options);
+    g_autofree gchar * printer_name = get_job_options(job->options, "printer");
+
+    if (printer_name) {
+        ClientPrinter * printer = client_printer_new(as_utf16(printer_name));
+
+        if (printer) {
+            DEVMODE * dm = job_options_to_DevMode(printer, job->name, job->options);
+            if (dm) {
+                g_autofree wchar_t * title = as_utf16(get_job_options(job->options, "title"));
+                print_file(printer, job->name, title ? title : L"", dm);
+            }
+
+            client_printer_delete(printer);
+        } else open_with_default_app(job->name);
+    } else open_with_default_app(job->name);
 }
 
