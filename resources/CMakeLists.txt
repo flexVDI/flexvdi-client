@@ -16,6 +16,7 @@ add_custom_command(OUTPUT ${resources_c}
                         icons/16x16/actions/lock.png
                         icons/16x16/actions/window-close.png
                         icons/16x16/actions/window-minimize.png
+                        icons/16x16/actions/window-maximize.png
                         icons/24x24/actions/window-close-cus.png
                         icons/24x24/actions/edit-copy-cus.png
                         icons/24x24/actions/edit-paste-cus.png

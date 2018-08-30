@@ -12,6 +12,7 @@
         <file>icons/16x16/actions/lock.png</file>
         <file>icons/16x16/actions/window-close.png</file>
         <file>icons/16x16/actions/window-minimize.png</file>
+        <file>icons/16x16/actions/window-maximize.png</file>
         <file>icons/24x24/actions/window-close-cus.png</file>
         <file>icons/24x24/actions/edit-copy-cus.png</file>
         <file>icons/24x24/actions/edit-paste-cus.png</file>
