@@ -5,7 +5,6 @@
     <property name="title" translatable="yes">flexVDI Client</property>
     <property name="default-width">800</property>
     <property name="default-height">600</property>
-    <property name="resizable">False</property>
     <property name="window-position">GTK_WIN_POS_CENTER</property>
     <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>
     <child type="titlebar">

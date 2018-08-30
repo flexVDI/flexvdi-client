@@ -28,6 +28,7 @@ struct _SpiceWindow {
     GtkToolButton * shutdown_button;
     GtkToolButton * poweroff_button;
     GtkMenu * keys_menu;
+    GtkMenuButton * keys_button;
     GtkMenu * printers_menu;
     GtkMenuButton * printers_button;
     GtkToolButton * usb_button;
@@ -59,7 +60,14 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, reboot_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, shutdown_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, poweroff_button);
-    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, keys_menu);
+#ifdef WIN32
+    const char * keys_menu_name = "keys_menu_win32";
+#else
+    const char * keys_menu_name = "keys_menu_linux";
+#endif
+    gtk_widget_class_bind_template_child_full(GTK_WIDGET_CLASS(class), keys_menu_name,
+                                              FALSE, G_STRUCT_OFFSET(SpiceWindow, keys_menu));
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, keys_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, printers_menu);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, printers_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, usb_button);
@@ -98,6 +106,7 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect(win->usb_button, "clicked", G_CALLBACK(usb_button_cb), win);
     g_signal_connect(win, "window-state-event", G_CALLBACK(window_state_cb), win);
     g_signal_connect(win, "realize", G_CALLBACK(realize_window), win);
+    g_object_set(win->keys_button, "popup", win->keys_menu, NULL);
 
     gtk_container_foreach(GTK_CONTAINER(win->keys_menu), set_keystroke_cb, win);
 }

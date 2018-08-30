@@ -89,7 +89,6 @@
                     <child>
                       <object class="GtkMenuButton" id="keys_button">
                         <property name="name">keys-button</property>
-                        <property name="popup">keys_menu</property>
                         <property name="tooltip-text" translatable="yes">Send key combinations</property>
                         <child>
                           <object class="GtkImage">
@@ -139,7 +138,29 @@
       </object>
     </child>
   </template>
-  <object class="GtkMenu" id="keys_menu">
+  <object class="GtkMenu" id="keys_menu_win32">
+    <child>
+      <object class="GtkMenuItem">
+        <property name="label">Ctrl+Alt+Supr</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem">
+        <property name="label">Ctrl+Win+Right</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem">
+        <property name="label">Ctrl+Win+Left</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem">
+        <property name="label">Win+L</property>
+      </object>
+    </child>
+  </object>
+  <object class="GtkMenu" id="keys_menu_linux">
     <child>
       <object class="GtkMenuItem">
         <property name="label">Ctrl+Alt+Supr</property>
