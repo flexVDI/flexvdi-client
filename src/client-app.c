@@ -31,6 +31,7 @@ struct _ClientApp {
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
 
+
 static void client_app_activate(GApplication * gapp);
 static void client_app_open(GApplication * application, GFile ** files,
                             gint n_files, const gchar * hint);
@@ -40,6 +41,12 @@ static void client_app_class_init(ClientAppClass * class) {
     G_APPLICATION_CLASS(class)->open = client_app_open;
 }
 
+
+/*
+ * Handle command-line options once GTK has gone over them. Return -1 on success,
+ * 0 if application should exit (like in -version option). Actually, we also use this 
+ * function to initialize the print client and the serial port redirection.
+ */
 static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {
     ClientApp * app = CLIENT_APP(gapp);
     if (client_conf_show_version(app->conf)) {
@@ -56,14 +63,22 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
     return -1;
 }
 
+
+/*
+ * Initialize the application instance. Called just after client_app_new by GObject.
+ */
 static void client_app_init(ClientApp * app) {
+    // Create the configuration object. Reads options from config file.
     app->conf = client_conf_new();
     app->username = app->password = app->desktop = "";
     app->desktops = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+
+    // Sets valid command-line options
     client_conf_set_application_options(app->conf, G_APPLICATION(app));
     g_signal_connect(app, "handle-local-options",
         G_CALLBACK(client_app_handle_options), NULL);
 }
+
 
 ClientApp * client_app_new(void) {
     return g_object_new(CLIENT_APP_TYPE,
@@ -71,6 +86,7 @@ ClientApp * client_app_new(void) {
                         "flags", G_APPLICATION_NON_UNIQUE | G_APPLICATION_HANDLES_OPEN,
                         NULL);
 }
+
 
 static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data);
@@ -83,6 +99,10 @@ static void client_app_configure(ClientApp * app);
 static void client_app_show_login(ClientApp * app);
 static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri);
 
+/*
+ * Activate application, called when no URI is provided in the command-line.
+ * Sets up the application window, and connects automatically if an URI was provided.
+ */
 static void client_app_activate(GApplication * gapp) {
     ClientApp * app = CLIENT_APP(gapp);
     app->main_window = client_app_window_new(app);
@@ -108,8 +128,7 @@ static void client_app_activate(GApplication * gapp) {
 
     if (client_conf_get_uri(app->conf) != NULL) {
         client_app_connect_with_spice_uri(app, client_conf_get_uri(app->conf));
-        client_app_window_set_status(app->main_window, FALSE,
-                                     "Connecting to desktop...");
+        client_app_window_status(app->main_window, "Connecting to desktop...");
         client_app_window_set_central_widget(app->main_window, "login");
         client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
     } else if (client_conf_get_host(app->conf) != NULL) {
@@ -121,6 +140,11 @@ static void client_app_activate(GApplication * gapp) {
         client_app_configure(app);
 }
 
+
+/*
+ * Open a URI that is provided in the command-line. Just save the first one
+ * in the configuration object and call client_app_activate;
+ */
 static void client_app_open(GApplication * application, GFile ** files,
                             gint n_files, const gchar * hint) {
     ClientApp * app = CLIENT_APP(application);
@@ -128,36 +152,59 @@ static void client_app_open(GApplication * application, GFile ** files,
     client_app_activate(application);
 }
 
+
+/*
+ * Main window handlers: go-to-settings button pressed
+ */
 static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
     client_app_configure(CLIENT_APP(user_data));
 }
 
+
+/*
+ * Main window handlers: key pressed; only F3 is meaningful.
+ */
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     if (event->key.keyval == GDK_KEY_F3)
         client_app_configure(CLIENT_APP(user_data));
     return FALSE;
 }
 
+
+/*
+ * Main window handlers: save settings button pressed
+ */
 static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
     client_conf_save(CLIENT_APP(user_data)->conf);
     client_app_show_login(CLIENT_APP(user_data));
 }
 
+
 static void client_app_request_desktop(ClientApp * app);
 
+/*
+ * Main window handlers: login button pressed
+ */
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
     app->username = client_app_window_get_username(win);
     app->password = client_app_window_get_password(win);
+    // Save the username in the config file
     client_conf_set_username(app->conf, app->username);
     client_conf_save(app->conf);
     client_app_request_desktop(CLIENT_APP(user_data));
 }
 
+
+/*
+ * Main window handlers: desktop selected (double-click, enter, connect button)
+ */
 static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
+
     if (app->desktop_name) g_free(app->desktop_name);
     app->desktop_name = client_app_window_get_desktop(win);
+
     gchar * desktop = g_hash_table_lookup(app->desktops, app->desktop_name);
     if (desktop) {
         app->desktop = desktop;
@@ -167,9 +214,16 @@ static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data) 
     }
 }
 
+
+/*
+ * Window delete handler. It closes the VDI connection and all the remaining
+ * windows, so that the application will exit as soon as the main loop is empty.
+ * This handler is used for both the main window and the first Spice window.
+ */
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
     int i;
+
     if (app->connection)
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
     for (i = 0; i < MAX_WINDOWS; ++i) {
@@ -177,26 +231,37 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
             app->windows[i] = NULL;
         }
     }
+
     return FALSE;
 }
 
+
+/*
+ * Show the settings page. Cancel the current request if there is one.
+ */
 static void client_app_configure(ClientApp * app) {
     client_app_window_set_central_widget(app->main_window, "settings");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+
     if (app->current_request) {
         client_request_cancel(app->current_request);
         g_clear_object(&app->current_request);
     }
 }
 
+
 static void authmode_request_cb(ClientRequest * req, gpointer user_data);
 
+/*
+ * Show the login page, and start a new authmode request.
+ */
 static void client_app_show_login(ClientApp * app) {
-    client_app_window_set_status(app->main_window, FALSE,
-        "Contacting server...");
+    client_app_window_status(app->main_window, "Contacting server...");
     client_app_window_set_central_widget(app->main_window, "login");
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+
     app->username = app->password = app->desktop = "";
+
     g_clear_object(&app->current_request);
     g_autofree gchar * req_body = g_strdup_printf(
         "{\"hwaddress\": \"%s\"}", client_conf_get_terminal_id(app->conf));
@@ -204,40 +269,51 @@ static void client_app_show_login(ClientApp * app) {
         "/vdi/authmode", req_body, authmode_request_cb, app);
 }
 
+
+/*
+ * Authmode response handler.
+ */
 static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
     g_autoptr(GError) error = NULL;
     JsonNode * root = client_request_get_result(req, &error);
+
     if (error) {
-        client_app_window_set_status(app->main_window, TRUE,
-            "Failed to contact server");
+        client_app_window_error(app->main_window, "Failed to contact server");
         g_warning("Request failed: %s", error->message);
+
     } else if (JSON_NODE_HOLDS_OBJECT(root)) {
         JsonObject * response = json_node_get_object(root);
         const gchar * status = json_object_get_string_member(response, "status");
         const gchar * auth_mode = json_object_get_string_member(response, "auth_mode");
+
         if (g_strcmp0(status, "OK") != 0) {
-            client_app_window_set_status(app->main_window, TRUE,
-                "Access denied");
+            client_app_window_error(app->main_window, "Access denied");
         } else if (g_strcmp0(auth_mode, "active_directory") == 0) {
             client_app_window_hide_status(app->main_window);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
         } else {
+            // Kiosk mode, make a desktop request
             client_app_request_desktop(app);
         }
+
     } else {
-        client_app_window_set_status(app->main_window, TRUE,
-            "Invalid response from server");
+        client_app_window_error(app->main_window, "Invalid response from server");
         g_warning("Invalid response from server, see debug messages");
     }
 }
 
+
 static void desktop_request_cb(ClientRequest * req, gpointer user_data);
 
+/*
+ * Start a new desktop request with currently selected username, password
+ * and desktop name (which may be empty).
+ */
 static void client_app_request_desktop(ClientApp * app) {
-    client_app_window_set_status(app->main_window, FALSE,
-        "Requesting desktop policy...");
+    client_app_window_status(app->main_window, "Requesting desktop policy...");
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+
     g_clear_object(&app->current_request);
     g_autofree gchar * req_body = g_strdup_printf(
         "{\"hwaddress\": \"%s\", \"username\": \"%s\", \"password\": \"%s\", \"desktop\": \"%s\"}",
@@ -247,38 +323,46 @@ static void client_app_request_desktop(ClientApp * app) {
         "/vdi/desktop", req_body, desktop_request_cb, app);
 }
 
+
 static gboolean client_app_repeat_request_desktop(gpointer user_data) {
     client_app_request_desktop(CLIENT_APP(user_data));
     return FALSE; // Cancel timeout
 }
 
+
 static void client_app_show_desktops(ClientApp * app, JsonObject * desktop);
 static void client_app_connect_with_response(ClientApp * app, JsonObject * params);
 
+/*
+ * Desktop response handler.
+ */
 static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
     g_autoptr(GError) error = NULL;
     gboolean invalid = FALSE;
     JsonNode * root = client_request_get_result(req, &error);
+
     if (error) {
-        client_app_window_set_status(app->main_window, TRUE,
-            "Failed to contact server");
+        client_app_window_error(app->main_window, "Failed to contact server");
         g_warning("Request failed: %s", error->message);
+
     } else if (JSON_NODE_HOLDS_OBJECT(root)) {
         JsonObject * response = json_node_get_object(root);
         const gchar * status = json_object_get_string_member(response, "status");
         if (g_strcmp0(status, "OK") == 0) {
-            client_app_window_set_status(app->main_window, FALSE,
-                "Connecting to desktop...");
+            client_app_window_status(app->main_window, "Connecting to desktop...");
             client_app_connect_with_response(app, response);
+
         } else if (g_strcmp0(status, "Pending") == 0) {
-            client_app_window_set_status(app->main_window, FALSE,
-                "Preparing desktop...");
+            client_app_window_status(app->main_window, "Preparing desktop...");
+            // Retry (forever) after 3 seconds
             g_timeout_add_seconds(3, client_app_repeat_request_desktop, app);
+
         } else if (g_strcmp0(status, "Error") == 0) {
             const gchar * message = json_object_get_string_member(response, "message");
-            client_app_window_set_status(app->main_window, TRUE, message);
+            client_app_window_error(app->main_window, message);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+
         } else if (g_strcmp0(status, "SelectDesktop") == 0) {
             const gchar * message = json_object_get_string_member(response, "message");
             g_autoptr(JsonParser) parser = json_parser_new_immutable();
@@ -292,21 +376,27 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
     } else invalid = TRUE;
 
     if (invalid) {
-        client_app_window_set_status(app->main_window, TRUE,
+        client_app_window_error(app->main_window,
             "Invalid response from server");
         g_warning("Invalid response from server, see debug messages");
     }
 }
 
+
+/*
+ * Show the desktops page. Fill in the list with the desktop response.
+ */
 static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
-    g_hash_table_remove_all(app->desktops);
     JsonObjectIter it;
     const gchar * desktop_key;
     JsonNode * desktop_node;
+
+    g_hash_table_remove_all(app->desktops);
     json_object_iter_init(&it, desktops);
     while (json_object_iter_next(&it, &desktop_key, &desktop_node))
         g_hash_table_insert(app->desktops,
             g_strdup(json_node_get_string(desktop_node)), g_strdup(desktop_key));
+
     g_autoptr(GList) desktop_names =
         g_list_sort(g_hash_table_get_keys(app->desktops), (GCompareFunc)g_strcmp0);
     client_app_window_set_desktops(app->main_window, desktop_names);
@@ -315,10 +405,15 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
 }
 
+
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data);
 void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
                         GError * error, gpointer user_data);
 
+/*
+ * Start the Spice connection with the current parameters, in the configuration object.
+ * Also, connect to the USB manager signals if USB redirection is supported.
+ */
 static void client_app_connect(ClientApp * app) {
     SpiceSession * session = client_conn_get_session(app->connection);
     g_signal_connect(session, "channel-new",
@@ -335,16 +430,23 @@ static void client_app_connect(ClientApp * app) {
     client_conn_connect(app->connection);
 }
 
+/*
+ * Get connection parameters from the desktop response
+ */
 static void client_app_connect_with_response(ClientApp * app, JsonObject * params) {
     client_conf_get_options_from_response(app->conf, params);
     app->connection = client_conn_new(app->conf, params);
     client_app_connect(app);
 }
 
+/*
+ * Get connection parameters from the URI passed in the command line.
+ */
 static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri) {
     app->connection = client_conn_new_with_uri(app->conf, uri);
     client_app_connect(app);
 }
+
 
 static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
                                gpointer user_data);
@@ -352,6 +454,12 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
 static void main_agent_update(SpiceChannel * channel, ClientApp * app);
 static void port_opened(SpiceChannel * channel, GParamSpec * pspec);
 
+/*
+ * New channel handler. Here, only these channels are useful:
+ * - Main channel for obvious reasons.
+ * - Display channel, to observe changes in monitors.
+ * - Port channel, for flexVDI agent channel and serial ports.
+ */
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
 
@@ -370,20 +478,12 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
                          G_CALLBACK(display_monitors), app);
     }
 
-    if (SPICE_IS_INPUTS_CHANNEL(channel)) {
-        // g_signal_connect(channel, "inputs-modifiers",
-        //                  G_CALLBACK(inputs_modifiers), app);
-    }
-
-    if (SPICE_IS_USBREDIR_CHANNEL(channel)) {
-        // Support usb redir
-    }
-
     if (SPICE_IS_PORT_CHANNEL(channel)) {
         g_signal_connect(channel, "notify::port-opened",
                          G_CALLBACK(port_opened), app);
     }
 }
+
 
 static void client_app_close_windows(ClientApp * app) {
     GList * windows = gtk_application_get_windows(GTK_APPLICATION(app)), * window = windows;
@@ -392,6 +492,10 @@ static void client_app_close_windows(ClientApp * app) {
     }
 }
 
+
+/*
+ * Main channel even handler. Mainly handles connection problems.
+ */
 static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
                                gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
@@ -433,9 +537,14 @@ static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
     }
 }
 
+
 static void spice_win_display_mark(SpiceChannel * channel, gint mark, SpiceWindow * win);
 static void set_cp_sensitive(SpiceWindow * win, ClientApp * app);
 
+/*
+ * Monitor changes handler. Creates a SpiceWindow for each new monitor.
+ * Currently, multimonitor configurations are still not fully supported.
+ */
 static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app) {
     GArray * monitors = NULL;
     int id;
@@ -454,6 +563,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
             g_autofree gchar * title = g_strdup_printf("%s #%d", app->desktop_name, i);
             SpiceWindow * win = spice_window_new(app->connection, display, app->conf, i, title);
             app->windows[i] = win;
+            // Inform GTK that this is an application window
             gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(win));
             spice_g_signal_connect_object(display, "display-mark",
                                           G_CALLBACK(spice_win_display_mark), win, 0);
@@ -481,6 +591,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
     g_clear_pointer(&monitors, g_array_unref);
 }
 
+
 static void spice_win_display_mark(SpiceChannel * channel, gint mark, SpiceWindow * win) {
     if (mark) {
         gtk_widget_show(GTK_WIDGET(win));
@@ -489,6 +600,10 @@ static void spice_win_display_mark(SpiceChannel * channel, gint mark, SpiceWindo
     }
 }
 
+
+/*
+ * Enable/disable copy&paste buttons when agent connects/disconnects
+ */
 static void set_cp_sensitive(SpiceWindow * win, ClientApp * app) {
     gboolean agent_connected;
     g_object_get(app->main, "agent-connected", &agent_connected, NULL);
@@ -496,6 +611,7 @@ static void set_cp_sensitive(SpiceWindow * win, ClientApp * app) {
         agent_connected && !client_conf_get_disable_copy_from_guest(app->conf),
         agent_connected && !client_conf_get_disable_paste_to_guest(app->conf));
 }
+
 
 static void main_agent_update(SpiceChannel * channel, ClientApp * app) {
     int i;
@@ -506,11 +622,14 @@ static void main_agent_update(SpiceChannel * channel, ClientApp * app) {
     }
 }
 
+
 static void port_opened(SpiceChannel * channel, GParamSpec * pspec) {
     gchar * name = NULL;
     gboolean opened;
+
     g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
     g_debug("Port channel %s is %s", name, opened ? "open" : "closed");
+
     if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
         flexvdi_port_open(channel);
 #ifdef ENABLE_SERIALREDIR
@@ -519,6 +638,7 @@ static void port_opened(SpiceChannel * channel, GParamSpec * pspec) {
 #endif
     }
 }
+
 
 void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
                         GError * error, gpointer user_data) {

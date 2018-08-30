@@ -4,6 +4,12 @@
 #include <gtk/gtk.h>
 
 
+/*
+ * ClientApp
+ * 
+ * Main application class. It derives from GtkApplication and controls
+ * the logic of the application.
+ */
 #define CLIENT_APP_TYPE (client_app_get_type())
 G_DECLARE_FINAL_TYPE(ClientApp, client_app, CLIENT, APP, GtkApplication)
 

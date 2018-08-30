@@ -192,7 +192,8 @@ void client_app_window_set_info(ClientAppWindow * win, const gchar * text) {
     gtk_label_set_text(win->info, text);
 }
 
-void client_app_window_set_status(ClientAppWindow * win, gboolean error, const gchar * text) {
+static void client_app_window_set_status(ClientAppWindow * win, gboolean error,
+                                         const gchar * text) {
     gtk_label_set_text(win->status, text);
     GtkStyleContext * style = gtk_widget_get_style_context(GTK_WIDGET(win->status));
     if (error) {
@@ -201,6 +202,14 @@ void client_app_window_set_status(ClientAppWindow * win, gboolean error, const g
         gtk_style_context_remove_class(style, "error");
     }
     gtk_revealer_set_reveal_child(win->status_revealer, TRUE);
+}
+
+void client_app_window_status(ClientAppWindow * win, const gchar * text) {
+    client_app_window_set_status(win, FALSE, text);
+}
+
+void client_app_window_error(ClientAppWindow * win, const gchar * text) {
+    client_app_window_set_status(win, TRUE, text);
 }
 
 void client_app_window_hide_status(ClientAppWindow * win) {
