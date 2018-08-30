@@ -2,8 +2,8 @@
  * Copyright Flexible Software Solutions S.L. 2018
  **/
 
-#ifndef _MANAGER_REQUEST_H
-#define _MANAGER_REQUEST_H
+#ifndef _CLIENT_REQUEST_H
+#define _CLIENT_REQUEST_H
 
 #include <glib-object.h>
 #include <json-glib/json-glib.h>
@@ -23,4 +23,4 @@ void client_request_cancel(ClientRequest * req);
 JsonNode * client_request_get_result(ClientRequest * req, GError ** error);
 
 
-#endif /* _MANAGER_REQUEST_H */
+#endif /* _CLIENT_REQUEST_H */

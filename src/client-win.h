@@ -1,5 +1,5 @@
-#ifndef _FLEXVDICLIENTWIN_H
-#define _FLEXVDICLIENTWIN_H
+#ifndef _CLIENT_WIN_H
+#define _CLIENT_WIN_H
 
 #include <gtk/gtk.h>
 #include "client-app.h"
@@ -22,4 +22,4 @@ void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names
 gchar * client_app_window_get_desktop(ClientAppWindow * win);
 
 
-#endif /* _FLEXVDICLIENTWIN_H */
+#endif /* _CLIENT_WIN_H */
