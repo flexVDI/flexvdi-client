@@ -15,7 +15,7 @@ add_definitions(-DG_LOG_DOMAIN=\"flexvdi\" -DVERSION_STRING=\"${FLEXVDI_VERSION}
 
 add_library(client_objects OBJECT ${client_sources})
 set_target_properties(client_objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
-add_executable(flexvdi-client $<TARGET_OBJECTS:client_objects>
+add_executable(flexvdi-client WIN32 $<TARGET_OBJECTS:client_objects>
                $<TARGET_OBJECTS:resource_objects>)
 target_link_libraries(flexvdi-client ${CLIENT_LIBRARIES} m)
 
