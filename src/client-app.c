@@ -43,17 +43,12 @@ static void client_app_class_init(ClientAppClass * class) {
 
 
 /*
- * Handle command-line options once GTK has gone over them. Return -1 on success,
- * 0 if application should exit (like in -version option). Actually, we also use this 
- * function to initialize the print client and the serial port redirection.
+ * Handle command-line options once GTK has gone over them. Return -1 on success.
+ * Actually, we just use this function to initialize the print client and the serial
+ * port redirection after the configuration has been read from file and/or command-line.
  */
 static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {
     ClientApp * app = CLIENT_APP(gapp);
-    if (client_conf_show_version(app->conf)) {
-        printf("flexVDI Client v" VERSION_STRING "\n"
-               "Copyright (C) 2018 Flexible Software Solutions S.L.\n");
-        return 0;
-    }
 
     init_print_client();
 #ifdef ENABLE_SERIALREDIR
