@@ -3,6 +3,7 @@
 
 #include "client-win.h"
 
+
 struct _ClientAppWindow {
     GtkApplicationWindow parent;
     ClientConf * conf;
@@ -36,6 +37,7 @@ static guint signals[CLIENT_APP_LAST_SIGNAL];
 
 G_DEFINE_TYPE(ClientAppWindow, client_app_window, GTK_TYPE_APPLICATION_WINDOW);
 
+
 static void client_app_window_dispose(GObject * obj);
 
 static void client_app_window_class_init(ClientAppWindowClass * class) {
@@ -59,6 +61,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, password);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, desktops);
 
+    // Emited when the user presses the configuration button (with a small gear wheel)
     signals[CLIENT_APP_CONFIG_BUTTON_PRESSED] =
         g_signal_new("config-button-pressed",
                      CLIENT_APP_WINDOW_TYPE,
@@ -69,6 +72,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
                      G_TYPE_NONE,
                      0);
 
+    // Emited when the user presses the "save settings" button
     signals[CLIENT_APP_SAVE_BUTTON_PRESSED] =
         g_signal_new("save-button-pressed",
                      CLIENT_APP_WINDOW_TYPE,
@@ -79,6 +83,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
                      G_TYPE_NONE,
                      0);
 
+    // Emited when the user presses the "login" button
     signals[CLIENT_APP_LOGIN_BUTTON_PRESSED] =
         g_signal_new("login-button-pressed",
                      CLIENT_APP_WINDOW_TYPE,
@@ -89,6 +94,8 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
                      G_TYPE_NONE,
                      0);
 
+    // Emited when the user presses enter or space on the desktop list, the connect button
+    // or double-clicks on a desktop name
     signals[CLIENT_APP_DESKTOP_SELECTED] =
         g_signal_new("desktop-selected",
                      CLIENT_APP_WINDOW_TYPE,
@@ -100,29 +107,36 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
                      0);
 }
 
+
 static void button_pressed_handler(GtkButton * button, gpointer user_data);
 static void entry_activate_handler(GtkEntry * entry, gpointer user_data);
 static void desktop_selected_handler(GtkTreeView * tree_view, GtkTreePath * path,
                                      GtkTreeViewColumn * column, gpointer user_data);
 
 static void client_app_window_init(ClientAppWindow * win) {
+    /* Set the CSS rules for all the widgets in the current screen. This includes other
+       windows too, but it is done here because this is the first window and there is
+       only one */
     GtkCssProvider * css_provider = gtk_css_provider_new();
     gtk_css_provider_load_from_resource(css_provider, "/com/flexvdi/client/style.css");
     GdkScreen * screen = gtk_widget_get_screen(GTK_WIDGET(win));
     gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider),
                                               GTK_STYLE_PROVIDER_PRIORITY_USER + 1);
+
     gtk_widget_init_template(GTK_WIDGET(win));
 
     gtk_label_set_text(win->version, "version " VERSION_STRING);
+    win->desk_store = gtk_list_store_new(1, G_TYPE_STRING);
+    gtk_tree_view_set_model(win->desktops, GTK_TREE_MODEL(win->desk_store));
+
     g_signal_connect(win->config, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->save, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->login, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->connect, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->password, "activate", G_CALLBACK(entry_activate_handler), win);
-    win->desk_store = gtk_list_store_new(1, G_TYPE_STRING);
-    gtk_tree_view_set_model(win->desktops, GTK_TREE_MODEL(win->desk_store));
     g_signal_connect(win->desktops, "row-activated", G_CALLBACK(desktop_selected_handler), win);
 }
+
 
 static void client_app_window_dispose(GObject * obj) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(obj);
@@ -131,10 +145,15 @@ static void client_app_window_dispose(GObject * obj) {
     G_OBJECT_CLASS(client_app_window_parent_class)->dispose(obj);
 }
 
+
 static void save_config(ClientAppWindow * win);
 
+/*
+ * Button pressed handler, for all the buttons.
+ */
 static void button_pressed_handler(GtkButton * button, gpointer user_data) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
+
     if (button == win->config)
         g_signal_emit(win, signals[CLIENT_APP_CONFIG_BUTTON_PRESSED], 0);
     else if (button == win->save) {
@@ -146,51 +165,70 @@ static void button_pressed_handler(GtkButton * button, gpointer user_data) {
         g_signal_emit(win, signals[CLIENT_APP_DESKTOP_SELECTED], 0);
 }
 
+
+/*
+ * Entry box activated, for login when the user presses enter on the password box.
+ */
 static void entry_activate_handler(GtkEntry * entry, gpointer user_data) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
     if (entry == win->password)
         g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
 }
 
+
+/*
+ * Desktop selected handler, for double-clicks on the desktop list.
+ */
 static void desktop_selected_handler(GtkTreeView * tree_view, GtkTreePath * path,
                                      GtkTreeViewColumn * column, gpointer user_data) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
     g_signal_emit(win, signals[CLIENT_APP_DESKTOP_SELECTED], 0);
 }
 
+
 static void load_config(ClientAppWindow * win) {
     const gchar * host = client_conf_get_host(win->conf);
     const gchar * port = client_conf_get_port(win->conf);
     const gchar * username = client_conf_get_username(win->conf);
     const gchar * password = client_conf_get_password(win->conf);
+
     if (host)
         gtk_entry_set_text(win->host, host);
+
     gtk_entry_set_text(win->port, port ? port : "443");
+
     if (username)
         gtk_entry_set_text(win->username, username);
+
     if (password)
         gtk_entry_set_text(win->password, password);
+
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(win->fullscreen),
         client_conf_get_fullscreen(win->conf));
 }
 
+
 static void save_config(ClientAppWindow * win) {
     const gchar * host = gtk_entry_get_text(win->host);
     const gchar * port = gtk_entry_get_text(win->port);
+
     client_conf_set_host(win->conf, host);
     client_conf_set_port(win->conf, g_strcmp0(port, "443") ? port : NULL);
     client_conf_set_fullscreen(win->conf,
         gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(win->fullscreen)));
 }
 
+
 void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {
     win->conf = g_object_ref(conf);
     load_config(win);
 }
 
+
 void client_app_window_set_info(ClientAppWindow * win, const gchar * text) {
     gtk_label_set_text(win->info, text);
 }
+
 
 static void client_app_window_set_status(ClientAppWindow * win, gboolean error,
                                          const gchar * text) {
@@ -204,27 +242,36 @@ static void client_app_window_set_status(ClientAppWindow * win, gboolean error,
     gtk_revealer_set_reveal_child(win->status_revealer, TRUE);
 }
 
+
 void client_app_window_status(ClientAppWindow * win, const gchar * text) {
     client_app_window_set_status(win, FALSE, text);
 }
+
 
 void client_app_window_error(ClientAppWindow * win, const gchar * text) {
     client_app_window_set_status(win, TRUE, text);
 }
 
+
 void client_app_window_hide_status(ClientAppWindow * win) {
     gtk_revealer_set_reveal_child(win->status_revealer, FALSE);
 }
 
+
 void client_app_window_set_central_widget(ClientAppWindow * win, const gchar * name) {
     gtk_stack_set_visible_child_name(win->stack, name);
+    // Hide the status message when we switch pages.
     gtk_revealer_set_reveal_child(win->status_revealer, FALSE);
 }
 
+
 void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gboolean sensitive) {
     gtk_widget_set_sensitive(GTK_WIDGET(win->stack), sensitive);
+
+    // Focus the correct widget when we switch pages
     if (sensitive) {
         const gchar * child_name = gtk_stack_get_visible_child_name(win->stack);
+
         if (!g_strcmp0(child_name, "settings")) {
             gtk_widget_grab_focus(GTK_WIDGET(win->host));
         } else if (!g_strcmp0(child_name, "login")) {
@@ -238,21 +285,26 @@ void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gbool
     }
 }
 
+
 ClientAppWindow * client_app_window_new(ClientApp * app) {
     return g_object_new(CLIENT_APP_WINDOW_TYPE, "application", app, NULL);
 }
+
 
 const gchar * client_app_window_get_username(ClientAppWindow * win) {
     return gtk_entry_get_text(win->username);
 }
 
+
 const gchar * client_app_window_get_password(ClientAppWindow * win) {
     return gtk_entry_get_text(win->password);
 }
 
+
 void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names) {
     GList * name;
     GtkTreeIter it;
+
     gtk_list_store_clear(win->desk_store);
     for (name = desktop_names; name != NULL; name = name->next) {
         gtk_list_store_append(win->desk_store, &it);
@@ -262,9 +314,11 @@ void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names
     const gchar * desktop = client_conf_get_desktop(win->conf);
     if (desktop != NULL) {
         gboolean valid = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(win->desk_store), &it);
+
         while (valid) {
             g_autofree gchar * d;
             gtk_tree_model_get(GTK_TREE_MODEL(win->desk_store), &it, 0, &d, -1);
+
             if (!g_strcmp0(desktop, d)) {
                 GtkTreePath * path = gtk_tree_model_get_path(GTK_TREE_MODEL(win->desk_store), &it);
                 GtkTreeSelection * sel = gtk_tree_view_get_selection(win->desktops);
@@ -284,6 +338,7 @@ gchar * client_app_window_get_desktop(ClientAppWindow * win) {
     GtkTreeModel * model;
     GtkTreeIter it;
     gchar * desktop;
+
     if (gtk_tree_selection_get_selected(sel, &model, &it)) {
         gtk_tree_model_get(model, &it, 0, &desktop, -1);
         return desktop;
