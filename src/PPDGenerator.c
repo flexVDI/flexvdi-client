@@ -40,6 +40,7 @@ void paper_description_delete(gpointer p) {
 
 
 struct _PPDGenerator {
+    GObject parent;
     char * printer_name;
     FILE * file;
     char * filename;
