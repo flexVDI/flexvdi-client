@@ -38,6 +38,13 @@ struct _SpiceWindow {
     gulong channel_event_handler_id;
 };
 
+enum {
+    SPICE_WIN_USER_ACTIVITY = 0,
+    SPICE_WIN_LAST_SIGNAL
+};
+
+static guint signals[SPICE_WIN_LAST_SIGNAL];
+
 G_DEFINE_TYPE(SpiceWindow, spice_window, GTK_TYPE_WINDOW);
 
 static void spice_window_dispose(GObject * obj);
@@ -76,6 +83,17 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, usb_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, notification_revealer);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, notification);
+
+    // Emited when the user presses a key or moves the mouse
+    signals[SPICE_WIN_USER_ACTIVITY] =
+        g_signal_new("user-activity",
+                     SPICE_WIN_TYPE,
+                     G_SIGNAL_RUN_FIRST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
 }
 
 static void realize_window(GtkWidget * toplevel, gpointer user_data);
@@ -95,6 +113,11 @@ static void set_keystroke_cb(GtkWidget * widget, gpointer data) {
 
 static void spice_window_get_printers(SpiceWindow * win);
 static void share_current_printers(gpointer user_data);
+
+static gboolean user_activity(SpiceWindow * win) {
+    g_signal_emit(win, signals[SPICE_WIN_USER_ACTIVITY], 0);
+    return FALSE;
+}
 
 static void spice_window_init(SpiceWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
@@ -163,6 +186,16 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                      G_CALLBACK(leave_window_cb), win);
     g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
                      G_CALLBACK(mouse_grab_cb), win);
+    g_signal_connect_swapped(win->spice, "scroll-event",
+                             G_CALLBACK(user_activity), win);
+    g_signal_connect_swapped(win->spice, "button-press-event",
+                             G_CALLBACK(user_activity), win);
+    g_signal_connect_swapped(win->spice, "button-release-event",
+                             G_CALLBACK(user_activity), win);
+    g_signal_connect_swapped(win->spice, "key-press-event",
+                             G_CALLBACK(user_activity), win);
+    g_signal_connect_swapped(win->spice, "key-release-event",
+                             G_CALLBACK(user_activity), win);
 
     win->fullscreen = client_conf_get_fullscreen(conf);
     client_conf_set_display_options(conf, win->spice);
@@ -320,6 +353,7 @@ static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * even
                           hide_widget_cb, win->revealer);
         }
     }
+    user_activity(win);
     return FALSE;
 }
 
