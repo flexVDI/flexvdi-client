@@ -35,6 +35,7 @@ gboolean client_conf_get_disable_copy_from_guest(ClientConf * conf);
 gboolean client_conf_get_disable_paste_to_guest(ClientConf * conf);
 gboolean client_conf_get_disable_power_actions(ClientConf * conf);
 gboolean client_conf_is_printer_shared(ClientConf * conf, const gchar * printer);
+gchar * client_conf_get_grab_sequence(ClientConf * conf);
 
 void client_conf_set_host(ClientConf * conf, const gchar * host);
 void client_conf_set_port(ClientConf * conf, const gchar * port);

@@ -148,9 +148,6 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     /* spice display */
     SpiceSession * session = client_conn_get_session(conn);
     win->spice = spice_display_new_with_monitor(session, 0, id);
-    SpiceGrabSequence * seq = spice_grab_sequence_new_from_string("Shift_L+F12");
-    spice_display_set_grab_keys(win->spice, seq);
-    spice_grab_sequence_free(seq);
     gtk_box_pack_end(win->content_box, GTK_WIDGET(win->spice), TRUE, TRUE, 0);
     gtk_widget_grab_focus(GTK_WIDGET(win->spice));
 

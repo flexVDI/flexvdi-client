@@ -34,6 +34,7 @@ struct _ClientConf {
     gboolean disable_audio_playback;
     gboolean disable_audio_record;
     gchar * preferred_compression;
+    gchar * grab_sequence;
     // Device options
     gchar ** redir_rports;
     gchar ** redir_lports;
@@ -97,6 +98,8 @@ static void client_conf_init(ClientConf * conf) {
         "Grab mouse in server mode", NULL },
         { "no-grab-mouse", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
         G_OPTION_ARG_NONE, &conf->grab_mouse, "", NULL },
+        { "grab-sequence", 0, 0, G_OPTION_ARG_STRING, &conf->grab_sequence,
+        "Key sequence to release mouse grab (default Shift_L+F12)", NULL },
         { "resize-guest", 0, 0, G_OPTION_ARG_NONE, &conf->resize_guest,
         "Resize guest display to match window size", NULL },
         { "no-resize-guest", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
@@ -136,6 +139,7 @@ static void client_conf_init(ClientConf * conf) {
 
     conf->auto_clipboard = TRUE;
     conf->grab_mouse = TRUE;
+    conf->grab_sequence = g_strdup("Shift_L+F12");
     conf->resize_guest = TRUE;
     conf->main_options = g_memdup(main_options, sizeof(main_options));
     conf->session_options = g_memdup(session_options, sizeof(session_options));
@@ -279,6 +283,9 @@ void client_conf_set_display_options(ClientConf * conf, SpiceDisplay * display) 
         "scaling", TRUE,
         "disable-inputs", FALSE,
         NULL);
+    SpiceGrabSequence *seq = spice_grab_sequence_new_from_string(conf->grab_sequence);
+    spice_display_set_grab_keys(display, seq);
+    spice_grab_sequence_free(seq);
 }
 
 gboolean client_conf_show_version(ClientConf * conf) {
@@ -343,6 +350,10 @@ gboolean client_conf_get_disable_power_actions(ClientConf * conf) {
 
 gboolean client_conf_is_printer_shared(ClientConf * conf, const gchar * printer) {
     return conf->printers && g_strv_contains((const gchar * const *)conf->printers, printer);
+}
+
+gchar * client_conf_get_grab_sequence(ClientConf * conf) {
+    return conf->grab_sequence;
 }
 
 void set_modified(GOptionEntry * option, const gchar * name) {
