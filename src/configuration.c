@@ -246,8 +246,6 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
         g_object_set(session, "redirected-remote-ports", conf->redir_rports, NULL);
     if (conf->redir_lports)
         g_object_set(session, "redirected-local-ports", conf->redir_lports, NULL);
-    if (conf->inactivity_timeout != 0)
-        g_object_set(session, "inactivity-timeout", conf->inactivity_timeout, NULL);
     g_object_set(session, "enable-usbredir", !conf->disable_usbredir, NULL);
     if (!conf->disable_usbredir) {
         SpiceUsbDeviceManager * mgr = spice_usb_device_manager_get(session, NULL);
@@ -354,6 +352,10 @@ gboolean client_conf_is_printer_shared(ClientConf * conf, const gchar * printer)
 
 gchar * client_conf_get_grab_sequence(ClientConf * conf) {
     return conf->grab_sequence;
+}
+
+gint client_conf_get_inactivity_timeout(ClientConf * conf) {
+    return conf->inactivity_timeout;
 }
 
 void set_modified(GOptionEntry * option, const gchar * name) {
