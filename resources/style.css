@@ -107,3 +107,11 @@ tooltip {
 	border-radius: 0;
 	text-shadow: none;
 }
+
+#notification {
+    background-color: rgba(20,20,20,0.8);
+    color: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 120%;
+}

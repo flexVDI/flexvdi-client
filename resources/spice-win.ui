@@ -135,6 +135,20 @@
             <property name="halign">GTK_ALIGN_CENTER</property>
           </object>
         </child>
+        <child type="overlay">
+          <object class="GtkRevealer" id="notification_revealer">
+            <property name="transition-type">GTK_REVEALER_TRANSITION_TYPE_CROSSFADE</property>
+            <property name="valign">GTK_ALIGN_END</property>
+            <property name="halign">GTK_ALIGN_END</property>
+            <property name="margin">30</property>
+            <child>
+              <object class="GtkLabel" id="notification">
+                <property name="name">notification</property>
+                <property name="label">Test notification</property>
+              </object>
+            </child>
+          </object>
+        </child>
       </object>
     </child>
   </template>

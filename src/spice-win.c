@@ -32,6 +32,9 @@ struct _SpiceWindow {
     GtkMenu * printers_menu;
     GtkMenuButton * printers_button;
     GtkToolButton * usb_button;
+    GtkRevealer * notification_revealer;
+    GtkLabel * notification;
+    guint notification_timeout_id;
     gulong channel_event_handler_id;
 };
 
@@ -71,6 +74,8 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, printers_menu);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, printers_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, usb_button);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, notification_revealer);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, notification);
 }
 
 static void realize_window(GtkWidget * toplevel, gpointer user_data);
@@ -313,6 +318,28 @@ static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * even
         }
     }
     return FALSE;
+}
+
+static gboolean spice_win_hide_notification(gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    gtk_revealer_set_reveal_child(win->notification_revealer, FALSE);
+    win->notification_timeout_id = g_timeout_add(
+        gtk_revealer_get_transition_duration(win->notification_revealer),
+        hide_widget_cb, win->notification_revealer);
+    return FALSE;
+}
+
+void spice_win_show_notification(SpiceWindow * win, const gchar * text, gint duration) {
+    gtk_label_set_text(win->notification, text);
+    gtk_widget_show(GTK_WIDGET(win->notification_revealer));
+    gtk_revealer_set_reveal_child(win->notification_revealer, TRUE);
+    // Cancel previous hide timer
+    if (win->notification_timeout_id) {
+        g_source_remove(win->notification_timeout_id);
+        win->notification_timeout_id = 0;
+    }
+    win->notification_timeout_id = g_timeout_add(duration,
+        spice_win_hide_notification, win);
 }
 
 static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
