@@ -27,6 +27,7 @@ struct _ClientApp {
     GHashTable * desktops;
     SpiceMainChannel * main;
     SpiceWindow * windows[MAX_WINDOWS];
+    gint64 last_input_time;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -404,10 +405,13 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data);
 void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
                         GError * error, gpointer user_data);
+static gboolean check_inactivity(gpointer user_data);
 
 /*
  * Start the Spice connection with the current parameters, in the configuration object.
- * Also, connect to the USB manager signals if USB redirection is supported.
+ * Also:
+ * - connect to the USB manager signals if USB redirection is supported.
+ * - start the inactivity timeout if it is set.
  */
 static void client_app_connect(ClientApp * app) {
     SpiceSession * session = client_conn_get_session(app->connection);
@@ -420,6 +424,12 @@ static void client_app_connect(ClientApp * app) {
                          G_CALLBACK(usb_connect_failed), app);
         g_signal_connect(manager, "device-error",
                          G_CALLBACK(usb_connect_failed), app);
+    }
+
+    gint inactivity_timeout = client_conf_get_inactivity_timeout(app->conf);
+    if (inactivity_timeout >= 40) {
+        app->last_input_time = g_get_monotonic_time();
+        check_inactivity(app);
     }
 
     client_conn_connect(app->connection);
@@ -535,6 +545,7 @@ static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
 
 static void spice_win_display_mark(SpiceChannel * channel, gint mark, SpiceWindow * win);
 static void set_cp_sensitive(SpiceWindow * win, ClientApp * app);
+static void user_activity_cb(SpiceWindow * win, ClientApp * app);
 
 /*
  * Monitor changes handler. Creates a SpiceWindow for each new monitor.
@@ -564,6 +575,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
                                           G_CALLBACK(spice_win_display_mark), win, 0);
             if (i == 0)
                 g_signal_connect(win, "delete-event", G_CALLBACK(delete_cb), app);
+            g_signal_connect(win, "user-activity", G_CALLBACK(user_activity_cb), app);
             if (monitors->len == 1)
                 gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER_ALWAYS);
             gtk_widget_show_all(GTK_WIDGET(win));
@@ -650,4 +662,44 @@ void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
     gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(dialog), "%s", error->message);
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
+}
+
+
+/*
+ * Save the current time as the last user activity time.
+ */
+static void user_activity_cb(SpiceWindow * win, ClientApp * app) {
+    app->last_input_time = g_get_monotonic_time();
+}
+
+
+/*
+ * Check user inactivity:
+ * - If there are still more than 30 seconds left until timeout, program another
+ *   check at that moment.
+ * - If there are less than 30 seconds left, program another check every 100ms and
+ *   show a notification reporting that the session is about to expire.
+ * - If the timeout arrives, close the connection.
+ */
+static gboolean check_inactivity(gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    gint inactivity_timeout = client_conf_get_inactivity_timeout(app->conf);
+    gint64 now = g_get_monotonic_time();
+    gint time_to_inactivity = (app->last_input_time - now)/1000 + inactivity_timeout*1000;
+
+    if (time_to_inactivity <= 0) {
+        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
+    } else if (time_to_inactivity <= 30000) {
+        g_timeout_add(100, check_inactivity, app);
+        SpiceWindow * win =
+            SPICE_WIN(gtk_application_get_active_window(GTK_APPLICATION(app)));
+        int seconds = (time_to_inactivity + 999) / 1000;
+        g_autofree gchar * text = g_strdup_printf(
+            "Your session will end in %d seconds due to inactivity", seconds);
+        spice_win_show_notification(win, text, 200);
+    } else {
+        g_timeout_add(time_to_inactivity - 30000, check_inactivity, app);
+    }
+
+    return FALSE;
 }
