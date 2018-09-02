@@ -137,6 +137,7 @@ static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * even
                                        gpointer user_data);
 static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
                                 gpointer user_data);
+static void mouse_grab_cb(SpiceDisplay * display, gint status, gpointer user_data);
 
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                                ClientConf * conf, int id, gchar * title) {
@@ -160,6 +161,8 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                      G_CALLBACK(motion_notify_event_cb), win);
     g_signal_connect(G_OBJECT(win->spice), "leave-notify-event",
                      G_CALLBACK(leave_window_cb), win);
+    g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
+                     G_CALLBACK(mouse_grab_cb), win);
 
     win->fullscreen = client_conf_get_fullscreen(conf);
     client_conf_set_display_options(conf, win->spice);
@@ -348,6 +351,17 @@ static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
         .y = event->y
     };
     return motion_notify_event_cb(widget, &mevent, user_data);
+}
+
+static void mouse_grab_cb(SpiceDisplay * display, gint status, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+
+    if (status) {
+        gchar * grab_sequence = client_conf_get_grab_sequence(win->conf);
+        g_autofree gchar * msg =
+            g_strdup_printf("Press %s to release mouse", grab_sequence);
+        spice_win_show_notification(win, msg, 5000);
+    }
 }
 
 static void keystroke_cb(GtkMenuItem * menuitem, gpointer user_data) {
