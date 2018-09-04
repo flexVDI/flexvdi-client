@@ -1,5 +1,5 @@
-flexVDI Spice Client
-===================
+flexVDI Client
+==============
 
-This is the source code of the flexVDI client-side library, to be linked with a Spice client.
+This is the source code of the flexVDI client for Linux, Windows and MacOS desktops.
 
