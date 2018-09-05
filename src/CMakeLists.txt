@@ -6,6 +6,9 @@ if (WIN32)
     set(client_sources ${client_sources}
         terminalid-win32.c printclient-win32.c)
     set(CLIENT_LIBRARIES ${CLIENT_LIBRARIES} iphlpapi)
+elseif (APPLE)
+    set(client_sources ${client_sources}
+        terminalid-macos.c printclient-cups.c)
 else ()
     set(client_sources ${client_sources}
         terminalid-linux.c printclient-cups.c serialredir.c)
