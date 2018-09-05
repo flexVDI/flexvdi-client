@@ -466,7 +466,7 @@ static void read_int(GKeyFile * file, const gchar * group, const gchar * key, gi
 gchar * get_config_dir() {
     return g_build_filename(
         g_get_user_config_dir(),
-        "flexVDI Client",
+        "flexvdi-client",
         NULL
     );
 }
