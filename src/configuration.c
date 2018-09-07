@@ -395,19 +395,53 @@ gint client_conf_get_inactivity_timeout(ClientConf * conf) {
 
 
 /*
- * set_modified
+ * write_string
  *
- * Set an option entry as modified. Only modified entries are written back to the
- * configuration file, to avoid writing every option.
+ * Write a string value to the key file if it is not NULL, otherwise remove its key
  */
-static void set_modified(GOptionEntry * option, const gchar * name) {
-    while (option->long_name != NULL) {
-        if (!g_strcmp0(option->long_name, name)) {
-            option->flags = 1;
-            break;
-        }
-        ++option;
-    }
+static void write_string(GKeyFile * file, const gchar * group, const gchar * key, gchar * val) {
+    if (val)
+        g_key_file_set_string(file, group, key, val);
+    else g_key_file_remove_key(file, group, key, NULL);
+}
+
+
+/*
+ * write_string_array
+ *
+ * Write a string array value to the key file if it is not NULL, otherwise remove its key
+ */
+
+static void write_string_array(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
+    if (val)
+        g_key_file_set_string_list(file, group, key, (const gchar **)val, g_strv_length(val));
+    else g_key_file_remove_key(file, group, key, NULL);
+}
+
+
+/*
+ * write_bool
+ *
+ * Write a boolean value to the key file if it is not FALSE, otherwise remove its key
+ */
+
+static void write_bool(GKeyFile * file, const gchar * group, const gchar * key, gboolean val) {
+    if (val)
+        g_key_file_set_boolean(file, group, key, val);
+    else g_key_file_remove_key(file, group, key, NULL);
+}
+
+
+/*
+ * write_int
+ *
+ * Write an integer value to the key file if it is not 0, otherwise remove its key
+ */
+
+static void write_int(GKeyFile * file, const gchar * group, const gchar * key, gint val) {
+    if (val)
+        g_key_file_set_integer(file, group, key, val);
+    else g_key_file_remove_key(file, group, key, NULL);
 }
 
 
@@ -424,7 +458,7 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
         if (conf->terminal_id[0] == '\0') {
             // TODO: Random terminal id
         }
-        set_modified(conf->main_options, "terminal_id");
+        write_string(conf->file, "General", "terminal_id", conf->terminal_id);
         client_conf_save(conf);
     }
     return conf->terminal_id;
@@ -433,19 +467,19 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
 
 void client_conf_set_host(ClientConf * conf, const gchar * host) {
     conf->host = g_strdup(host);
-    set_modified(conf->main_options, "host");
+    write_string(conf->file, "General", "host", conf->host);
 }
 
 
 void client_conf_set_port(ClientConf * conf, const gchar * port) {
     conf->port = (port && port[0]) ? g_strdup(port) : NULL;
-    set_modified(conf->main_options, "port");
+    write_string(conf->file, "General", "port", conf->port);
 }
 
 
 void client_conf_set_username(ClientConf * conf, const gchar * username) {
     conf->username = g_strdup(username);
-    set_modified(conf->main_options, "username");
+    write_string(conf->file, "General", "username", conf->username);
 }
 
 
@@ -457,7 +491,7 @@ void client_conf_set_uri(ClientConf * conf, const gchar * uri) {
 
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
     conf->fullscreen = fs;
-    set_modified(conf->session_options, "fullscreen");
+    write_bool(conf->file, "Session", "fullscreen", conf->fullscreen);
 }
 
 
@@ -626,95 +660,11 @@ static void client_conf_load(ClientConf * conf) {
 }
 
 
-/*
- * write_string
- *
- * Write a string value to the key file if it is not NULL, otherwise remove its key
- */
-static void write_string(GKeyFile * file, const gchar * group, const gchar * key, gchar * val) {
-    if (val)
-        g_key_file_set_string(file, group, key, val);
-    else g_key_file_remove_key(file, group, key, NULL);
-}
-
-
-/*
- * write_string_array
- *
- * Write a string array value to the key file if it is not NULL, otherwise remove its key
- */
-
-static void write_string_array(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
-    if (val)
-        g_key_file_set_string_list(file, group, key, (const gchar **)val, g_strv_length(val));
-    else g_key_file_remove_key(file, group, key, NULL);
-}
-
-
-/*
- * write_bool
- *
- * Write a boolean value to the key file if it is not FALSE, otherwise remove its key
- */
-
-static void write_bool(GKeyFile * file, const gchar * group, const gchar * key, gboolean val) {
-    if (val)
-        g_key_file_set_boolean(file, group, key, val);
-    else g_key_file_remove_key(file, group, key, NULL);
-}
-
-
-/*
- * write_int
- *
- * Write an integer value to the key file if it is not 0, otherwise remove its key
- */
-
-static void write_int(GKeyFile * file, const gchar * group, const gchar * key, gint val) {
-    if (val)
-        g_key_file_set_integer(file, group, key, val);
-    else g_key_file_remove_key(file, group, key, NULL);
-}
-
-
 void client_conf_save(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = get_config_filename();
     g_autofree gchar * config_dir = get_config_dir();
     int i;
-
-    struct { const gchar * group; GOptionEntry * options; } groups[] = {
-        { "General", conf->main_options },
-        { "Session", conf->session_options },
-        { "Devices", conf->device_options }
-    };
-
-    for (i = 0; i < G_N_ELEMENTS(groups); ++i) {
-        GOptionEntry * option = groups[i].options;
-        for (; option->long_name != NULL; ++option) {
-            if (!option->flags) continue;
-            switch (option->arg) {
-            case G_OPTION_ARG_STRING:
-                write_string(conf->file, groups[i].group, option->long_name,
-                            *((gchar **)option->arg_data));
-                break;
-            case G_OPTION_ARG_INT:
-                write_int(conf->file, groups[i].group, option->long_name,
-                        *((gint *)option->arg_data));
-                break;
-            case G_OPTION_ARG_NONE:
-                if (g_str_has_prefix(option->long_name, "no-")) continue;
-                write_bool(conf->file, groups[i].group, option->long_name,
-                        *((gboolean *)option->arg_data));
-                break;
-            case G_OPTION_ARG_STRING_ARRAY:
-                write_string_array(conf->file, groups[i].group, option->long_name,
-                                *((gchar ***)option->arg_data));
-                break;
-            default:;
-            }
-        }
-    }
 
     g_mkdir_with_parents(config_dir, 0755);
     if (!g_key_file_save_to_file(conf->file, config_filename, &error)) {
