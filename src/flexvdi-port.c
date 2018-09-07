@@ -19,6 +19,7 @@ typedef enum {
 } WaitState;
 
 
+// No GObject here, since this is a singleton
 typedef struct FlexvdiPort {
     SpicePortChannel * channel;
     gboolean connected;
@@ -39,6 +40,7 @@ typedef struct ConnectionHandler {
 } ConnectionHandler;
 
 
+// List of callbacks to call when the guest agent connects
 static GSList * connection_handlers;
 
 
@@ -59,6 +61,7 @@ void flexvdi_port_delete_msg_buffer(uint8_t * buffer) {
 }
 
 
+// AsyncUserData holds the user callback and data of an asynchronous operation
 typedef struct AsyncUserData {
     GAsyncReadyCallback callback;
     gpointer user_data;
@@ -75,6 +78,11 @@ static gpointer new_async_user_data(GAsyncReadyCallback cb, gpointer u) {
 }
 
 
+/*
+ * send_message_cb
+ *
+ * Async callback of a simple send operation. Checks for error and releases the message buffer
+ */
 static void send_message_cb(GObject * source_object, GAsyncResult * res, gpointer user_data) {
     GError * error = NULL;
     flexvdi_port_send_msg_finish(source_object, res, &error);
@@ -85,6 +93,12 @@ static void send_message_cb(GObject * source_object, GAsyncResult * res, gpointe
 }
 
 
+/*
+ * send_message_async_cb
+ *
+ * Async callback of a send operation. Checks for cancellation and calls the user-supplied
+ * callback.
+ */
 static void send_message_async_cb(GObject * source_object, GAsyncResult * res,
                                   gpointer user_data) {
     AsyncUserData * aud = (AsyncUserData *)user_data;
@@ -130,8 +144,10 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size);
 void flexvdi_port_open(SpiceChannel * channel) {
     gboolean opened = FALSE;
     g_object_get(channel, "port-opened", &opened, NULL);
+
     if (opened) {
         g_info("flexVDI guest agent connected");
+
         g_signal_connect(channel, "port-data", G_CALLBACK(port_data), NULL);
         port.connected = TRUE;
         port.channel = SPICE_PORT_CHANNEL(channel);
@@ -140,6 +156,8 @@ void flexvdi_port_open(SpiceChannel * channel) {
         memset(port.agent_caps.caps, 0, sizeof(port.agent_caps));
         prepare_port_buffer(sizeof(FlexVDIMessageHeader));
         port.state = WAIT_NEW_MESSAGE;
+
+        // Send RESET and CAPABILITIES messages
         uint8_t * buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDIResetMsg));
         if (buf) {
             flexvdi_port_send_msg(FLEXVDI_RESET, buf);
@@ -151,6 +169,7 @@ void flexvdi_port_open(SpiceChannel * channel) {
             setCapability(capMsg, FLEXVDI_CAP_PRINTING);
             flexvdi_port_send_msg(FLEXVDI_CAPABILITIES, buf);
         }
+
     } else {
         g_info("flexVDI guest agent disconnected");
         g_signal_handlers_disconnect_by_func(channel, G_CALLBACK(port_data), NULL);
@@ -168,6 +187,11 @@ int flexvdi_agent_supports_capability(int cap) {
 }
 
 
+/*
+ * handle_capabilities_msg
+ *
+ * Handle the CAPABILITIES message comming from the guest agent
+ */
 static void handle_capabilities_msg(FlexVDICapabilitiesMsg * msg) {
     memcpy(&port.agent_caps, msg, sizeof(FlexVDICapabilitiesMsg));
     g_debug("flexVDI guest agent capabilities: %08x %08x %08x %08x",
@@ -181,6 +205,11 @@ static void handle_capabilities_msg(FlexVDICapabilitiesMsg * msg) {
 }
 
 
+/*
+ * handle_message
+ *
+ * Handle messages comming from the guest agent
+ */
 static void handle_message(uint32_t type, uint8_t * msg) {
     switch(type) {
     case FLEXVDI_CAPABILITIES:
@@ -196,6 +225,13 @@ static void handle_message(uint32_t type, uint8_t * msg) {
 }
 
 
+/*
+ * prepare_one_byte
+ *
+ * This function discards the first byte of the next header and prepares to read
+ * another byte at the end. It is called when the header information makes no sense,
+ * and we try to find the next coherent header one byte at a time.
+ */
 static void prepare_one_byte() {
     size_t i;
     uint8_t * p = port.buffer;
@@ -205,8 +241,15 @@ static void prepare_one_byte() {
 }
 
 
+/*
+ * port_data
+ *
+ * Read data arriving from the port channel into the prepared buffer. Do not
+ * expect data arriving one message at a time.
+ */
 static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
     void * end = data + size;
+
     while (data < end || port.buffer == port.bufend) { // Special case: read 0 bytes
         // Fill the buffer
         size = end - data;
@@ -215,14 +258,18 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
         memcpy(port.bufpos, data, size);
         port.bufpos += size;
         data += size;
+
         if (port.bufpos < port.bufend) return; // Data consumed, buffer not filled
+
         switch (port.state) {
         case WAIT_NEW_MESSAGE:
+            // We were waiting for the header of a new message
             port.current_header = *((FlexVDIMessageHeader *)port.buffer);
             unmarshallHeader(&port.current_header);
+            // Check header consistency
             if (port.current_header.size > FLEXVDI_MAX_MESSAGE_LENGTH) {
                 g_warning("Oversized message (%u > %u)",
-                           port.current_header.size, FLEXVDI_MAX_MESSAGE_LENGTH);
+                          port.current_header.size, FLEXVDI_MAX_MESSAGE_LENGTH);
                 prepare_one_byte();
             } else if (port.current_header.type >= FLEXVDI_MAX_MESSAGE_TYPE) {
                 g_warning("Unknown message type %d", port.current_header.type);
@@ -232,12 +279,14 @@ static void port_data(SpicePortChannel * pchannel, gpointer data, int size) {
                 port.state = WAIT_DATA;
             }
             break;
+
         case WAIT_DATA:
+            // We were waiting for the data of the message
             g_debug("Received message type %u, size %u",
-                       port.current_header.type, port.current_header.size);
+                    port.current_header.type, port.current_header.size);
             if (!unmarshallMessage(port.current_header.type, port.buffer, port.current_header.size)) {
                 g_warning("Wrong message size on reception (%u)",
-                           port.current_header.size);
+                          port.current_header.size);
             } else {
                 handle_message(port.current_header.type, port.buffer);
             }
