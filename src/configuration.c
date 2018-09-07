@@ -46,6 +46,7 @@ struct _ClientConf {
 
 G_DEFINE_TYPE(ClientConf, client_conf, G_TYPE_OBJECT);
 
+
 static void client_conf_finalize(GObject * obj);
 
 static void client_conf_class_init(ClientConfClass * class) {
@@ -53,9 +54,11 @@ static void client_conf_class_init(ClientConfClass * class) {
     object_class->finalize = client_conf_finalize;
 }
 
+
 static void client_conf_load(ClientConf * conf);
 
 static void client_conf_init(ClientConf * conf) {
+    // Inline initialization of the command-line options groups
     GOptionEntry main_options[] = {
         // { long_name, short_name, flags, arg, arg_data, description, arg_description },
         { "host", 'h', 0, G_OPTION_ARG_STRING, &conf->host,
@@ -137,6 +140,7 @@ static void client_conf_init(ClientConf * conf) {
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
+    // Dafault values other than 0, NULL or FALSE
     conf->auto_clipboard = TRUE;
     conf->grab_mouse = TRUE;
     conf->grab_sequence = g_strdup("Shift_L+F12");
@@ -144,9 +148,11 @@ static void client_conf_init(ClientConf * conf) {
     conf->main_options = g_memdup(main_options, sizeof(main_options));
     conf->session_options = g_memdup(session_options, sizeof(session_options));
     conf->device_options = g_memdup(device_options, sizeof(device_options));
+    // Load the configuration file
     conf->file = g_key_file_new();
     client_conf_load(conf);
 }
+
 
 static void client_conf_finalize(GObject * obj) {
     ClientConf * conf = CLIENT_CONF(obj);
@@ -170,9 +176,11 @@ static void client_conf_finalize(GObject * obj) {
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
 }
 
+
 ClientConf * client_conf_new(void) {
     return g_object_new(CLIENT_CONF_TYPE, NULL);
 }
+
 
 void client_conf_get_options_from_response(ClientConf * conf, JsonObject * params) {
     if (json_object_has_member(params, "enable_power_actions"))
@@ -199,7 +207,9 @@ void client_conf_get_options_from_response(ClientConf * conf, JsonObject * param
     }
 }
 
+
 void client_conf_set_application_options(ClientConf * conf, GApplication * app) {
+    // The version option is here so that it is not read from the config file
     GOptionEntry version_option[] = {
         { "version", 0, 0, G_OPTION_ARG_NONE, &conf->version,
         "Show version and exit", NULL },
@@ -218,6 +228,12 @@ void client_conf_set_application_options(ClientConf * conf, GApplication * app) 
     g_application_add_option_group(app, gst_init_get_option_group());
 }
 
+
+/*
+ * parse_preferred_compression
+ *
+ * Parse a preferred compression value
+ */
 static void parse_preferred_compression(SpiceSession * session, const gchar * value) {
     int preferred_compression = SPICE_IMAGE_COMPRESSION_INVALID;
     if (!g_strcmp0(value, "auto-glz")) {
@@ -240,6 +256,7 @@ static void parse_preferred_compression(SpiceSession * session, const gchar * va
     }
     g_object_set(session, "preferred-compression", preferred_compression, NULL);
 }
+
 
 void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) {
     if (conf->redir_rports)
@@ -273,6 +290,7 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
         NULL);
 }
 
+
 void client_conf_set_display_options(ClientConf * conf, SpiceDisplay * display) {
     g_object_set(display,
         "grab-keyboard", TRUE,
@@ -286,33 +304,41 @@ void client_conf_set_display_options(ClientConf * conf, SpiceDisplay * display) 
     spice_grab_sequence_free(seq);
 }
 
+
 gboolean client_conf_show_version(ClientConf * conf) {
     return conf->version;
 }
+
 
 const gchar * client_conf_get_host(ClientConf * conf) {
     return conf->host;
 }
 
+
 const gchar * client_conf_get_port(ClientConf * conf) {
     return conf->port;
 }
+
 
 const gchar * client_conf_get_username(ClientConf * conf) {
     return conf->username;
 }
 
+
 const gchar * client_conf_get_password(ClientConf * conf) {
     return conf->password;
 }
+
 
 const gchar * client_conf_get_desktop(ClientConf * conf) {
     return conf->desktop;
 }
 
+
 const gchar * client_conf_get_uri(ClientConf * conf) {
     return conf->uri;
 }
+
 
 gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path) {
     if (!conf->host) return NULL;
@@ -322,43 +348,59 @@ gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path) {
         return g_strdup_printf("https://%s:%s%s", conf->host, conf->port, path);
 }
 
+
 gboolean client_conf_get_fullscreen(ClientConf * conf) {
     return conf->fullscreen;
 }
+
 
 gchar ** client_conf_get_serial_params(ClientConf * conf) {
     return conf->serial_params;
 }
 
+
 gboolean client_conf_get_disable_printing(ClientConf * conf) {
     return conf->disable_printing;
 }
+
 
 gboolean client_conf_get_disable_copy_from_guest(ClientConf * conf) {
     return conf->disable_copy_from_guest;
 }
 
+
 gboolean client_conf_get_disable_paste_to_guest(ClientConf * conf) {
     return conf->disable_paste_to_guest;
 }
+
 
 gboolean client_conf_get_disable_power_actions(ClientConf * conf) {
     return conf->disable_power_actions;
 }
 
+
 gboolean client_conf_is_printer_shared(ClientConf * conf, const gchar * printer) {
     return conf->printers && g_strv_contains((const gchar * const *)conf->printers, printer);
 }
+
 
 gchar * client_conf_get_grab_sequence(ClientConf * conf) {
     return conf->grab_sequence;
 }
 
+
 gint client_conf_get_inactivity_timeout(ClientConf * conf) {
     return conf->inactivity_timeout;
 }
 
-void set_modified(GOptionEntry * option, const gchar * name) {
+
+/*
+ * set_modified
+ *
+ * Set an option entry as modified. Only modified entries are written back to the
+ * configuration file, to avoid writing every option.
+ */
+static void set_modified(GOptionEntry * option, const gchar * name) {
     while (option->long_name != NULL) {
         if (!g_strcmp0(option->long_name, name)) {
             option->flags = 1;
@@ -368,6 +410,12 @@ void set_modified(GOptionEntry * option, const gchar * name) {
     }
 }
 
+
+/*
+ * discover_terminal_id
+ *
+ * Obtain the terminal ID from the system. Implemented in terminalid-[platform].c
+ */
 gchar * discover_terminal_id();
 
 const gchar * client_conf_get_terminal_id(ClientConf * conf) {
@@ -382,32 +430,39 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
     return conf->terminal_id;
 }
 
+
 void client_conf_set_host(ClientConf * conf, const gchar * host) {
     conf->host = g_strdup(host);
     set_modified(conf->main_options, "host");
 }
+
 
 void client_conf_set_port(ClientConf * conf, const gchar * port) {
     conf->port = (port && port[0]) ? g_strdup(port) : NULL;
     set_modified(conf->main_options, "port");
 }
 
+
 void client_conf_set_username(ClientConf * conf, const gchar * username) {
     conf->username = g_strdup(username);
     set_modified(conf->main_options, "username");
 }
+
 
 void client_conf_set_uri(ClientConf * conf, const gchar * uri) {
     conf->uri = g_strdup(uri);
     // Parse flexvdi:// URIs
 }
 
+
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
     conf->fullscreen = fs;
     set_modified(conf->session_options, "fullscreen");
 }
 
+
 void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolean share) {
+    // Insert/remove the printer from the list, but appear only once
     gchar ** sel_printer = conf->printers;
     while (*sel_printer && g_strcmp0(*sel_printer, printer)) ++sel_printer;
 
@@ -428,6 +483,12 @@ void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolea
     }
 }
 
+
+/*
+ * read_string
+ *
+ * Read a string value from the key file into a variable, only if it exists
+ */
 static void read_string(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
     gchar * str_val = g_key_file_get_string(file, group, key, NULL);
     if (str_val) {
@@ -436,6 +497,13 @@ static void read_string(GKeyFile * file, const gchar * group, const gchar * key,
     }
 }
 
+
+/*
+ * read_string_array
+ *
+ * Read a string array value from the key file into a variable, only if it exists.
+ * String arrays are written in the configuration file as a ;-separated list
+ */
 static void read_string_array(GKeyFile * file, const gchar * group, const gchar * key, gchar *** val) {
     gsize size;
     gchar ** str_val = g_key_file_get_string_list(file, group, key, &size, NULL);
@@ -445,6 +513,12 @@ static void read_string_array(GKeyFile * file, const gchar * group, const gchar 
     }
 }
 
+
+/*
+ * read_bool
+ *
+ * Read a boolean value from the key file into a variable, only if it exists
+ */
 static void read_bool(GKeyFile * file, const gchar * group, const gchar * key, gboolean * val) {
     GError * error = NULL;
     gboolean bool_val = g_key_file_get_boolean(file, group, key, &error);
@@ -454,6 +528,12 @@ static void read_bool(GKeyFile * file, const gchar * group, const gchar * key, g
     } else g_error_free(error);
 }
 
+
+/*
+ * read_int
+ *
+ * Read an integer value from the key file into a variable, only if it exists
+ */
 static void read_int(GKeyFile * file, const gchar * group, const gchar * key, gint * val) {
     GError * error = NULL;
     gint int_val = g_key_file_get_integer(file, group, key, &error);
@@ -463,7 +543,13 @@ static void read_int(GKeyFile * file, const gchar * group, const gchar * key, gi
     } else g_error_free(error);
 }
 
-gchar * get_config_dir() {
+
+/*
+ * get_config_dir
+ *
+ * Get the directory where the configuration file is saved.
+ */
+static gchar * get_config_dir() {
     return g_build_filename(
         g_get_user_config_dir(),
         "flexvdi-client",
@@ -471,7 +557,13 @@ gchar * get_config_dir() {
     );
 }
 
-gchar * get_config_filename() {
+
+/*
+ * get_config_filename
+ *
+ * Get the path to the configuration file
+ */
+static gchar * get_config_filename() {
     g_autofree gchar * config_dir = get_config_dir();
     return g_build_filename(
         config_dir,
@@ -480,6 +572,12 @@ gchar * get_config_filename() {
     );
 }
 
+
+/*
+ * client_conf_load
+ *
+ * Load the configuration file
+ */
 static void client_conf_load(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = get_config_filename();
@@ -493,6 +591,7 @@ static void client_conf_load(ClientConf * conf) {
         return;
     }
 
+    // Load options in a section for each option group
     struct { const gchar * group; GOptionEntry * options; } groups[] = {
         { "General", conf->main_options },
         { "Session", conf->session_options },
@@ -526,11 +625,24 @@ static void client_conf_load(ClientConf * conf) {
     }
 }
 
+
+/*
+ * write_string
+ *
+ * Write a string value to the key file if it is not NULL, otherwise remove its key
+ */
 static void write_string(GKeyFile * file, const gchar * group, const gchar * key, gchar * val) {
     if (val)
         g_key_file_set_string(file, group, key, val);
     else g_key_file_remove_key(file, group, key, NULL);
 }
+
+
+/*
+ * write_string_array
+ *
+ * Write a string array value to the key file if it is not NULL, otherwise remove its key
+ */
 
 static void write_string_array(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
     if (val)
@@ -538,17 +650,32 @@ static void write_string_array(GKeyFile * file, const gchar * group, const gchar
     else g_key_file_remove_key(file, group, key, NULL);
 }
 
+
+/*
+ * write_bool
+ *
+ * Write a boolean value to the key file if it is not FALSE, otherwise remove its key
+ */
+
 static void write_bool(GKeyFile * file, const gchar * group, const gchar * key, gboolean val) {
     if (val)
         g_key_file_set_boolean(file, group, key, val);
     else g_key_file_remove_key(file, group, key, NULL);
 }
 
+
+/*
+ * write_int
+ *
+ * Write an integer value to the key file if it is not 0, otherwise remove its key
+ */
+
 static void write_int(GKeyFile * file, const gchar * group, const gchar * key, gint val) {
     if (val)
         g_key_file_set_integer(file, group, key, val);
     else g_key_file_remove_key(file, group, key, NULL);
 }
+
 
 void client_conf_save(ClientConf * conf) {
     GError * error = NULL;

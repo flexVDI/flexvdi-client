@@ -10,15 +10,59 @@
 #include <json-glib/json-glib.h>
 
 
+/*
+ * ClientConf
+ *
+ * A configuration manager for the application. Configuration parameters are first
+ * read from a file, then overriden by any option passed through command line.
+ * Every option can be set both in the configuration file and from command line.
+ * Some options can also be saved back to the configuration file, like the server
+ * IP and port, username or shared printers.
+ */
 #define CLIENT_CONF_TYPE (client_conf_get_type())
 G_DECLARE_FINAL_TYPE(ClientConf, client_conf, CLIENT, CONF, GObject)
 
+/*
+ * client_conf_new
+ *
+ * Create a new ClientConf object. Only one should be used throughout the app.
+ * As a side effect, the configuration file is read.
+ */
 ClientConf * client_conf_new(void);
+
+/*
+ * client_conf_get_options_from_response
+ *
+ * Set some parameters as provided by the response from the Manager, like disabled
+ * features or the inactivity timeout.
+ */
 void client_conf_get_options_from_response(ClientConf * conf, JsonObject * params);
+
+/*
+ * client_conf_set_application_options
+ *
+ * Set the option groups so that command line options can be parsed.
+ */
 void client_conf_set_application_options(ClientConf * conf, GApplication * app);
+
+/*
+ * client_conf_set_session_options
+ *
+ * Transfer session options to a SpiceSession object, like connection parameters.
+ */
 void client_conf_set_session_options(ClientConf * conf, SpiceSession * session);
+
+/*
+ * client_conf_set_display_options
+ *
+ * Transfer display options to a SpiceDisplay object, like pointer grab behaviour.
+ */
 void client_conf_set_display_options(ClientConf * conf, SpiceDisplay * display);
 
+/*
+ * Getters for some options, those needed directly by the application. Some options
+ * that are set through the previous two functions do not have a corresponding getter.
+ */
 gboolean client_conf_show_version(ClientConf * conf);
 const gchar * client_conf_get_host(ClientConf * conf);
 const gchar * client_conf_get_port(ClientConf * conf);
@@ -38,12 +82,21 @@ gboolean client_conf_is_printer_shared(ClientConf * conf, const gchar * printer)
 gchar * client_conf_get_grab_sequence(ClientConf * conf);
 gint client_conf_get_inactivity_timeout(ClientConf * conf);
 
+/*
+ * Setters for those options that can be saved to disk.
+ */
 void client_conf_set_host(ClientConf * conf, const gchar * host);
 void client_conf_set_port(ClientConf * conf, const gchar * port);
 void client_conf_set_username(ClientConf * conf, const gchar * username);
 void client_conf_set_uri(ClientConf * conf, const gchar * uri);
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs);
 void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolean share);
+
+/*
+ * client_conf_save
+ *
+ * Save the configuration to file.
+ */
 void client_conf_save(ClientConf * conf);
 
 #endif /* _CONFIGURATION_H */
