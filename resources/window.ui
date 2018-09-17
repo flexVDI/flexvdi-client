@@ -22,7 +22,6 @@
         <child>
           <object class="GtkButton" id="config">
             <property name="image">gears-icon</property>
-            <property name="can-focus">False</property>
             <style>
               <class name="titlebutton"/>
             </style>
@@ -179,12 +178,6 @@
                     <property name="width-request">250</property>
                   </object>
                 </child>
-                <focus-chain>
-                  <widget name="host" />
-                  <widget name="port" />
-                  <widget name="fullscreen" />
-                  <widget name="save" />
-                </focus-chain>
               </object>
               <packing>
                 <property name="name">settings</property>
