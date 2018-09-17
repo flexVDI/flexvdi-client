@@ -16,13 +16,20 @@ static void setup_logging() {
     for (domain = debug_domains; *domain != NULL && !all_debug; ++domain)
         all_debug = g_strcmp0(*domain, "all") == 0;
 
-    g_autoptr(GDateTime) now = g_date_time_new_now_local();
-    g_autofree gchar * file_name = g_date_time_format(now, "flexvdi-client-%Y-%m-%d.log");
-    g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
-    g_autofree gchar * file_path = g_build_filename(log_dir, file_name, NULL);
-    g_mkdir_with_parents(log_dir, 0700);
-    FILE * file = fopen(file_path, "a");
-    log_file = file ? file : stderr;
+    const gchar * log_file_pattern = g_getenv("FLEXVDI_LOG_FILE");
+    if (!log_file_pattern)
+        log_file_pattern = "flexvdi-client-%Y-%m-%d.log";
+    if (!g_strcmp0(log_file_pattern, "-")) {
+        log_file = stderr;
+    } else {
+        g_autoptr(GDateTime) now = g_date_time_new_now_local();
+        g_autofree gchar * file_name = g_date_time_format(now, "flexvdi-client-%Y-%m-%d.log");
+        g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
+        g_autofree gchar * file_path = g_build_filename(log_dir, file_name, NULL);
+        g_mkdir_with_parents(log_dir, 0700);
+        FILE * file = fopen(file_path, "a");
+        log_file = file ? file : stderr;
+    }
     setvbuf(log_file, NULL, _IOLBF, 0);
 }
 
