@@ -389,9 +389,13 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
 
     g_hash_table_remove_all(app->desktops);
     json_object_iter_init(&it, desktops);
-    while (json_object_iter_next(&it, &desktop_key, &desktop_node))
-        g_hash_table_insert(app->desktops,
-            g_strdup(json_node_get_string(desktop_node)), g_strdup(desktop_key));
+    while (json_object_iter_next(&it, &desktop_key, &desktop_node)) {
+        const gchar * desktop_name = json_node_get_string(desktop_node);
+        if (g_strcmp0(desktop_name, "") == 0) {
+            desktop_name = desktop_key;
+        }
+        g_hash_table_insert(app->desktops, g_strdup(desktop_name), g_strdup(desktop_key));
+    }
 
     g_autoptr(GList) desktop_names =
         g_list_sort(g_hash_table_get_keys(app->desktops), (GCompareFunc)g_strcmp0);
