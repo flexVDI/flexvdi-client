@@ -498,8 +498,10 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
 
 
 static void client_app_close_windows(ClientApp * app) {
-    GList * windows = gtk_application_get_windows(GTK_APPLICATION(app)), * window = windows;
-    for (; window != NULL; window = window->next) {
+    GList * windows = gtk_application_get_windows(GTK_APPLICATION(app)),
+        * window = windows, * next;
+    for (; window != NULL; window = next) {
+        next = window->next;
         gtk_widget_destroy(GTK_WIDGET(window->data));
     }
 }
