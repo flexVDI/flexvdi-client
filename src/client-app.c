@@ -92,7 +92,7 @@ static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data);
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 
 static void client_app_configure(ClientApp * app);
-static void client_app_show_login(ClientApp * app);
+static void client_app_show_login(ClientApp * app, const gchar * error);
 static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri);
 
 /*
@@ -128,7 +128,7 @@ static void client_app_activate(GApplication * gapp) {
         client_app_window_set_central_widget(app->main_window, "login");
         client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
     } else if (client_conf_get_host(app->conf) != NULL) {
-        client_app_show_login(app);
+        client_app_show_login(app, NULL);
         if (client_conf_get_username(app->conf) && client_conf_get_password(app->conf)) {
             login_button_pressed_handler(app->main_window, app);
         }
@@ -172,7 +172,7 @@ static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer
  */
 static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
     client_conf_save(CLIENT_APP(user_data)->conf);
-    client_app_show_login(CLIENT_APP(user_data));
+    client_app_show_login(CLIENT_APP(user_data), NULL);
 }
 
 
@@ -251,9 +251,12 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data);
 /*
  * Show the login page, and start a new authmode request.
  */
-static void client_app_show_login(ClientApp * app) {
-    client_app_window_status(app->main_window, "Contacting server...");
+static void client_app_show_login(ClientApp * app, const gchar * error) {
     client_app_window_set_central_widget(app->main_window, "login");
+    if (error == NULL)
+        client_app_window_status(app->main_window, "Contacting server...");
+    else
+        client_app_window_error(app->main_window, error);
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
 
     app->username = app->password = app->desktop = "";
@@ -275,7 +278,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
     JsonNode * root = client_request_get_result(req, &error);
 
     if (error) {
-        client_app_window_error(app->main_window, "Failed to contact server");
+        client_app_show_login(app, "Failed to contact server");
         g_warning("Request failed: %s", error->message);
 
     } else if (JSON_NODE_HOLDS_OBJECT(root)) {
@@ -284,7 +287,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
         const gchar * auth_mode = json_object_get_string_member(response, "auth_mode");
 
         if (g_strcmp0(status, "OK") != 0) {
-            client_app_window_error(app->main_window, "Access denied");
+            client_app_show_login(app, "Access denied");
         } else if (g_strcmp0(auth_mode, "active_directory") == 0) {
             client_app_window_hide_status(app->main_window);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
@@ -294,7 +297,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
         }
 
     } else {
-        client_app_window_error(app->main_window, "Invalid response from server");
+        client_app_show_login(app, "Invalid response from server");
         g_warning("Invalid response from server, see debug messages");
     }
 }
@@ -339,7 +342,7 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
     JsonNode * root = client_request_get_result(req, &error);
 
     if (error) {
-        client_app_window_error(app->main_window, "Failed to contact server");
+        client_app_show_login(app, "Failed to contact server");
         g_warning("Request failed: %s", error->message);
 
     } else if (JSON_NODE_HOLDS_OBJECT(root)) {
@@ -356,7 +359,7 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
 
         } else if (g_strcmp0(status, "Error") == 0) {
             const gchar * message = json_object_get_string_member(response, "message");
-            client_app_window_error(app->main_window, message);
+            client_app_show_login(app, message);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
 
         } else if (g_strcmp0(status, "SelectDesktop") == 0) {
@@ -372,7 +375,7 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
     } else invalid = TRUE;
 
     if (invalid) {
-        client_app_window_error(app->main_window,
+        client_app_show_login(app,
             "Invalid response from server");
         g_warning("Invalid response from server, see debug messages");
     }

@@ -23,6 +23,7 @@ struct _ClientAppWindow {
     GtkEntry * password;
     GtkTreeView * desktops;
     GtkListStore * desk_store;
+    guint error_timeout;
 };
 
 enum {
@@ -230,12 +231,18 @@ void client_app_window_set_info(ClientAppWindow * win, const gchar * text) {
 }
 
 
+static gboolean error_status_timeout(gpointer user_data);
+
 static void client_app_window_set_status(ClientAppWindow * win, gboolean error,
                                          const gchar * text) {
     gtk_label_set_text(win->status, text);
     GtkStyleContext * style = gtk_widget_get_style_context(GTK_WIDGET(win->status));
     if (error) {
         gtk_style_context_add_class(style, "error");
+        // Hide error messages after 10 seconds
+        if (win->error_timeout > 0)
+            g_source_remove(win->error_timeout);
+        win->error_timeout = g_timeout_add_seconds(10, error_status_timeout, win);
     } else {
         gtk_style_context_remove_class(style, "error");
     }
@@ -254,7 +261,20 @@ void client_app_window_error(ClientAppWindow * win, const gchar * text) {
 
 
 void client_app_window_hide_status(ClientAppWindow * win) {
-    gtk_revealer_set_reveal_child(win->status_revealer, FALSE);
+    // Hide the status message only if it is not an error message
+    GtkStyleContext * style = gtk_widget_get_style_context(GTK_WIDGET(win->status));
+    if (!gtk_style_context_has_class(style, "error"))
+        gtk_revealer_set_reveal_child(win->status_revealer, FALSE);
+}
+
+
+/*
+ * Error message timeout. Hide it after 10 seconds.
+ */
+static gboolean error_status_timeout(gpointer user_data) {
+    ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
+    gtk_revealer_set_reveal_child(win->status_revealer, FALSE);;
+    return FALSE;
 }
 
 
