@@ -20,6 +20,7 @@ struct _SpiceWindow {
     GtkToolButton * close_button;
     GtkToolButton * copy_button;
     GtkToolButton * paste_button;
+    GtkSeparatorToolItem * copy_paste_separator;
     GtkToolButton * fullscreen_button;
     GtkToolButton * restore_button;
     GtkToolButton * minimize_button;
@@ -63,6 +64,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, close_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, copy_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, paste_button);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, copy_paste_separator);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, fullscreen_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, restore_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, minimize_button);
@@ -204,6 +206,11 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->reboot_button));
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->poweroff_button));
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->shutdown_button));
+    }
+    if (client_conf_get_auto_clipboard(conf)) {
+        gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->copy_paste_separator));
+        gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->copy_button));
+        gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->paste_button));
     }
     spice_window_get_printers(win);
     if (win->id == 0) {
