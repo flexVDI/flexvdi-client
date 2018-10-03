@@ -28,29 +28,7 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkSeparatorToolItem" id="power_actions_separator">
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkToolButton" id="reboot_button">
-                    <property name="icon-name">system-reboot-cus</property>
-                    <property name="tooltip-text" translatable="yes">Reset</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkToolButton" id="shutdown_button">
-                    <property name="icon-name">system-shutdown-cus</property>
-                    <property name="tooltip-text" translatable="yes">Orderly shutdown</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkToolButton" id="poweroff_button">
-                    <property name="icon-name">system-poweroff-cus</property>
-                    <property name="tooltip-text" translatable="yes">Immediately poweroff</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkSeparatorToolItem">
+                  <object class="GtkSeparatorToolItem" id="copy_paste_separator">
                   </object>
                 </child>
                 <child>
@@ -88,6 +66,28 @@
                         </child>
                       </object>
                     </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkSeparatorToolItem" id="power_actions_separator">
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="reboot_button">
+                    <property name="icon-name">system-reboot-cus</property>
+                    <property name="tooltip-text" translatable="yes">Reset</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="shutdown_button">
+                    <property name="icon-name">system-shutdown-cus</property>
+                    <property name="tooltip-text" translatable="yes">Orderly shutdown</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToolButton" id="poweroff_button">
+                    <property name="icon-name">system-poweroff-cus</property>
+                    <property name="tooltip-text" translatable="yes">Immediately poweroff</property>
                   </object>
                 </child>
                 <child>
