@@ -394,6 +394,11 @@ gint client_conf_get_inactivity_timeout(ClientConf * conf) {
 }
 
 
+gboolean client_conf_get_auto_clipboard(ClientConf * conf) {
+    return conf->auto_clipboard;
+}
+
+
 /*
  * write_string
  *

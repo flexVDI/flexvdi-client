@@ -81,6 +81,7 @@ gboolean client_conf_get_disable_power_actions(ClientConf * conf);
 gboolean client_conf_is_printer_shared(ClientConf * conf, const gchar * printer);
 gchar * client_conf_get_grab_sequence(ClientConf * conf);
 gint client_conf_get_inactivity_timeout(ClientConf * conf);
+gboolean client_conf_get_auto_clipboard(ClientConf * conf);
 
 /*
  * Setters for those options that can be saved to disk.
