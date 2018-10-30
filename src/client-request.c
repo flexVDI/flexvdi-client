@@ -5,6 +5,24 @@
 #include "client-request.h"
 
 
+// Hide the password value in a JSON text, to log it safely
+static gchar * hide_json_password(const gchar * json_str) {
+    gchar * result = g_strdup(json_str);
+    const gchar * field_name = "\"password\"";
+    gchar * pos = strstr(result, field_name);
+    if (pos) {
+        pos += 10;
+        while (*pos && *pos != ':') ++pos;
+        while (*pos && *pos != '"') ++pos;
+        if (*pos) {
+            ++pos;
+            while (*pos && *pos != '"') *(pos++) = '*';
+        }
+    }
+    return result;
+}
+
+
 struct _ClientRequest {
     GObject parent;
     SoupSession * soup;
@@ -96,7 +114,8 @@ static void request_parsed_cb(GObject * object, GAsyncResult * res, gpointer use
         g_autoptr(JsonGenerator) gen = json_generator_new();
         json_generator_set_root(gen, json_parser_get_root(req->parser));
         g_autofree gchar * response = json_generator_to_data(gen, NULL);
-        g_debug("request response:\n%s", response);
+        g_autofree gchar * safe_response = hide_json_password(response);
+        g_debug("request response:\n%s", safe_response);
     }
 
     req->cb(req, req->user_data);
@@ -157,7 +176,8 @@ ClientRequest * client_request_new_with_data(ClientConf * conf, const gchar * pa
 
     g_autofree gchar * uri = client_conf_get_connection_uri(conf, path);
     SoupMessage * msg = soup_message_new("POST", uri);
-    g_debug("POST request to %s, body:\n%s", uri, post_data);
+    g_autofree gchar * safe_post_data = hide_json_password(post_data);
+    g_debug("POST request to %s, body:\n%s", uri, safe_post_data);
     soup_message_set_request(msg, "text/json", SOUP_MEMORY_COPY, post_data, strlen(post_data));
     soup_session_send_async(soup, msg, req->cancel_mgr_request,
                             request_finished_cb, g_object_ref(req));
