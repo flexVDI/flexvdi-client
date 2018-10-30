@@ -24,6 +24,7 @@ struct _ClientAppWindow {
     GtkTreeView * desktops;
     GtkListStore * desk_store;
     guint error_timeout;
+    guint status_animation;
 };
 
 enum {
@@ -250,8 +251,33 @@ static void client_app_window_set_status(ClientAppWindow * win, gboolean error,
 }
 
 
+/*
+ * Status animation, stop it when the status message is hidden
+ */
+static gboolean status_animation(gpointer user_data) {
+    ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
+    GtkStyleContext * style = gtk_widget_get_style_context(GTK_WIDGET(win->status));
+    if (!gtk_revealer_get_reveal_child(win->status_revealer) ||
+        gtk_style_context_has_class(style, "error")) {
+        win->status_animation = 0;
+        return FALSE;
+    }
+
+    const gchar * text = gtk_label_get_text(win->status);
+    g_autofree gchar * new_text;
+    if (g_str_has_suffix(text, "..."))
+        new_text = g_strndup(text, strlen(text) - 2);
+    else new_text = g_strdup_printf("%s%s", text, ".");
+    gtk_label_set_text(win->status, new_text);
+    return TRUE;
+}
+
+
 void client_app_window_status(ClientAppWindow * win, const gchar * text) {
     client_app_window_set_status(win, FALSE, text);
+    if (win->status_animation > 0)
+        g_source_remove(win->status_animation);
+    win->status_animation = g_timeout_add(300, status_animation, win);
 }
 
 
