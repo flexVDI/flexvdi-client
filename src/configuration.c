@@ -669,7 +669,6 @@ void client_conf_save(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = get_config_filename();
     g_autofree gchar * config_dir = get_config_dir();
-    int i;
 
     g_mkdir_with_parents(config_dir, 0755);
     if (!g_key_file_save_to_file(conf->file, config_filename, &error)) {
