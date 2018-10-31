@@ -144,6 +144,14 @@ static void client_app_window_dispose(GObject * obj) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(obj);
     g_clear_object(&win->conf);
     g_clear_object(&win->desk_store);
+    if (win->error_timeout > 0) {
+        g_source_remove(win->error_timeout);
+        win->error_timeout = 0;
+    }
+    if (win->status_animation > 0) {
+        g_source_remove(win->status_animation);
+        win->status_animation = 0;
+    }
     G_OBJECT_CLASS(client_app_window_parent_class)->dispose(obj);
 }
 
