@@ -527,7 +527,7 @@ static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
         break;
     case SPICE_CHANNEL_ERROR_IO:
-        client_conn_disconnect(app->connection, CLIENT_CONN_ISCONNECT_IO_ERROR);
+        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_IO_ERROR);
         break;
     case SPICE_CHANNEL_ERROR_TLS:
     case SPICE_CHANNEL_ERROR_LINK:
