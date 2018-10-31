@@ -156,3 +156,26 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer d
 SpiceMainChannel * client_conn_get_main_channel(ClientConn * conn) {
     return conn->main;
 }
+
+
+ClientConnDisconnectReason client_conn_get_reason(ClientConn * conn) {
+    return conn->reason;
+}
+
+
+gchar * client_conn_get_reason_str(ClientConn * conn) {
+    switch (conn->reason) {
+        case CLIENT_CONN_DISCONNECT_NO_ERROR:
+            return g_strdup("The connection was orderly closed by the server.");
+        case CLIENT_CONN_DISCONNECT_USER:
+            return g_strdup("The connection was closed by a user action.");
+        case CLIENT_CONN_DISCONNECT_INACTIVITY:
+            return g_strdup("The connection was closed due to inactivity.");
+        case CLIENT_CONN_DISCONNECT_CONN_ERROR:
+        case CLIENT_CONN_DISCONNECT_IO_ERROR:
+        case CLIENT_CONN_DISCONNECT_AUTH_ERROR:
+            return g_strdup("Connection error, see the log file for further information.");
+        default:
+            return g_strdup("The connection was closed for unknown reasons.");
+    }
+}

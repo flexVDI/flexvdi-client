@@ -86,5 +86,18 @@ SpiceGtkSession * client_conn_get_gtk_session(ClientConn * conn);
  */
 SpiceMainChannel * client_conn_get_main_channel(ClientConn * conn);
 
+/*
+ * client_conn_get_reason
+ *
+ * Get the disconnection reason
+ */
+ClientConnDisconnectReason client_conn_get_reason(ClientConn * conn);
+
+/*
+ * client_conn_get_reason_str
+ *
+ * Get a description of the disconnection reason
+ */
+gchar * client_conn_get_reason_str(ClientConn * conn);
 
 #endif /* _CLIENT_CONN_H */
