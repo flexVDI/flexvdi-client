@@ -221,7 +221,7 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
     int i;
 
     if (app->connection)
-        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
+        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_USER);
     for (i = 0; i < MAX_WINDOWS; ++i) {
         if (GTK_WIDGET(app->windows[i]) == widget) {
             app->windows[i] = NULL;
@@ -697,7 +697,7 @@ static gboolean check_inactivity(gpointer user_data) {
     gint time_to_inactivity = (app->last_input_time - now)/1000 + inactivity_timeout*1000;
 
     if (time_to_inactivity <= 0) {
-        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_NO_ERROR);
+        client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_INACTIVITY);
     } else if (time_to_inactivity <= 30000) {
         g_timeout_add(100, check_inactivity, app);
         SpiceWindow * win =
