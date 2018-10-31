@@ -299,7 +299,8 @@ void client_app_window_hide_status(ClientAppWindow * win) {
  */
 static gboolean error_status_timeout(gpointer user_data) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
-    gtk_revealer_set_reveal_child(win->status_revealer, FALSE);;
+    gtk_revealer_set_reveal_child(win->status_revealer, FALSE);
+    win->error_timeout = 0;
     return FALSE;
 }
 
