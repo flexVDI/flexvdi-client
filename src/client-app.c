@@ -228,6 +228,24 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
         }
     }
 
+    GList * windows = gtk_application_get_windows(GTK_APPLICATION(app));
+    g_debug("Closing window, %d remaining", g_list_length(windows));
+    if (g_list_length(windows) == 1 && app->connection) {
+        ClientConnDisconnectReason reason = client_conn_get_reason(app->connection);
+        if (reason != CLIENT_CONN_DISCONNECT_USER) {
+            GtkMessageType type =
+                reason == CLIENT_CONN_DISCONNECT_NO_ERROR || reason == CLIENT_CONN_DISCONNECT_INACTIVITY ?
+                    GTK_MESSAGE_INFO : GTK_MESSAGE_ERROR;
+            g_autofree gchar * text = client_conn_get_reason_str(app->connection);
+            g_warning("Closing app, reason %d: %s", reason, text);
+            GtkWidget * dialog = gtk_message_dialog_new(GTK_WINDOW(widget),
+                GTK_DIALOG_MODAL, type, GTK_BUTTONS_CLOSE, text);
+            gtk_window_set_title(GTK_WINDOW(dialog), "Connection closed");
+            gtk_dialog_run(GTK_DIALOG (dialog));
+            gtk_widget_destroy(dialog);
+        }
+    }
+
     return FALSE;
 }
 
