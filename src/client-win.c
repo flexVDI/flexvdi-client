@@ -16,6 +16,7 @@ struct _ClientAppWindow {
     GtkEntry * host;
     GtkEntry * port;
     GtkCheckButton * fullscreen;
+    GtkEntry * proxy;
     GtkButton * config;
     GtkButton * save;
     GtkButton * login;
@@ -56,6 +57,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, host);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, port);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, fullscreen);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, proxy);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, config);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, save);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, login);
@@ -202,6 +204,7 @@ static void load_config(ClientAppWindow * win) {
     const gchar * port = client_conf_get_port(win->conf);
     const gchar * username = client_conf_get_username(win->conf);
     const gchar * password = client_conf_get_password(win->conf);
+    const gchar * proxy_uri = client_conf_get_proxy_uri(win->conf);
 
     if (host)
         gtk_entry_set_text(win->host, host);
@@ -216,17 +219,22 @@ static void load_config(ClientAppWindow * win) {
 
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(win->fullscreen),
         client_conf_get_fullscreen(win->conf));
+
+    if (proxy_uri)
+        gtk_entry_set_text(win->proxy, proxy_uri);
 }
 
 
 static void save_config(ClientAppWindow * win) {
     const gchar * host = gtk_entry_get_text(win->host);
     const gchar * port = gtk_entry_get_text(win->port);
+    const gchar * proxy_uri = gtk_entry_get_text(win->proxy);
 
     client_conf_set_host(win->conf, host);
     client_conf_set_port(win->conf, g_strcmp0(port, "443") ? port : NULL);
     client_conf_set_fullscreen(win->conf,
         gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(win->fullscreen)));
+    client_conf_set_proxy_uri(win->conf, proxy_uri);
 }
 
 
