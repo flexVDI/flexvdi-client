@@ -92,6 +92,7 @@ void client_conf_set_port(ClientConf * conf, const gchar * port);
 void client_conf_set_username(ClientConf * conf, const gchar * username);
 void client_conf_set_uri(ClientConf * conf, const gchar * uri);
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs);
+void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri);
 void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolean share);
 
 /*

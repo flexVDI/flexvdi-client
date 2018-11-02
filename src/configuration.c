@@ -515,6 +515,13 @@ void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
 }
 
 
+void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri) {
+    g_free(conf->proxy_uri);
+    conf->proxy_uri = g_strdup(proxy_uri);
+    write_string(conf->file, "General", "proxy-uri", conf->proxy_uri);
+}
+
+
 void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolean share) {
     // Insert/remove the printer from the list, but appear only once
     gchar ** sel_printer = conf->printers;
