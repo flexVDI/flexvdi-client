@@ -91,7 +91,7 @@ static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_da
 static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data);
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 
-static void client_app_configure(ClientApp * app);
+static void client_app_configure(ClientApp * app, const gchar * error);
 static void client_app_show_login(ClientApp * app, const gchar * error);
 static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri);
 
@@ -133,7 +133,7 @@ static void client_app_activate(GApplication * gapp) {
             login_button_pressed_handler(app->main_window, app);
         }
     } else
-        client_app_configure(app);
+        client_app_configure(app, NULL);
 }
 
 
@@ -153,7 +153,7 @@ static void client_app_open(GApplication * application, GFile ** files,
  * Main window handlers: go-to-settings button pressed
  */
 static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    client_app_configure(CLIENT_APP(user_data));
+    client_app_configure(CLIENT_APP(user_data), NULL);
 }
 
 
@@ -162,7 +162,7 @@ static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_d
  */
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     if (event->key.keyval == GDK_KEY_F3)
-        client_app_configure(CLIENT_APP(user_data));
+        client_app_configure(CLIENT_APP(user_data), NULL);
     return FALSE;
 }
 
@@ -253,7 +253,7 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
 /*
  * Show the settings page. Cancel the current request if there is one.
  */
-static void client_app_configure(ClientApp * app) {
+static void client_app_configure(ClientApp * app, const gchar * error) {
     client_app_window_set_central_widget(app->main_window, "settings");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
 
@@ -261,6 +261,9 @@ static void client_app_configure(ClientApp * app) {
         client_request_cancel(app->current_request);
         g_clear_object(&app->current_request);
     }
+
+    if (error != NULL)
+        client_app_window_error(app->main_window, error);
 }
 
 
@@ -296,7 +299,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
     JsonNode * root = client_request_get_result(req, &error);
 
     if (error) {
-        client_app_show_login(app, "Failed to contact server");
+        client_app_configure(app, "Failed to contact server");
         g_warning("Request failed: %s", error->message);
 
     } else if (JSON_NODE_HOLDS_OBJECT(root)) {
@@ -305,7 +308,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
         const gchar * auth_mode = json_object_get_string_member(response, "auth_mode");
 
         if (g_strcmp0(status, "OK") != 0) {
-            client_app_show_login(app, "Access denied");
+            client_app_configure(app, "Access denied");
         } else if (g_strcmp0(auth_mode, "active_directory") == 0) {
             client_app_window_hide_status(app->main_window);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
@@ -315,7 +318,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
         }
 
     } else {
-        client_app_show_login(app, "Invalid response from server");
+        client_app_configure(app, "Invalid response from server");
         g_warning("Invalid response from server, see debug messages");
     }
 }
