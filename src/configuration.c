@@ -482,24 +482,28 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
 
 
 void client_conf_set_host(ClientConf * conf, const gchar * host) {
+    g_free(conf->host);
     conf->host = g_strdup(host);
     write_string(conf->file, "General", "host", conf->host);
 }
 
 
 void client_conf_set_port(ClientConf * conf, const gchar * port) {
+    g_free(conf->port);
     conf->port = (port && port[0]) ? g_strdup(port) : NULL;
     write_string(conf->file, "General", "port", conf->port);
 }
 
 
 void client_conf_set_username(ClientConf * conf, const gchar * username) {
+    g_free(conf->username);
     conf->username = g_strdup(username);
     write_string(conf->file, "General", "username", conf->username);
 }
 
 
 void client_conf_set_uri(ClientConf * conf, const gchar * uri) {
+    g_free(conf->uri);
     conf->uri = g_strdup(uri);
     // Parse flexvdi:// URIs
 }
