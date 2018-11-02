@@ -669,9 +669,17 @@ void client_conf_save(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = get_config_filename();
     g_autofree gchar * config_dir = get_config_dir();
+#ifdef _WIN32
+    g_autofree gchar * tmp_data = g_key_file_to_data(conf->file, NULL, NULL);
+    gchar ** lines = g_strsplit(tmp_data, "\n", 0);
+    g_autofree gchar * config_data = g_strjoinv("\r\n", lines);
+    g_strfreev(lines);
+#else
+    g_autofree gchar * config_data = g_key_file_to_data(conf->file, NULL, NULL);
+#endif
 
     g_mkdir_with_parents(config_dir, 0755);
-    if (!g_key_file_save_to_file(conf->file, config_filename, &error)) {
+    if (!g_file_set_contents(config_filename, config_data, -1, &error)) {
         g_warning("Error saving settings file: %s", error->message);
         g_error_free(error);
     }
