@@ -19,6 +19,7 @@ struct _ClientConf {
     gchar * uri;
     // Session options
     gchar * desktop;
+    gchar * proxy_uri;
     gboolean fullscreen;
     gint inactivity_timeout;
     gboolean disable_printing;
@@ -77,6 +78,8 @@ static void client_conf_init(ClientConf * conf) {
     GOptionEntry session_options[] = {
         { "desktop", 'd', 0, G_OPTION_ARG_STRING, &conf->desktop,
         "Desktop name to connect to", "<desktop name>" },
+        { "proxy-uri", 0, 0, G_OPTION_ARG_STRING, &conf->proxy_uri,
+        "Use this URI to connect through a proxy server (default use system settings)", "<uri>" },
         { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, &conf->fullscreen,
         "Show desktop in fullscreen mode", NULL },
         { "no-fullscreen", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
@@ -164,6 +167,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->username);
     g_free(conf->password);
     g_free(conf->desktop);
+    g_free(conf->proxy_uri);
     g_strfreev(conf->serial_params);
     g_strfreev(conf->redir_rports);
     g_strfreev(conf->redir_lports);
@@ -337,6 +341,11 @@ const gchar * client_conf_get_desktop(ClientConf * conf) {
 
 const gchar * client_conf_get_uri(ClientConf * conf) {
     return conf->uri;
+}
+
+
+const gchar * client_conf_get_proxy_uri(ClientConf * conf) {
+    return conf->proxy_uri;
 }
 
 

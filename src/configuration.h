@@ -70,6 +70,7 @@ const gchar * client_conf_get_username(ClientConf * conf);
 const gchar * client_conf_get_password(ClientConf * conf);
 const gchar * client_conf_get_desktop(ClientConf * conf);
 const gchar * client_conf_get_uri(ClientConf * conf);
+const gchar * client_conf_get_proxy_uri(ClientConf * conf);
 gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path);
 gboolean client_conf_get_fullscreen(ClientConf * conf);
 gchar ** client_conf_get_serial_params(ClientConf * conf);
