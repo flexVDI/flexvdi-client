@@ -263,6 +263,8 @@ static void parse_preferred_compression(SpiceSession * session, const gchar * va
 
 
 void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) {
+    if (conf->proxy_uri && conf->proxy_uri[0])
+        g_object_set(session, "proxy", conf->proxy_uri, NULL);
     if (conf->redir_rports)
         g_object_set(session, "redirected-remote-ports", conf->redir_rports, NULL);
     if (conf->redir_lports)

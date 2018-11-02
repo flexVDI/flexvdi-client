@@ -152,11 +152,28 @@ static void request_finished_cb(GObject * object, GAsyncResult * result, gpointe
 }
 
 
-ClientRequest * client_request_new(ClientConf * conf, const gchar * path,
+static ClientRequest * client_request_new_base(ClientConf * conf,
         ClientRequestCallback cb, gpointer user_data) {
     ClientRequest * req = CLIENT_REQUEST(g_object_new(CLIENT_REQUEST_TYPE, NULL));
     req->cb = cb;
     req->user_data = user_data;
+    const gchar * uri_str = client_conf_get_proxy_uri(conf);
+    if (uri_str && uri_str[0]) {
+        SoupURI * uri = soup_uri_new(uri_str);
+        if (uri) {
+            g_object_set(soup, "proxy-uri", uri, NULL);
+        } else {
+            g_warning("Invalid proxy uri %s", uri_str);
+        }
+    } else {
+        g_object_set(soup, "proxy-uri", NULL, NULL);
+    }
+    return req;
+}
+
+ClientRequest * client_request_new(ClientConf * conf, const gchar * path,
+        ClientRequestCallback cb, gpointer user_data) {
+    ClientRequest * req = client_request_new_base(conf, cb, user_data);
 
     g_autofree gchar * uri = client_conf_get_connection_uri(conf, path);
     SoupMessage * msg = soup_message_new("GET", uri);
@@ -170,9 +187,7 @@ ClientRequest * client_request_new(ClientConf * conf, const gchar * path,
 
 ClientRequest * client_request_new_with_data(ClientConf * conf, const gchar * path,
         const gchar * post_data, ClientRequestCallback cb, gpointer user_data) {
-    ClientRequest * req = CLIENT_REQUEST(g_object_new(CLIENT_REQUEST_TYPE, NULL));
-    req->cb = cb;
-    req->user_data = user_data;
+    ClientRequest * req = client_request_new_base(conf, cb, user_data);
 
     g_autofree gchar * uri = client_conf_get_connection_uri(conf, path);
     SoupMessage * msg = soup_message_new("POST", uri);
