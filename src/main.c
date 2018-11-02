@@ -67,11 +67,6 @@ static void log_to_file(const gchar * log_domain, GLogLevelFlags log_level,
 
 
 int main (int argc, char * argv[]) {
-#ifdef WIN32
-    // Disable client-side decorations on Windows, since going fullscreen fails
-    g_setenv("GTK_CSD", "0", TRUE);
-#endif
-
     // Check the --version option as early as possible
     int i;
     for (i = 0; i < argc; ++i) {

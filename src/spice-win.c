@@ -313,7 +313,7 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
             g_object_unref(win->toolbar);
         }
     }
-    return TRUE;
+    return FALSE;
 }
 
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data) {
