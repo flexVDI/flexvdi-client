@@ -118,7 +118,7 @@ static void share_current_printers(gpointer user_data);
 
 static gboolean user_activity(SpiceWindow * win) {
     g_signal_emit(win, signals[SPICE_WIN_USER_ACTIVITY], 0);
-    return FALSE;
+    return GDK_EVENT_PROPAGATE;
 }
 
 static void spice_window_init(SpiceWindow * win) {
@@ -313,7 +313,7 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
             g_object_unref(win->toolbar);
         }
     }
-    return FALSE;
+    return GDK_EVENT_PROPAGATE;
 }
 
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data) {
@@ -348,7 +348,7 @@ static gboolean hide_widget_cb(gpointer user_data) {
     GtkRevealer * revealer = GTK_REVEALER(user_data);
     if (!gtk_revealer_get_reveal_child(revealer))
         gtk_widget_hide(GTK_WIDGET(revealer));
-    return FALSE;
+    return G_SOURCE_REMOVE;
 }
 
 static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * event,
@@ -365,7 +365,7 @@ static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * even
         }
     }
     user_activity(win);
-    return FALSE;
+    return GDK_EVENT_PROPAGATE;
 }
 
 static gboolean spice_win_hide_notification(gpointer user_data) {
@@ -374,7 +374,7 @@ static gboolean spice_win_hide_notification(gpointer user_data) {
     win->notification_timeout_id = g_timeout_add(
         gtk_revealer_get_transition_duration(win->notification_revealer),
         hide_widget_cb, win->notification_revealer);
-    return FALSE;
+    return G_SOURCE_REMOVE;
 }
 
 void spice_win_show_notification(SpiceWindow * win, const gchar * text, gint duration) {

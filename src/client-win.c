@@ -277,7 +277,7 @@ static gboolean status_animation(gpointer user_data) {
     if (!gtk_revealer_get_reveal_child(win->status_revealer) ||
         gtk_style_context_has_class(style, "error")) {
         win->status_animation = 0;
-        return FALSE;
+        return G_SOURCE_REMOVE;
     }
 
     const gchar * text = gtk_label_get_text(win->status);
@@ -286,7 +286,7 @@ static gboolean status_animation(gpointer user_data) {
         new_text = g_strndup(text, strlen(text) - 2);
     else new_text = g_strdup_printf("%s%s", text, ".");
     gtk_label_set_text(win->status, new_text);
-    return TRUE;
+    return G_SOURCE_CONTINUE;
 }
 
 
@@ -318,7 +318,7 @@ static gboolean error_status_timeout(gpointer user_data) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(user_data);
     gtk_revealer_set_reveal_child(win->status_revealer, FALSE);
     win->error_timeout = 0;
-    return FALSE;
+    return G_SOURCE_REMOVE;
 }
 
 
