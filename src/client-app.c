@@ -244,6 +244,7 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
             gtk_dialog_run(GTK_DIALOG (dialog));
             gtk_widget_destroy(dialog);
         }
+        client_conf_save(app->conf);
     }
 
     return FALSE;
