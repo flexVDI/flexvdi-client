@@ -120,6 +120,7 @@
                         <property name="hexpand">True</property>
                         <property name="width-request">250</property>
                         <property name="placeholder-text" translatable="yes">name/IP</property>
+                        <property name="tooltip-text" translatable="yes">Name or IP address of the flexVDI platform</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
@@ -142,6 +143,7 @@
                         <property name="hexpand">True</property>
                         <property name="width-request">50</property>
                         <property name="placeholder-text" translatable="yes">port</property>
+                        <property name="tooltip-text" translatable="yes">TCP connection port</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
@@ -161,6 +163,7 @@
                     <child>
                       <object class="GtkCheckButton" id="fullscreen">
                         <property name="name">fullscreen</property>
+                        <property name="tooltip-text" translatable="yes">Start in fullscreen mode</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
@@ -183,6 +186,7 @@
                         <property name="hexpand">True</property>
                         <property name="width-request">250</property>
                         <property name="placeholder-text" translatable="yes">Proxy URI</property>
+                        <property name="tooltip-text" translatable="yes">URI of your proxy (e.g. https://user:pass@proxyIP:proxyPort). Leave empty if there is no proxy</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
