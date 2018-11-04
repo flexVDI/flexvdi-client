@@ -96,6 +96,8 @@ void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri);
 void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolean share);
 void client_conf_set_window_size(ClientConf * conf, gint id,
     int width, int height, gboolean maximized);
+gboolean client_conf_get_window_size(ClientConf * conf, gint id,
+    int * width, int * height, gboolean * maximized);
 
 /*
  * client_conf_save

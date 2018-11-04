@@ -2,6 +2,7 @@
  * Copyright Flexible Software Solutions S.L. 2018
  **/
 
+#include <stdlib.h>
 #include <gst/gst.h>
 #include "configuration.h"
 
@@ -611,6 +612,24 @@ static void read_int(GKeyFile * file, const gchar * group, const gchar * key, gi
         *val = int_val;
         g_debug("Option %s:%s = %d", group, key, int_val);
     } else g_error_free(error);
+}
+
+
+gboolean client_conf_get_window_size(ClientConf * conf, gint id,
+    int * width, int * height, gboolean * maximized) {
+    g_autofree gchar * encoded_size = NULL;
+    g_autofree gchar * id_str = g_strdup_printf("%d", id);
+    read_string(conf->file, "Layout", id_str, &encoded_size);
+    if (encoded_size != NULL) {
+        gchar ** size_terms = g_strsplit(encoded_size, ",", 0);
+        if (g_strv_length(size_terms) >= 3) {
+            *width = strtol(size_terms[0], NULL, 10);
+            *height = strtol(size_terms[1], NULL, 10);
+            *maximized = !g_ascii_strncasecmp(size_terms[2], "true", 4);
+        }
+        g_strfreev(size_terms);
+        return TRUE;
+    } else return FALSE;
 }
 
 
