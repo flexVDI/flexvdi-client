@@ -225,6 +225,11 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
             flexvdi_on_agent_connected(share_current_printers, win);
     }
 
+    if (client_conf_get_window_size(conf, id, &win->width, &win->height, &win->maximized)) {
+        gtk_window_set_default_size(GTK_WINDOW(win), win->width, win->height);
+        if (win->maximized) gtk_window_maximize(GTK_WINDOW(win));
+    }
+
     return win;
 }
 
