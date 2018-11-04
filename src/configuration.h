@@ -94,6 +94,8 @@ void client_conf_set_uri(ClientConf * conf, const gchar * uri);
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs);
 void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri);
 void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolean share);
+void client_conf_set_window_size(ClientConf * conf, gint id,
+    int width, int height, gboolean maximized);
 
 /*
  * client_conf_save

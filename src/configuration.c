@@ -545,6 +545,15 @@ void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolea
 }
 
 
+void client_conf_set_window_size(ClientConf * conf, gint id,
+    int width, int height, gboolean maximized) {
+    g_autofree gchar * encoded_size = g_strdup_printf("%d,%d,%s",
+        width, height, maximized ? "true" : "false");
+    g_autofree gchar * id_str = g_strdup_printf("%d", id);
+    write_string(conf->file, "Layout", id_str, encoded_size);
+}
+
+
 /*
  * read_string
  *
