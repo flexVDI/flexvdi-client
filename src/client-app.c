@@ -607,7 +607,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
                 g_signal_connect(win, "delete-event", G_CALLBACK(delete_cb), app);
             g_signal_connect(win, "user-activity", G_CALLBACK(user_activity_cb), app);
             if (monitors->len == 1)
-                gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER_ALWAYS);
+                gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER);
             gtk_widget_show_all(GTK_WIDGET(win));
             set_cp_sensitive(win, app);
             if (app->main_window) {
