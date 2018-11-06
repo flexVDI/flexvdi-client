@@ -95,6 +95,17 @@
                   </object>
                 </child>
                 <child>
+                  <object class="GtkToolButton" id="about_button">
+                    <property name="name">about-button</property>
+                    <property name="icon-name">help-about</property>
+                    <property name="tooltip-text" translatable="yes">About</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkSeparatorToolItem">
+                  </object>
+                </child>
+                <child>
                   <object class="GtkToolButton" id="minimize_button">
                     <property name="name">minimize-button</property>
                     <property name="icon-name">go-bottom-cus</property>

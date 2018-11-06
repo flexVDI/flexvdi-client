@@ -37,6 +37,7 @@ struct _SpiceWindow {
     GtkToolButton * usb_button;
     GtkRevealer * notification_revealer;
     GtkLabel * notification;
+    GtkToolButton * about_button;
     guint notification_timeout_id;
     gulong channel_event_handler_id;
 };
@@ -87,6 +88,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, usb_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, notification_revealer);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, notification);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, about_button);
 
     // Emited when the user presses a key or moves the mouse
     signals[SPICE_WIN_USER_ACTIVITY] =
@@ -112,6 +114,7 @@ static void minimize(GtkToolButton * toolbutton, gpointer user_data);
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data);
 static void keystroke_cb(GtkMenuItem * menuitem, gpointer user_data);
 static void usb_button_cb(GtkToolButton * toolbutton, gpointer user_data);
+static void show_about(GtkToolButton * toolbutton, gpointer user_data);
 
 static void set_keystroke_cb(GtkWidget * widget, gpointer data) {
     g_signal_connect(widget, "activate", G_CALLBACK(keystroke_cb), data);
@@ -142,6 +145,7 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect(win, "realize", G_CALLBACK(realize_window), win);
     g_signal_connect(win, "size-allocate", G_CALLBACK(size_allocate), NULL);
     g_object_set(win->keys_button, "popup", win->keys_menu, NULL);
+    g_signal_connect(win->about_button, "clicked", G_CALLBACK(show_about), win);
 
     gtk_container_foreach(GTK_CONTAINER(win->keys_menu), set_keystroke_cb, win);
 }
@@ -610,4 +614,23 @@ static void usb_button_cb(GtkToolButton * toolbutton, gpointer user_data) {
     gtk_widget_show_all(dialog);
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
+}
+
+static void show_about(GtkToolButton * toolbutton, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    GdkPixbuf * logo = gdk_pixbuf_new_from_resource("/com/flexvdi/client/images/logo-client.png", NULL);
+    g_autofree gchar * version = g_strconcat("v", VERSION_STRING, NULL);
+    g_autofree gchar * desc = g_strconcat("Terminal ID: ",
+        client_conf_get_terminal_id(win->conf), NULL);
+    gtk_show_about_dialog(GTK_WINDOW(win),
+        "title", "About flexVDI Client",
+        "logo", logo,
+        "program-name", "flexVDI Client",
+        "version", version,
+        "comments", desc,
+        "copyright", "© 2018 Flexible Software Solutions S.L.U.",
+        "license-type", GTK_LICENSE_GPL_3_0,
+        "website", "https://flexvdi.com",
+        "website-label", "https://flexvdi.com",
+        NULL);
 }
