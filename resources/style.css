@@ -86,6 +86,11 @@ treeview:hover, treeview:selected {
     color: #ffffff;
 }
 
+revealer #toolbar {
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
 toolbar button {
 	min-width:24px;
     border-color: transparent;
