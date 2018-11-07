@@ -326,6 +326,7 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
     win->fullscreen =
         (event->new_window_state & GDK_WINDOW_STATE_FULLSCREEN) != 0;
     client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized);
+    client_conf_set_fullscreen(win->conf, win->fullscreen);
 
     if (event->changed_mask & GDK_WINDOW_STATE_FULLSCREEN) {
         if (win->fullscreen) {
