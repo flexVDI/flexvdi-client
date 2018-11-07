@@ -21,6 +21,7 @@ struct _ClientAppWindow {
     GtkButton * discard;
     GtkButton * login;
     GtkButton * connect;
+    GtkButton * back;
     GtkEntry * username;
     GtkEntry * password;
     GtkTreeView * desktops;
@@ -33,6 +34,7 @@ enum {
     CLIENT_APP_CONFIG_BUTTON_PRESSED = 0,
     CLIENT_APP_SAVE_BUTTON_PRESSED,
     CLIENT_APP_LOGIN_BUTTON_PRESSED,
+    CLIENT_APP_BACK_BUTTON_PRESSED,
     CLIENT_APP_DESKTOP_SELECTED,
     CLIENT_APP_LAST_SIGNAL
 };
@@ -63,6 +65,7 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, discard);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, login);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, connect);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, back);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, username);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, password);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, desktops);
@@ -93,6 +96,17 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     // Emited when the user presses the "login" button
     signals[CLIENT_APP_LOGIN_BUTTON_PRESSED] =
         g_signal_new("login-button-pressed",
+                     CLIENT_APP_WINDOW_TYPE,
+                     G_SIGNAL_RUN_FIRST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE,
+                     0);
+
+    // Emited when the user presses the "back" button
+    signals[CLIENT_APP_BACK_BUTTON_PRESSED] =
+        g_signal_new("back-button-pressed",
                      CLIENT_APP_WINDOW_TYPE,
                      G_SIGNAL_RUN_FIRST,
                      0,
@@ -141,6 +155,7 @@ static void client_app_window_init(ClientAppWindow * win) {
     g_signal_connect(win->discard, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->login, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->connect, "clicked", G_CALLBACK(button_pressed_handler), win);
+    g_signal_connect(win->back, "clicked", G_CALLBACK(button_pressed_handler), win);
     g_signal_connect(win->password, "activate", G_CALLBACK(entry_activate_handler), win);
     g_signal_connect(win->desktops, "row-activated", G_CALLBACK(desktop_selected_handler), win);
 }
@@ -179,6 +194,8 @@ static void button_pressed_handler(GtkButton * button, gpointer user_data) {
         g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
     else if (button == win->connect)
         g_signal_emit(win, signals[CLIENT_APP_DESKTOP_SELECTED], 0);
+    else if (button == win->back)
+        g_signal_emit(win, signals[CLIENT_APP_BACK_BUTTON_PRESSED], 0);
     else if (button == win->discard)
         g_signal_emit(win, signals[CLIENT_APP_SAVE_BUTTON_PRESSED], 0, FALSE);
 }

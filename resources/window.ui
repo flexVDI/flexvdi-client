@@ -327,12 +327,27 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton" id="connect">
-                    <property name="name">connect-btn</property>
-                    <property name="label">connect</property>
+                  <object class="GtkBox">
+                    <property name="name">desktops-buttons</property>
+                    <property name="orientation">horizontal</property>
+                    <property name="spacing">10</property>
                     <property name="width-request">250</property>
                     <property name="hexpand">False</property>
                     <property name="halign">GTK_ALIGN_CENTER</property>
+                    <child>
+                      <object class="GtkButton" id="back">
+                        <property name="name">back-btn</property>
+                        <property name="label">back</property>
+                        <property name="hexpand">False</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="connect">
+                        <property name="name">connect-btn</property>
+                        <property name="label">connect</property>
+                        <property name="hexpand">True</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>

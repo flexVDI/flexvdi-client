@@ -88,6 +88,7 @@ static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_d
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 static void save_button_pressed_handler(ClientAppWindow * win, gboolean save, gpointer user_data);
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
+static void back_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
 static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data);
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 
@@ -116,6 +117,8 @@ static void client_app_activate(GApplication * gapp) {
         G_CALLBACK(save_button_pressed_handler), app);
     g_signal_connect(app->main_window, "login-button-pressed",
         G_CALLBACK(login_button_pressed_handler), app);
+    g_signal_connect(app->main_window, "back-button-pressed",
+        G_CALLBACK(back_button_pressed_handler), app);
     g_signal_connect(app->main_window, "desktop-selected",
         G_CALLBACK(desktop_selected_handler), app);
     g_signal_connect(app->main_window, "delete-event",
@@ -192,6 +195,15 @@ static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_da
     client_conf_set_username(app->conf, app->username);
     client_conf_save(app->conf);
     client_app_request_desktop(CLIENT_APP(user_data));
+}
+
+
+/*
+ * Main window handlers: login button pressed
+ */
+static void back_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    client_app_show_login(app, NULL);
 }
 
 
