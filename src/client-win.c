@@ -160,6 +160,7 @@ static void client_app_window_dispose(GObject * obj) {
 
 
 static void save_config(ClientAppWindow * win);
+static gboolean validate_settings(ClientAppWindow * win);
 
 /*
  * Button pressed handler, for all the buttons.
@@ -170,8 +171,10 @@ static void button_pressed_handler(GtkButton * button, gpointer user_data) {
     if (button == win->config)
         g_signal_emit(win, signals[CLIENT_APP_CONFIG_BUTTON_PRESSED], 0);
     else if (button == win->save) {
-        save_config(win);
-        g_signal_emit(win, signals[CLIENT_APP_SAVE_BUTTON_PRESSED], 0);
+        if (validate_settings(win)) {
+            save_config(win);
+            g_signal_emit(win, signals[CLIENT_APP_SAVE_BUTTON_PRESSED], 0);
+        }
     } else if (button == win->login)
         g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
     else if (button == win->connect)
@@ -222,6 +225,18 @@ static void load_config(ClientAppWindow * win) {
 
     if (proxy_uri)
         gtk_entry_set_text(win->proxy, proxy_uri);
+}
+
+
+static gboolean validate_settings(ClientAppWindow * win) {
+    const gchar * host = gtk_entry_get_text(win->host);
+
+    if (!g_strcmp0(host, "")) {
+        client_app_window_error(win, "You must enter a value for the connection address.");
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 
