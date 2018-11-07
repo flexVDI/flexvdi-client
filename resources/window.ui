@@ -196,12 +196,28 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton" id="save">
-                    <property name="name">save-btn</property>
-                    <property name="label" translatable="yes">save settings</property>
+                  <object class="GtkBox">
+                    <property name="name">settings-buttons</property>
+                    <property name="orientation">horizontal</property>
+                    <property name="spacing">10</property>
                     <property name="hexpand">False</property>
                     <property name="halign">GTK_ALIGN_CENTER</property>
-                    <property name="width-request">250</property>
+                    <child>
+                      <object class="GtkButton" id="save">
+                        <property name="name">save-btn</property>
+                        <property name="label" translatable="yes">save settings</property>
+                        <property name="width-request">150</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="discard">
+                        <property name="name">discard-btn</property>
+                        <property name="label" translatable="yes">discard changes</property>
+                        <property name="hexpand">False</property>
+                        <property name="halign">GTK_ALIGN_CENTER</property>
+                        <property name="width-request">150</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
