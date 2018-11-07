@@ -81,8 +81,13 @@ label.subtitle {
     font-size: 120%;
 }
 
-treeview:hover, treeview:selected {
+treeview:selected {
     background-color: @selection_color;
+    color: #ffffff;
+}
+
+treeview:hover {
+    background-color: lighter(@selection_color);
     color: #ffffff;
 }
 
