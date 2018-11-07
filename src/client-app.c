@@ -86,7 +86,7 @@ ClientApp * client_app_new(void) {
 
 static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data);
-static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
+static void save_button_pressed_handler(ClientAppWindow * win, gboolean save, gpointer user_data);
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
 static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data);
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data);
@@ -108,7 +108,6 @@ static void client_app_activate(GApplication * gapp) {
     g_autofree gchar * text = g_strconcat("Terminal ID: ", tid, NULL);
     client_app_window_set_info(app->main_window, text);
 
-    client_app_window_set_config(app->main_window, app->conf);
     g_signal_connect(app->main_window, "config-button-pressed",
         G_CALLBACK(config_button_pressed_handler), app);
     g_signal_connect(app->main_window, "key-press-event",
@@ -170,9 +169,13 @@ static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer
 /*
  * Main window handlers: save settings button pressed
  */
-static void save_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    client_conf_save(CLIENT_APP(user_data)->conf);
-    client_app_show_login(CLIENT_APP(user_data), NULL);
+static void save_button_pressed_handler(ClientAppWindow * win, gboolean save, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    if (save) {
+        client_app_window_save_config(app->main_window, app->conf);
+        client_conf_save(app->conf);
+    }
+    client_app_show_login(app, NULL);
 }
 
 
@@ -255,6 +258,7 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
  * Show the settings page. Cancel the current request if there is one.
  */
 static void client_app_configure(ClientApp * app, const gchar * error) {
+    client_app_window_load_config(app->main_window, app->conf);
     client_app_window_set_central_widget(app->main_window, "settings");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
 
@@ -274,6 +278,7 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data);
  * Show the login page, and start a new authmode request.
  */
 static void client_app_show_login(ClientApp * app, const gchar * error) {
+    client_app_window_load_config(app->main_window, app->conf);
     client_app_window_set_central_widget(app->main_window, "login");
     if (error == NULL)
         client_app_window_status(app->main_window, "Contacting server...");
@@ -424,7 +429,8 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
 
     g_autoptr(GList) desktop_names =
         g_list_sort(g_hash_table_get_keys(app->desktops), (GCompareFunc)g_strcmp0);
-    client_app_window_set_desktops(app->main_window, desktop_names);
+    const gchar * desktop = client_conf_get_desktop(app->conf);
+    client_app_window_set_desktops(app->main_window, desktop_names, desktop);
 
     client_app_window_set_central_widget(app->main_window, "desktops");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);

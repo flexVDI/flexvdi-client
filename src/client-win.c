@@ -7,7 +7,6 @@
 
 struct _ClientAppWindow {
     GtkApplicationWindow parent;
-    ClientConf * conf;
     GtkLabel * version;
     GtkLabel * info;
     GtkLabel * status;
@@ -86,9 +85,10 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
                      G_SIGNAL_RUN_FIRST,
                      0,
                      NULL, NULL,
-                     g_cclosure_marshal_VOID__VOID,
+                     g_cclosure_marshal_VOID__BOOLEAN,
                      G_TYPE_NONE,
-                     0);
+                     1,
+                     G_TYPE_BOOLEAN);
 
     // Emited when the user presses the "login" button
     signals[CLIENT_APP_LOGIN_BUTTON_PRESSED] =
@@ -148,7 +148,6 @@ static void client_app_window_init(ClientAppWindow * win) {
 
 static void client_app_window_dispose(GObject * obj) {
     ClientAppWindow * win = CLIENT_APP_WINDOW(obj);
-    g_clear_object(&win->conf);
     g_clear_object(&win->desk_store);
     if (win->error_timeout > 0) {
         g_source_remove(win->error_timeout);
@@ -162,7 +161,6 @@ static void client_app_window_dispose(GObject * obj) {
 }
 
 
-static void save_config(ClientAppWindow * win);
 static gboolean validate_settings(ClientAppWindow * win);
 
 /*
@@ -175,15 +173,14 @@ static void button_pressed_handler(GtkButton * button, gpointer user_data) {
         g_signal_emit(win, signals[CLIENT_APP_CONFIG_BUTTON_PRESSED], 0);
     else if (button == win->save) {
         if (validate_settings(win)) {
-            save_config(win);
-            g_signal_emit(win, signals[CLIENT_APP_SAVE_BUTTON_PRESSED], 0);
+            g_signal_emit(win, signals[CLIENT_APP_SAVE_BUTTON_PRESSED], 0, TRUE);
         }
     } else if (button == win->login)
         g_signal_emit(win, signals[CLIENT_APP_LOGIN_BUTTON_PRESSED], 0);
     else if (button == win->connect)
         g_signal_emit(win, signals[CLIENT_APP_DESKTOP_SELECTED], 0);
     else if (button == win->discard)
-        g_signal_emit(win, signals[CLIENT_APP_SAVE_BUTTON_PRESSED], 0);
+        g_signal_emit(win, signals[CLIENT_APP_SAVE_BUTTON_PRESSED], 0, FALSE);
 }
 
 
@@ -207,12 +204,12 @@ static void desktop_selected_handler(GtkTreeView * tree_view, GtkTreePath * path
 }
 
 
-static void load_config(ClientAppWindow * win) {
-    const gchar * host = client_conf_get_host(win->conf);
-    const gchar * port = client_conf_get_port(win->conf);
-    const gchar * username = client_conf_get_username(win->conf);
-    const gchar * password = client_conf_get_password(win->conf);
-    const gchar * proxy_uri = client_conf_get_proxy_uri(win->conf);
+void client_app_window_load_config(ClientAppWindow * win, ClientConf * conf) {
+    const gchar * host = client_conf_get_host(conf);
+    const gchar * port = client_conf_get_port(conf);
+    const gchar * username = client_conf_get_username(conf);
+    const gchar * password = client_conf_get_password(conf);
+    const gchar * proxy_uri = client_conf_get_proxy_uri(conf);
 
     if (host)
         gtk_entry_set_text(win->host, host);
@@ -226,7 +223,7 @@ static void load_config(ClientAppWindow * win) {
         gtk_entry_set_text(win->password, password);
 
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(win->fullscreen),
-        client_conf_get_fullscreen(win->conf));
+        client_conf_get_fullscreen(conf));
 
     if (proxy_uri)
         gtk_entry_set_text(win->proxy, proxy_uri);
@@ -245,22 +242,16 @@ static gboolean validate_settings(ClientAppWindow * win) {
 }
 
 
-static void save_config(ClientAppWindow * win) {
+void client_app_window_save_config(ClientAppWindow * win, ClientConf * conf) {
     const gchar * host = gtk_entry_get_text(win->host);
     const gchar * port = gtk_entry_get_text(win->port);
     const gchar * proxy_uri = gtk_entry_get_text(win->proxy);
 
-    client_conf_set_host(win->conf, host);
-    client_conf_set_port(win->conf, g_strcmp0(port, "443") ? port : NULL);
-    client_conf_set_fullscreen(win->conf,
+    client_conf_set_host(conf, host);
+    client_conf_set_port(conf, g_strcmp0(port, "443") ? port : NULL);
+    client_conf_set_fullscreen(conf,
         gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(win->fullscreen)));
-    client_conf_set_proxy_uri(win->conf, proxy_uri);
-}
-
-
-void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf) {
-    win->conf = g_object_ref(conf);
-    load_config(win);
+    client_conf_set_proxy_uri(conf, proxy_uri);
 }
 
 
@@ -385,7 +376,8 @@ const gchar * client_app_window_get_password(ClientAppWindow * win) {
 }
 
 
-void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names) {
+void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names,
+                                    const gchar * desktop) {
     GList * name;
     GtkTreeIter it;
 
@@ -395,7 +387,6 @@ void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names
         gtk_list_store_set(win->desk_store, &it, 0, name->data, -1);
     }
 
-    const gchar * desktop = client_conf_get_desktop(win->conf);
     if (desktop != NULL) {
         gboolean valid = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(win->desk_store), &it);
 

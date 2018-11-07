@@ -23,12 +23,20 @@ G_DECLARE_FINAL_TYPE(ClientAppWindow, client_app_window, CLIENT, APP_WINDOW, Gtk
 ClientAppWindow * client_app_window_new(ClientApp * app);
 
 /*
- * client_app_window_set_config
+ * client_app_window_load_config
  *
- * Set the configuration object. Settings are loaded from it into the corresponding
+ * Settings are loaded from the configuration object into the corresponding
  * text boxes in the main window.
  */
 void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf);
+
+/*
+ * client_app_window_save_config
+ *
+ * Settings are saved into the configuration object from the corresponding
+ * text boxes in the main window.
+ */
+void client_app_window_save_config(ClientAppWindow * win, ClientConf * conf);
 
 /*
  * client_app_window_set_info
@@ -93,7 +101,8 @@ const gchar * client_app_window_get_password(ClientAppWindow * win);
  *
  * Set the list of desktops the user can select.
  */
-void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names);
+void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names,
+                                    const gchar * desktop);
 
 /*
  * client_app_window_get_desktop
