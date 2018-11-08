@@ -3,6 +3,7 @@
   <template class="ClientAppWindow" parent="GtkApplicationWindow">
     <style><class name="main-window"/></style>
     <property name="title" translatable="yes">flexVDI Client</property>
+    <property name="resizable">False</property>
     <property name="default-width">800</property>
     <property name="default-height">600</property>
     <property name="window-position">GTK_WIN_POS_CENTER</property>
