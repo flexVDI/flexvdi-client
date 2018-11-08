@@ -11,6 +11,7 @@
 #include "flexvdi-port.h"
 #include "serialredir.h"
 #include "printclient.h"
+#include "about.h"
 
 #define MAX_WINDOWS 16
 
@@ -85,6 +86,7 @@ ClientApp * client_app_new(void) {
 
 
 static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
+static void about_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 static void save_button_pressed_handler(ClientAppWindow * win, gboolean save, gpointer user_data);
 static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
@@ -111,6 +113,8 @@ static void client_app_activate(GApplication * gapp) {
 
     g_signal_connect(app->main_window, "config-button-pressed",
         G_CALLBACK(config_button_pressed_handler), app);
+    g_signal_connect(app->main_window, "about-button-pressed",
+        G_CALLBACK(about_button_pressed_handler), app);
     g_signal_connect(app->main_window, "key-press-event",
         G_CALLBACK(key_event_handler), app);
     g_signal_connect(app->main_window, "save-button-pressed",
@@ -156,6 +160,12 @@ static void client_app_open(GApplication * application, GFile ** files,
  */
 static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
     client_app_configure(CLIENT_APP(user_data), NULL);
+}
+
+
+static void about_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    client_show_about(GTK_WINDOW(win), app->conf);
 }
 
 

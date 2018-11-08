@@ -25,8 +25,18 @@
               </packing>
             </child>
             <child>
+              <object class="GtkToolButton" id="about">
+                <property name="icon-name">help-about</property>
+                <property name="tooltip-text" translatable="yes">About</property>
+              </object>
+              <packing>
+                <property name="pack-type">end</property>
+              </packing>
+            </child>
+            <child>
               <object class="GtkButton" id="config">
                 <property name="image">gears-icon</property>
+                <property name="tooltip-text" translatable="yes">Settings</property>
               </object>
               <packing>
                 <property name="pack-type">end</property>
