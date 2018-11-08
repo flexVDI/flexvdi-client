@@ -37,7 +37,7 @@ ClientAppWindow * client_app_window_new(ClientApp * app);
  * Settings are loaded from the configuration object into the corresponding
  * text boxes in the main window.
  */
-void client_app_window_set_config(ClientAppWindow * win, ClientConf * conf);
+void client_app_window_load_config(ClientAppWindow * win, ClientConf * conf);
 
 /*
  * client_app_window_save_config
