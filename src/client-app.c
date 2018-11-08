@@ -85,12 +85,8 @@ ClientApp * client_app_new(void) {
 }
 
 
-static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
-static void about_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
+static void button_pressed_handler(ClientAppWindow * win, int button, gpointer user_data);
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data);
-static void save_button_pressed_handler(ClientAppWindow * win, gboolean save, gpointer user_data);
-static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
-static void back_button_pressed_handler(ClientAppWindow * win, gpointer user_data);
 static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data);
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 
@@ -111,18 +107,10 @@ static void client_app_activate(GApplication * gapp) {
     g_autofree gchar * text = g_strconcat("Terminal ID: ", tid, NULL);
     client_app_window_set_info(app->main_window, text);
 
-    g_signal_connect(app->main_window, "config-button-pressed",
-        G_CALLBACK(config_button_pressed_handler), app);
-    g_signal_connect(app->main_window, "about-button-pressed",
-        G_CALLBACK(about_button_pressed_handler), app);
+    g_signal_connect(app->main_window, "button-pressed",
+        G_CALLBACK(button_pressed_handler), app);
     g_signal_connect(app->main_window, "key-press-event",
         G_CALLBACK(key_event_handler), app);
-    g_signal_connect(app->main_window, "save-button-pressed",
-        G_CALLBACK(save_button_pressed_handler), app);
-    g_signal_connect(app->main_window, "login-button-pressed",
-        G_CALLBACK(login_button_pressed_handler), app);
-    g_signal_connect(app->main_window, "back-button-pressed",
-        G_CALLBACK(back_button_pressed_handler), app);
     g_signal_connect(app->main_window, "desktop-selected",
         G_CALLBACK(desktop_selected_handler), app);
     g_signal_connect(app->main_window, "delete-event",
@@ -136,7 +124,7 @@ static void client_app_activate(GApplication * gapp) {
     } else if (client_conf_get_host(app->conf) != NULL) {
         client_app_show_login(app, NULL);
         if (client_conf_get_username(app->conf) && client_conf_get_password(app->conf)) {
-            login_button_pressed_handler(app->main_window, app);
+            button_pressed_handler(app->main_window, LOGIN_BUTTON, app);
         }
     } else
         client_app_configure(app, NULL);
@@ -155,17 +143,36 @@ static void client_app_open(GApplication * application, GFile ** files,
 }
 
 
+static void client_app_request_desktop(ClientApp * app);
+
 /*
- * Main window handlers: go-to-settings button pressed
+ * Main window handlers: button pressed
  */
-static void config_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    client_app_configure(CLIENT_APP(user_data), NULL);
-}
-
-
-static void about_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
+static void button_pressed_handler(ClientAppWindow * win, int button, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
-    client_show_about(GTK_WINDOW(win), app->conf);
+    switch (button) {
+        case SETTINGS_BUTTON:
+            client_app_configure(CLIENT_APP(user_data), NULL);
+            break;
+        case ABOUT_BUTTON:
+            client_show_about(GTK_WINDOW(win), app->conf);
+            break;
+        case LOGIN_BUTTON:
+            app->username = client_app_window_get_username(win);
+            app->password = client_app_window_get_password(win);
+            // Save the username in the config file
+            client_conf_set_username(app->conf, app->username);
+            client_conf_save(app->conf);
+            client_app_request_desktop(CLIENT_APP(user_data));
+            break;
+        case SAVE_BUTTON:
+            client_app_window_save_config(app->main_window, app->conf);
+            client_conf_save(app->conf);
+            // fallthrough
+        default:  // BACK and DISCARD buttons
+            client_app_show_login(app, NULL);
+            break;
+    }
 }
 
 
@@ -176,44 +183,6 @@ static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer
     if (event->key.keyval == GDK_KEY_F3)
         client_app_configure(CLIENT_APP(user_data), NULL);
     return FALSE;
-}
-
-
-/*
- * Main window handlers: save settings button pressed
- */
-static void save_button_pressed_handler(ClientAppWindow * win, gboolean save, gpointer user_data) {
-    ClientApp * app = CLIENT_APP(user_data);
-    if (save) {
-        client_app_window_save_config(app->main_window, app->conf);
-        client_conf_save(app->conf);
-    }
-    client_app_show_login(app, NULL);
-}
-
-
-static void client_app_request_desktop(ClientApp * app);
-
-/*
- * Main window handlers: login button pressed
- */
-static void login_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    ClientApp * app = CLIENT_APP(user_data);
-    app->username = client_app_window_get_username(win);
-    app->password = client_app_window_get_password(win);
-    // Save the username in the config file
-    client_conf_set_username(app->conf, app->username);
-    client_conf_save(app->conf);
-    client_app_request_desktop(CLIENT_APP(user_data));
-}
-
-
-/*
- * Main window handlers: login button pressed
- */
-static void back_button_pressed_handler(ClientAppWindow * win, gpointer user_data) {
-    ClientApp * app = CLIENT_APP(user_data);
-    client_app_show_login(app, NULL);
 }
 
 

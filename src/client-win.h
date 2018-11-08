@@ -15,6 +15,15 @@
 #define CLIENT_APP_WINDOW_TYPE (client_app_window_get_type ())
 G_DECLARE_FINAL_TYPE(ClientAppWindow, client_app_window, CLIENT, APP_WINDOW, GtkApplicationWindow)
 
+enum {
+    SETTINGS_BUTTON = 0,
+    ABOUT_BUTTON,
+    SAVE_BUTTON,
+    DISCARD_BUTTON,
+    LOGIN_BUTTON,
+    BACK_BUTTON
+} ClientAppWindowButtons;
+
 /*
  * client_app_window_new
  *
