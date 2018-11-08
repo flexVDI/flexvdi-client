@@ -129,6 +129,10 @@ if (WIN32)
     add_custom_target(installer DEPENDS flexvdi-client "${PROJECT_BINARY_DIR}/src/icon.ico"
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_installer_win.sh" ${CMAKE_INSTALL_PREFIX}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
-else (WIN32)
+elseif (APPLE)
     add_custom_target(installer DEPENDS flexvdi-client COMMAND "true" WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
+else ()
+    add_custom_target(installer DEPENDS flexvdi-client
+                      COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_appimage.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME}
+                      WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 endif ()
