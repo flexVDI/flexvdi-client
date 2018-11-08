@@ -1,7 +1,7 @@
 set(client_sources
     client-app.c client-win.c client-conn.c
     flexvdi-port.c configuration.c client-request.c
-    spice-win.c printclient.c PPDGenerator.c)
+    spice-win.c printclient.c PPDGenerator.c about.c)
 if (WIN32)
     add_custom_target(ico_icon
                       COMMAND convert "${PROJECT_SOURCE_DIR}/resources/images/icon.png" icon.ico

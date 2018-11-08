@@ -5,6 +5,7 @@
 #include "spice-win.h"
 #include "flexvdi-port.h"
 #include "printclient.h"
+#include "about.h"
 
 struct _SpiceWindow {
     GtkWindow parent;
@@ -619,19 +620,5 @@ static void usb_button_cb(GtkToolButton * toolbutton, gpointer user_data) {
 
 static void show_about(GtkToolButton * toolbutton, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
-    GdkPixbuf * logo = gdk_pixbuf_new_from_resource("/com/flexvdi/client/images/logo-client.png", NULL);
-    g_autofree gchar * version = g_strconcat("v", VERSION_STRING, NULL);
-    g_autofree gchar * desc = g_strconcat("Terminal ID: ",
-        client_conf_get_terminal_id(win->conf), NULL);
-    gtk_show_about_dialog(GTK_WINDOW(win),
-        "title", "About flexVDI Client",
-        "logo", logo,
-        "program-name", "flexVDI Client",
-        "version", version,
-        "comments", desc,
-        "copyright", "© 2018 Flexible Software Solutions S.L.U.",
-        "license-type", GTK_LICENSE_GPL_3_0,
-        "website", "https://flexvdi.com",
-        "website-label", "https://flexvdi.com",
-        NULL);
+    client_show_about(GTK_WINDOW(win), win->conf);
 }
