@@ -50,10 +50,10 @@ static void client_app_class_init(ClientAppClass * class) {
  * port redirection after the configuration has been read from file and/or command-line.
  */
 static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {
-    ClientApp * app = CLIENT_APP(gapp);
-
     init_print_client();
+
 #ifdef ENABLE_SERIALREDIR
+    ClientApp * app = CLIENT_APP(gapp);
     serial_port_init(app->conf);
 #endif
 
@@ -233,7 +233,7 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
             g_autofree gchar * text = client_conn_get_reason_str(app->connection);
             g_warning("Closing app, reason %d: %s", reason, text);
             GtkWidget * dialog = gtk_message_dialog_new(GTK_WINDOW(widget),
-                GTK_DIALOG_MODAL, type, GTK_BUTTONS_CLOSE, text);
+                GTK_DIALOG_MODAL, type, GTK_BUTTONS_CLOSE, "%s", text);
             gtk_window_set_title(GTK_WINDOW(dialog), "Connection closed");
             gtk_dialog_run(GTK_DIALOG (dialog));
             gtk_widget_destroy(dialog);
