@@ -29,6 +29,9 @@ add_executable(flexvdi-client WIN32 main.c ${ICON} $<TARGET_OBJECTS:client_objec
                $<TARGET_OBJECTS:resource_objects>)
 if (WIN32)
     add_dependencies(flexvdi-client ico_icon)
+elseif (APPLE)
+    target_compile_options(client_objects PRIVATE -xobjective-c -mmacosx-version-min=10.10)
+    target_link_libraries(flexvdi-client "-framework Cocoa")
 endif ()
 target_link_libraries(flexvdi-client ${CLIENT_LIBRARIES} m)
 
