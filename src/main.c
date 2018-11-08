@@ -23,7 +23,7 @@ static void setup_logging() {
         log_file = stderr;
     } else {
         g_autoptr(GDateTime) now = g_date_time_new_now_local();
-        g_autofree gchar * file_name = g_date_time_format(now, "flexvdi-client-%Y-%m-%d.log");
+        g_autofree gchar * file_name = g_date_time_format(now, log_file_pattern);
         g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
         g_autofree gchar * file_path = g_build_filename(log_dir, file_name, NULL);
         g_mkdir_with_parents(log_dir, 0700);
