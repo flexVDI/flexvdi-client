@@ -95,6 +95,7 @@ treeview:hover {
 revealer #toolbar {
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
+    padding: 15px;
 }
 
 toolbar button {
