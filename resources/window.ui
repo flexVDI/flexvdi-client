@@ -8,35 +8,32 @@
     <property name="default-height">600</property>
     <property name="window-position">GTK_WIN_POS_CENTER</property>
     <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>
-    <child type="titlebar">
-      <object class="GtkHeaderBar" id="header">
-        <property name="name">header</property>
-        <property name="show-close-button">True</property>
-        <child>
-          <object class="GtkImage" id="logo">
-            <property name="resource">/com/flexvdi/client/images/logo-flexVDI-toolbar.png</property>
-          </object>
-          <packing>
-            <property name="pack-type">start</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButton" id="config">
-            <property name="image">gears-icon</property>
-            <style>
-              <class name="titlebutton"/>
-            </style>
-          </object>
-          <packing>
-            <property name="pack-type">end</property>
-          </packing>
-        </child>
-      </object>
-    </child>
     <child>
       <object class="GtkBox" id="content_box">
         <property name="name">content-box</property>
         <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkBox" id="header">
+            <property name="name">header</property>
+            <property name="orientation">horizontal</property>
+            <child>
+              <object class="GtkImage" id="logo">
+                <property name="resource">/com/flexvdi/client/images/logo-flexVDI-toolbar.png</property>
+              </object>
+              <packing>
+                <property name="pack-type">start</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="config">
+                <property name="image">gears-icon</property>
+              </object>
+              <packing>
+                <property name="pack-type">end</property>
+              </packing>
+            </child>
+          </object>
+        </child>
         <child>
           <object class="GtkOverlay" id="overlay">
             <child>

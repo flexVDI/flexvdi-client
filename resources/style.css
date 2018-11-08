@@ -14,6 +14,7 @@ window.main-window * {
 #header {
     background-image: linear-gradient(to right, @main_color 60%, darker(@main_color) 100%);
     border: 0;
+    padding: 15px;
 }
 
 #content-box {
