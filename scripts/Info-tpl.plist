@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>flexvdi-client</string>
+    <key>CFBundleDisplayName</key>
+    <string>flexVDI Client</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>English</string>
+    <key>CFBundleExecutable</key>
+    <string>flexvdi-client</string>
+    <key>CFBundleGetInfoString</key>
+    <string>@FLEXVDI_VERSION@, Copyright 2018 Flexible Software Solutions S.L.U.</string>
+    <key>CFBundleIconFile</key>
+    <string>flexvdi-client.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.flexvdi.client</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>@FLEXVDI_VERSION@</string>
+    <key>CFBundleSignature</key>
+    <string>fvcl</string>
+    <key>CFBundleVersion</key>
+    <string>@FLEXVDI_VERSION@</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright 2018 Flexible Software Solution, GNU General Public License.</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.10</string>
+</dict>
+</plist>
