@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <template class="SpiceWindow" parent="GtkWindow">
+  <template class="SpiceWindow" parent="GtkApplicationWindow">
     <property name="default-width">800</property>
     <property name="default-height">600</property>
     <property name="icon">resource:///com/flexvdi/client/images/icon.png</property>

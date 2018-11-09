@@ -12,7 +12,7 @@
 
 
 #define SPICE_WIN_TYPE (spice_window_get_type())
-G_DECLARE_FINAL_TYPE(SpiceWindow, spice_window, SPICE, WIN, GtkWindow)
+G_DECLARE_FINAL_TYPE(SpiceWindow, spice_window, SPICE, WIN, GtkApplicationWindow)
 
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                                ClientConf * conf, int id, gchar * title);

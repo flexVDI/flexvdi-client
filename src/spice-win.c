@@ -8,7 +8,7 @@
 #include "about.h"
 
 struct _SpiceWindow {
-    GtkWindow parent;
+    GtkApplicationWindow parent;
     ClientConn * conn;
     ClientConf * conf;
     gint id;
@@ -50,7 +50,7 @@ enum {
 
 static guint signals[SPICE_WIN_LAST_SIGNAL];
 
-G_DEFINE_TYPE(SpiceWindow, spice_window, GTK_TYPE_WINDOW);
+G_DEFINE_TYPE(SpiceWindow, spice_window, GTK_TYPE_APPLICATION_WINDOW);
 
 static void spice_window_dispose(GObject * obj);
 static void spice_window_finalize(GObject * obj);
