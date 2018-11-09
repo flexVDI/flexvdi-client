@@ -3,6 +3,8 @@
     <gresource prefix="/com/flexvdi/client">
         <file preprocess="xml-stripblanks">window.ui</file>
         <file preprocess="xml-stripblanks">spice-win.ui</file>
+        <file preprocess="xml-stripblanks">keys-menu-linux.ui</file>
+        <file preprocess="xml-stripblanks">keys-menu-windows.ui</file>
         <file>style.css</file>
         <file>images/icon.png</file>
         <file>images/logo-flexVDI-toolbar.png</file>

@@ -36,6 +36,7 @@
                     <child>
                       <object class="GtkMenuButton" id="keys_button">
                         <property name="name">keys-button</property>
+                        <property name="use-popover">True</property>
                         <property name="tooltip-text" translatable="yes">Send key combinations</property>
                         <child>
                           <object class="GtkImage">
@@ -172,95 +173,6 @@
       </object>
     </child>
   </template>
-  <object class="GtkMenu" id="keys_menu_win32">
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+Supr</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Win+Right</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Win+Left</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Win+L</property>
-      </object>
-    </child>
-  </object>
-  <object class="GtkMenu" id="keys_menu_linux">
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+Supr</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F1</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F2</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F3</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F4</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F5</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F6</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F7</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F8</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F9</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F10</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F11</property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkMenuItem">
-        <property name="label">Ctrl+Alt+F12</property>
-      </object>
-    </child>
-  </object>
   <object class="GtkMenu" id="printers_menu">
   </object>
 </interface>

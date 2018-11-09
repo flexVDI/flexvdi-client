@@ -1,0 +1,32 @@
+<interface>
+  <menu id="menu">
+    <section>
+      <item>
+        <attribute name="label">Ctrl+Alt+Supr</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+Supr</attribute>
+      </item>
+    </section>
+    <section>
+      <attribute name="label" translatable="yes">Virtual desktops:</attribute>
+      <item>
+        <attribute name="label">Ctrl+Win+Right</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Win+Right</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Win+Left</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Win+Left</attribute>
+      </item>
+    </section>
+    <section>
+      <attribute name="label" translatable="yes">Lock session:</attribute>
+      <item>
+        <attribute name="label">Win+L</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Win+L</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>

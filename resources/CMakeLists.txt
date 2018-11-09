@@ -7,6 +7,8 @@ add_custom_command(OUTPUT ${resources_c}
                         flexvdi-client.gresource.xml
                         window.ui
                         spice-win.ui
+                        keys-menu-linux.ui
+                        keys-menu-windows.ui
                         style.css
                         images/icon.png
                         images/logo-flexVDI-toolbar.png

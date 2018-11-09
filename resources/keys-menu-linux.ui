@@ -1,0 +1,74 @@
+<interface>
+  <menu id="menu">
+    <section>
+      <item>
+        <attribute name="label">Ctrl+Alt+Supr</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+Supr</attribute>
+      </item>
+    </section>
+    <section>
+      <attribute name="label" translatable="yes">Virtual consoles:</attribute>
+      <item>
+        <attribute name="label">Ctrl+Alt+F1</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F1</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F2</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F2</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F3</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F3</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F4</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F4</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F5</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F5</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F6</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F6</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F7</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F7</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F8</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F8</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F9</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F9</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F10</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F10</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F11</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F11</attribute>
+      </item>
+      <item>
+        <attribute name="label">Ctrl+Alt+F12</attribute>
+        <attribute name="action">win.keystroke</attribute>
+        <attribute name="target">Ctrl+Alt+F12</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>
