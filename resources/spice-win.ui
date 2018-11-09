@@ -47,9 +47,18 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkToolButton" id="usb_button">
-                    <property name="icon-name">drive-removable-usb-cus</property>
-                    <property name="tooltip-text" translatable="yes">Share USB devices</property>
+                  <object class="GtkToolItem">
+                    <child>
+                      <object class="GtkMenuButton" id="usb_button">
+                        <property name="name">usb-button</property>
+                        <property name="tooltip-text" translatable="yes">Share USB devices</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="icon-name">drive-removable-usb-cus</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
                   </object>
                 </child>
                 <child>

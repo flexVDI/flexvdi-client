@@ -113,6 +113,10 @@ toolbar button:active {
 	background-color: rgba(0,0,0,0.2);
 }
 
+#usb-popover {
+    padding: 10px;
+}
+
 tooltip {
 	background-color: lightgray;
 	border-color: white;

@@ -35,7 +35,7 @@ struct _SpiceWindow {
     GtkMenuButton * keys_button;
     GtkMenu * printers_menu;
     GtkMenuButton * printers_button;
-    GtkToolButton * usb_button;
+    GtkMenuButton * usb_button;
     GtkRevealer * notification_revealer;
     GtkLabel * notification;
     GtkToolButton * about_button;
@@ -114,7 +114,6 @@ static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data);
 static void minimize(GtkToolButton * toolbutton, gpointer user_data);
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data);
 static void keystroke_cb(GtkMenuItem * menuitem, gpointer user_data);
-static void usb_button_cb(GtkToolButton * toolbutton, gpointer user_data);
 static void show_about(GtkToolButton * toolbutton, gpointer user_data);
 
 static void set_keystroke_cb(GtkWidget * widget, gpointer data) {
@@ -141,7 +140,6 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect(win->reboot_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win->shutdown_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win->poweroff_button, "clicked", G_CALLBACK(power_event_cb), win);
-    g_signal_connect(win->usb_button, "clicked", G_CALLBACK(usb_button_cb), win);
     g_signal_connect(win, "window-state-event", G_CALLBACK(window_state_cb), win);
     g_signal_connect(win, "realize", G_CALLBACK(realize_window), win);
     g_signal_connect(win, "size-allocate", G_CALLBACK(size_allocate), NULL);
@@ -173,6 +171,9 @@ static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * even
 static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
                                 gpointer user_data);
 static void mouse_grab_cb(SpiceDisplay * display, gint status, gpointer user_data);
+
+void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
+                        GError * error, gpointer user_data);
 
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                                ClientConf * conf, int id, gchar * title) {
@@ -208,6 +209,15 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                              G_CALLBACK(user_activity), win);
     g_signal_connect_swapped(win->spice, "key-release-event",
                              G_CALLBACK(user_activity), win);
+
+    GtkWidget * usb_device_widget = spice_usb_device_widget_new(session, NULL); /* default format */
+    g_signal_connect(usb_device_widget, "connect-failed",
+                     G_CALLBACK(usb_connect_failed), win);
+    GtkWidget * popover = gtk_popover_new(NULL);
+    gtk_widget_set_name(GTK_WIDGET(popover), "usb-popover");
+    gtk_container_add(GTK_CONTAINER(popover), usb_device_widget);
+    gtk_menu_button_set_popover(win->usb_button, popover);
+    gtk_widget_show_all(popover);
 
     win->fullscreen = client_conf_get_fullscreen(conf);
     client_conf_set_display_options(conf, win->spice);
@@ -578,44 +588,6 @@ static void share_current_printers(gpointer user_data) {
         }
         g_list_free(children);
     }
-}
-
-static void remove_cb(GtkContainer * container, GtkWidget * widget, gpointer user_data) {
-    gtk_window_resize(GTK_WINDOW(user_data), 1, 1);
-}
-
-void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
-                        GError * error, gpointer user_data);
-
-static void usb_button_cb(GtkToolButton * toolbutton, gpointer user_data) {
-    GtkWidget * dialog, * area, * usb_device_widget;
-    SpiceWindow * win = SPICE_WIN(user_data);
-
-    /* Create the widgets */
-    dialog = gtk_dialog_new_with_buttons(
-        "Select USB devices for redirection", GTK_WINDOW(win),
-        GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-        "_Close", GTK_RESPONSE_ACCEPT, NULL);
-    gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
-    gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
-    gtk_box_set_spacing(GTK_BOX(gtk_bin_get_child(GTK_BIN(dialog))), 12);
-
-    area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-
-    SpiceSession * session = client_conn_get_session(win->conn);
-    usb_device_widget = spice_usb_device_widget_new(session, NULL); /* default format */
-    g_signal_connect(usb_device_widget, "connect-failed",
-                     G_CALLBACK(usb_connect_failed), win);
-    gtk_box_pack_start(GTK_BOX(area), usb_device_widget, TRUE, TRUE, 0);
-
-    /* This shrinks the dialog when USB devices are unplugged */
-    g_signal_connect(usb_device_widget, "remove",
-                     G_CALLBACK(remove_cb), dialog);
-
-    /* show and run */
-    gtk_widget_show_all(dialog);
-    gtk_dialog_run(GTK_DIALOG(dialog));
-    gtk_widget_destroy(dialog);
 }
 
 static void show_about(GtkToolButton * toolbutton, gpointer user_data) {
