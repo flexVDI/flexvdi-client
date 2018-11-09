@@ -28,6 +28,7 @@ walk_dlls() {
 rm -fr output
 mkdir -p output/bin output/lib/gio/modules output/lib/gstreamer-1.0
 cp src/flexvdi-client.exe output/bin
+cp "$PREFIX"/bin/usb.ids output/bin
 
 # Copy gio TLS and GStreamer modules
 cp "$PREFIX"/lib/gio/modules/libgiognutls.dll output/lib/gio/modules
