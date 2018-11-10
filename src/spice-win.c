@@ -254,10 +254,30 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     return win;
 }
 
+static void set_printers_menu_visibility(gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+    if (!flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING) ||
+        g_menu_model_get_n_items(G_MENU_MODEL(win->printers_menu)) == 0) {
+        gtk_widget_hide(GTK_WIDGET(win->printers_button));
+    } else {
+        gtk_widget_show(GTK_WIDGET(win->printers_button));
+    }
+}
+
 static void realize_window(GtkWidget * toplevel, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
     gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
     client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized);
+
+    if (flexvdi_is_agent_connected())
+        set_printers_menu_visibility(win);
+    else
+        flexvdi_on_agent_connected(set_printers_menu_visibility, win);
+
+#ifdef __APPLE__
+    gtk_widget_hide(GTK_WIDGET(win->usb_button));
+#endif
+
     if (win->fullscreen) {
         gtk_window_fullscreen(GTK_WINDOW(win));
     } else {
@@ -586,10 +606,7 @@ static void printer_toggled(GSimpleAction * action, GVariant * parameter, gpoint
 
 static void share_current_printers(gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
-    if (!flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING)) {
-        gtk_widget_hide(GTK_WIDGET(win->printers_button));
-    } else {
-        gtk_widget_show(GTK_WIDGET(win->printers_button));
+    if (flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING)) {
         gchar ** action_names = g_action_group_list_actions(G_ACTION_GROUP(win->printer_actions)),
             ** action_name;
         for (action_name = action_names; *action_name; ++action_name) {
