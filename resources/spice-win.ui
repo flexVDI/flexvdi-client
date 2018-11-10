@@ -67,7 +67,7 @@
                     <child>
                       <object class="GtkMenuButton" id="printers_button">
                         <property name="name">printers-button</property>
-                        <property name="popup">printers_menu</property>
+                        <property name="use-popover">True</property>
                         <property name="tooltip-text" translatable="yes">Share printers</property>
                         <child>
                           <object class="GtkImage">
@@ -173,6 +173,4 @@
       </object>
     </child>
   </template>
-  <object class="GtkMenu" id="printers_menu">
-  </object>
 </interface>

@@ -32,8 +32,9 @@ struct _SpiceWindow {
     GtkToolButton * shutdown_button;
     GtkToolButton * poweroff_button;
     GtkMenuButton * keys_button;
-    GtkMenu * printers_menu;
+    GMenu * printers_menu;
     GtkMenuButton * printers_button;
+    GSimpleActionGroup * printer_actions;
     GtkMenuButton * usb_button;
     GtkRevealer * notification_revealer;
     GtkLabel * notification;
@@ -76,7 +77,6 @@ static void spice_window_class_init(SpiceWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, shutdown_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, poweroff_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, keys_button);
-    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, printers_menu);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, printers_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, usb_button);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), SpiceWindow, notification_revealer);
@@ -148,6 +148,11 @@ static void spice_window_init(SpiceWindow * win) {
     GMenuModel * keys_menu = G_MENU_MODEL(gtk_builder_get_object(builder, "menu"));
     gtk_menu_button_set_menu_model(win->keys_button, keys_menu);
     g_object_unref(builder);
+
+    win->printer_actions = g_simple_action_group_new();
+    win->printers_menu = g_menu_new();
+    gtk_widget_insert_action_group(GTK_WIDGET(win), "printer", win->printer_actions);
+    gtk_menu_button_set_menu_model(win->printers_button, G_MENU_MODEL(win->printers_menu));
 }
 
 static void spice_window_dispose(GObject * obj) {
@@ -516,7 +521,7 @@ void spice_win_set_cp_sensitive(SpiceWindow * win, gboolean copy, gboolean paste
     gtk_widget_set_sensitive(GTK_WIDGET(win->paste_button), paste);
 }
 
-static void printer_toggled(GtkWidget * widget, gpointer user_data);
+static void printer_toggled(GSimpleAction * action, GVariant * parameter, gpointer user_data);
 
 static void spice_window_get_printers(SpiceWindow * win) {
     GSList * printers, * printer;
@@ -524,51 +529,56 @@ static void spice_window_get_printers(SpiceWindow * win) {
     flexvdi_get_printer_list(&printers);
     for (printer = printers; printer != NULL; printer = g_slist_next(printer)) {
         const char * printer_name = (const char *)printer->data;
-        GtkWidget * item = gtk_check_menu_item_new_with_label(printer_name);
         gboolean state = client_conf_is_printer_shared(win->conf, printer_name);
         g_debug("  %s, %s", printer_name, state ? "shared" : "not shared");
-        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), state);
-        gtk_menu_shell_append(GTK_MENU_SHELL(win->printers_menu), item);
-        gtk_widget_set_visible(item, TRUE);
-        g_signal_connect(G_OBJECT(item), "activate",
-                         G_CALLBACK(printer_toggled), win);
+
+        GSimpleAction * action = g_simple_action_new_stateful(printer_name, NULL,
+            g_variant_new_boolean(state));
+        g_action_map_add_action(G_ACTION_MAP(win->printer_actions), G_ACTION(action));
+        g_signal_connect(G_OBJECT(action), "activate", G_CALLBACK(printer_toggled), win);
+
+        g_autofree gchar * full_action_name = g_strconcat("printer.", printer_name, NULL);
+        GMenuItem * item = g_menu_item_new(printer_name, full_action_name);
+        g_menu_append_item(win->printers_menu, item);
     }
     g_slist_free_full(printers, g_free);
     gtk_widget_hide(GTK_WIDGET(win->printers_button));
 }
 
 static gboolean set_printer_menu_item_sensitive(gpointer user_data) {
-    GtkMenuItem * printer_item = GTK_MENU_ITEM(user_data);
-    gtk_widget_set_sensitive(GTK_WIDGET(printer_item), TRUE);
+    GSimpleAction * action = G_SIMPLE_ACTION(user_data);
+    g_simple_action_set_enabled(action, TRUE);
     return G_SOURCE_REMOVE;
 }
 
 static gpointer share_printer_thread(gpointer user_data) {
-    GtkMenuItem * printer_item = GTK_MENU_ITEM(user_data);
-    const char * printer = gtk_menu_item_get_label(printer_item);
+    GSimpleAction * action = G_SIMPLE_ACTION(user_data);
+    const char * printer = g_action_get_name(G_ACTION(action));
     flexvdi_share_printer(printer);
-    g_idle_add(set_printer_menu_item_sensitive, printer_item);
+    g_idle_add(set_printer_menu_item_sensitive, action);
     return NULL;
 }
 
-static void share_printer_async(GtkMenuItem * printer_item) {
+static void share_printer_async(GSimpleAction * action) {
     // flexvdi_share_printer can be a bit slow and "hang" the GUI
-    gtk_widget_set_sensitive(GTK_WIDGET(printer_item), FALSE);
+    g_simple_action_set_enabled(action, FALSE);
     GThread * thread = g_thread_try_new(NULL, share_printer_thread,
-                                        printer_item, NULL);
-    if (!thread)
-        share_printer_thread(printer_item);
-    else
+                                        action, NULL);
+    if (!thread) {
+        share_printer_thread(action);
+    } else {
         g_thread_unref(thread);
+    }
 }
 
-static void printer_toggled(GtkWidget * widget, gpointer user_data) {
+static void printer_toggled(GSimpleAction * action, GVariant * parameter, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
-    const char * printer = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
-    gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(widget));
+    const char * printer = g_action_get_name(G_ACTION(action));
+    gboolean active = !g_variant_get_boolean(g_action_get_state(G_ACTION(action)));
+    g_simple_action_set_state(action, g_variant_new_boolean(active));
     client_conf_share_printer(win->conf, printer, active);
     if (active) {
-        share_printer_async(GTK_MENU_ITEM(widget));
+        share_printer_async(action);
     } else {
         flexvdi_unshare_printer(printer);
     }
@@ -580,14 +590,16 @@ static void share_current_printers(gpointer user_data) {
         gtk_widget_hide(GTK_WIDGET(win->printers_button));
     } else {
         gtk_widget_show(GTK_WIDGET(win->printers_button));
-        GList * children = gtk_container_get_children(GTK_CONTAINER(win->printers_menu)),
-              * child;
-        for (child = children; child != NULL; child = g_list_next(child)) {
-            if (gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(child->data))) {
-                share_printer_async(GTK_MENU_ITEM(child->data));
+        gchar ** action_names = g_action_group_list_actions(G_ACTION_GROUP(win->printer_actions)),
+            ** action_name;
+        for (action_name = action_names; *action_name; ++action_name) {
+            GSimpleAction * action =
+                G_SIMPLE_ACTION(g_simple_action_group_lookup(win->printer_actions, *action_name));
+            if (g_variant_get_boolean(g_action_get_state(G_ACTION(action)))) {
+                share_printer_async(action);
             }
         }
-        g_list_free(children);
+        g_strfreev(action_names);
     }
 }
 
