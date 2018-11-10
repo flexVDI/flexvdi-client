@@ -152,6 +152,7 @@ static void client_conf_init(ClientConf * conf) {
     conf->main_options = g_memdup(main_options, sizeof(main_options));
     conf->session_options = g_memdup(session_options, sizeof(session_options));
     conf->device_options = g_memdup(device_options, sizeof(device_options));
+    conf->printers = g_strsplit("", ".", 0);
     // Load the configuration file
     conf->file = g_key_file_new();
     client_conf_load(conf);
