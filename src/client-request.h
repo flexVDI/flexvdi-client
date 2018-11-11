@@ -6,7 +6,6 @@
 #define _CLIENT_REQUEST_H
 
 #include <glib-object.h>
-#include <json-glib/json-glib.h>
 
 #include "configuration.h"
 

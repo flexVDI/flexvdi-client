@@ -1,6 +1,7 @@
 
 #include <string.h>
 #include <libsoup/soup.h>
+#include <json-glib/json-glib.h>
 
 #include "client-request.h"
 
@@ -36,9 +37,6 @@ struct _ClientRequest {
 
 G_DEFINE_TYPE(ClientRequest, client_request, G_TYPE_OBJECT);
 
-// Singleton libsoup session
-static SoupSession * soup;
-
 
 static void client_request_init(ClientRequest * req) {
     req->cancel_mgr_request = g_cancellable_new();
@@ -48,7 +46,6 @@ static void client_request_init(ClientRequest * req) {
 static void client_request_dispose(GObject * obj) {
     ClientRequest * req = CLIENT_REQUEST(obj);
 
-    g_clear_object(&req->soup);
     if (req->cancel_mgr_request)
         g_cancellable_cancel(req->cancel_mgr_request);
     g_clear_object(&req->cancel_mgr_request);
@@ -65,12 +62,6 @@ static void client_request_finalize(GObject * obj) {
 
 
 static void client_request_class_init(ClientRequestClass * class) {
-    // FIXME: Disable checking server certificate
-    soup = soup_session_new_with_options(
-        "ssl-strict", FALSE,
-        "timeout", 5,
-        NULL);
-
     GObjectClass * object_class = G_OBJECT_CLASS(class);
     object_class->dispose = client_request_dispose;
     object_class->finalize = client_request_finalize;
@@ -157,17 +148,7 @@ static ClientRequest * client_request_new_base(ClientConf * conf,
     ClientRequest * req = CLIENT_REQUEST(g_object_new(CLIENT_REQUEST_TYPE, NULL));
     req->cb = cb;
     req->user_data = user_data;
-    const gchar * uri_str = client_conf_get_proxy_uri(conf);
-    if (uri_str && uri_str[0]) {
-        SoupURI * uri = soup_uri_new(uri_str);
-        if (uri) {
-            g_object_set(soup, "proxy-uri", uri, NULL);
-        } else {
-            g_warning("Invalid proxy uri %s", uri_str);
-        }
-    } else {
-        g_object_set(soup, "proxy-uri", NULL, NULL);
-    }
+    req->soup = client_conf_get_soup_session(conf);
     return req;
 }
 
@@ -178,7 +159,7 @@ ClientRequest * client_request_new(ClientConf * conf, const gchar * path,
     g_autofree gchar * uri = client_conf_get_connection_uri(conf, path);
     SoupMessage * msg = soup_message_new("GET", uri);
     g_debug("GET request to %s", uri);
-    soup_session_send_async(soup, msg, req->cancel_mgr_request,
+    soup_session_send_async(req->soup, msg, req->cancel_mgr_request,
                             request_finished_cb, g_object_ref(req));
 
     return req;
@@ -194,7 +175,7 @@ ClientRequest * client_request_new_with_data(ClientConf * conf, const gchar * pa
     g_autofree gchar * safe_post_data = hide_json_password(post_data);
     g_debug("POST request to %s, body:\n%s", uri, safe_post_data);
     soup_message_set_request(msg, "text/json", SOUP_MEMORY_COPY, post_data, strlen(post_data));
-    soup_session_send_async(soup, msg, req->cancel_mgr_request,
+    soup_session_send_async(req->soup, msg, req->cancel_mgr_request,
                             request_finished_cb, g_object_ref(req));
 
     return req;
