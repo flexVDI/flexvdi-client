@@ -12,6 +12,7 @@ struct _ClientConf {
     GOptionEntry * main_options, * session_options, * device_options;
     GKeyFile * file;
     gboolean version;
+    SoupSession * soup;
     // Main options
     gchar * host;
     gchar * port;
@@ -162,6 +163,11 @@ static void client_conf_init(ClientConf * conf) {
     client_conf_load(conf);
     if (conf->log_level)
         client_log_set_log_levels(conf->log_level);
+    // FIXME: Disable checking server certificate
+    conf->soup = soup_session_new_with_options(
+        "ssl-strict", FALSE,
+        "timeout", 5,
+        NULL);
 }
 
 
@@ -416,6 +422,21 @@ gint client_conf_get_inactivity_timeout(ClientConf * conf) {
 
 gboolean client_conf_get_auto_clipboard(ClientConf * conf) {
     return conf->auto_clipboard;
+}
+
+
+SoupSession * client_conf_get_soup_session(ClientConf * conf) {
+    if (conf->proxy_uri && conf->proxy_uri[0]) {
+        SoupURI * uri = soup_uri_new(conf->proxy_uri);
+        if (uri) {
+            g_object_set(conf->soup, "proxy-uri", uri, NULL);
+        } else {
+            g_warning("Invalid proxy uri %s", conf->proxy_uri);
+        }
+    } else {
+        g_object_set(conf->soup, "proxy-uri", NULL, NULL);
+    }
+    return conf->soup;
 }
 
 
