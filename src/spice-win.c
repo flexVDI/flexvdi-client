@@ -284,6 +284,7 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
         gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
         gtk_widget_hide(GTK_WIDGET(win->restore_button));
         gtk_widget_hide(GTK_WIDGET(win->minimize_button));
+        gtk_widget_hide(GTK_WIDGET(win->close_button));
     }
 }
 
@@ -369,6 +370,7 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
             gtk_widget_hide(GTK_WIDGET(win->fullscreen_button));
             gtk_widget_show(GTK_WIDGET(win->restore_button));
             gtk_widget_show(GTK_WIDGET(win->minimize_button));
+            gtk_widget_show(GTK_WIDGET(win->close_button));
             g_object_ref(win->toolbar);
             gtk_container_remove(GTK_CONTAINER(win->content_box),
                                  GTK_WIDGET(win->toolbar));
@@ -380,6 +382,7 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
             gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
             gtk_widget_hide(GTK_WIDGET(win->restore_button));
             gtk_widget_hide(GTK_WIDGET(win->minimize_button));
+            gtk_widget_hide(GTK_WIDGET(win->close_button));
             g_object_ref(win->toolbar);
             gtk_container_remove(GTK_CONTAINER(win->revealer),
                                  GTK_WIDGET(win->toolbar));
