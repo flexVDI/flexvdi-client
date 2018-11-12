@@ -17,7 +17,7 @@ struct _ClientAppWindow {
     GtkCheckButton * fullscreen;
     GtkEntry * proxy;
     GtkButton * config;
-    GtkToolButton * about;
+    GtkButton * about;
     GtkButton * save;
     GtkButton * discard;
     GtkButton * login;
@@ -153,7 +153,7 @@ static void button_pressed_handler(GtkButton * button, gpointer user_data) {
 
     if (button == win->config)
         g_signal_emit(win, signals[CLIENT_APP_BUTTON_PRESSED], 0, SETTINGS_BUTTON);
-    else if (button == GTK_BUTTON(win->about))
+    else if (button == win->about)
         g_signal_emit(win, signals[CLIENT_APP_BUTTON_PRESSED], 0, ABOUT_BUTTON);
     else if (button == win->save) {
         if (validate_settings(win)) {

@@ -25,8 +25,8 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToolButton" id="about">
-                <property name="icon-name">about-flexvdi-white</property>
+              <object class="GtkButton" id="about">
+                <property name="image">about-icon</property>
                 <property name="tooltip-text" translatable="yes">About</property>
               </object>
               <packing>
@@ -397,6 +397,9 @@
       </object>
     </child>
   </template>
+  <object class="GtkImage" id="about-icon">
+    <property name="resource">/com/flexvdi/client/icons/24x24/actions/about-flexvdi-white.png</property>
+  </object>
   <object class="GtkImage" id="gears-icon">
     <property name="resource">/com/flexvdi/client/images/button-settings.png</property>
   </object>
