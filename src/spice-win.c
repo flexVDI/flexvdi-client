@@ -151,7 +151,7 @@ static void spice_window_init(SpiceWindow * win) {
 
     win->printer_actions = g_simple_action_group_new();
     win->printers_menu = g_menu_new();
-    gtk_widget_insert_action_group(GTK_WIDGET(win), "printer", win->printer_actions);
+    gtk_widget_insert_action_group(GTK_WIDGET(win), "printer", G_ACTION_GROUP(win->printer_actions));
     gtk_menu_button_set_menu_model(win->printers_button, G_MENU_MODEL(win->printers_menu));
 }
 
@@ -611,7 +611,7 @@ static void share_current_printers(gpointer user_data) {
             ** action_name;
         for (action_name = action_names; *action_name; ++action_name) {
             GSimpleAction * action =
-                G_SIMPLE_ACTION(g_simple_action_group_lookup(win->printer_actions, *action_name));
+                G_SIMPLE_ACTION(g_action_map_lookup_action(G_ACTION_MAP(win->printer_actions), *action_name));
             if (g_variant_get_boolean(g_action_get_state(G_ACTION(action)))) {
                 share_printer_async(action);
             }
