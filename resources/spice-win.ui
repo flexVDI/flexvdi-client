@@ -17,13 +17,13 @@
                 <property name="icon-size">GTK_ICON_SIZE_LARGE_TOOLBAR</property>
                 <child>
                   <object class="GtkToolButton" id="copy_button">
-                    <property name="icon-name">edit-copy-cus</property>
+                    <property name="icon-name">copy-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">Copy from guest</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="paste_button">
-                    <property name="icon-name">edit-paste-cus</property>
+                    <property name="icon-name">paste-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">Paste to guest</property>
                   </object>
                 </child>
@@ -40,7 +40,7 @@
                         <property name="tooltip-text" translatable="yes">Send key combinations</property>
                         <child>
                           <object class="GtkImage">
-                            <property name="icon-name">input-keyboard-cus</property>
+                            <property name="icon-name">keyboard-flexvdi</property>
                           </object>
                         </child>
                       </object>
@@ -55,7 +55,7 @@
                         <property name="tooltip-text" translatable="yes">Share USB devices</property>
                         <child>
                           <object class="GtkImage">
-                            <property name="icon-name">drive-removable-usb-cus</property>
+                            <property name="icon-name">usb-flexvdi</property>
                           </object>
                         </child>
                       </object>
@@ -71,7 +71,7 @@
                         <property name="tooltip-text" translatable="yes">Share printers</property>
                         <child>
                           <object class="GtkImage">
-                            <property name="icon-name">printer-cus</property>
+                            <property name="icon-name">printer-flexvdi</property>
                           </object>
                         </child>
                       </object>
@@ -84,19 +84,19 @@
                 </child>
                 <child>
                   <object class="GtkToolButton" id="reboot_button">
-                    <property name="icon-name">system-reboot-cus</property>
+                    <property name="icon-name">system-reboot-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">Reset</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="shutdown_button">
-                    <property name="icon-name">system-shutdown-cus</property>
+                    <property name="icon-name">system-shutdown-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">Orderly shutdown</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="poweroff_button">
-                    <property name="icon-name">system-poweroff-cus</property>
+                    <property name="icon-name">system-poweroff-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">Immediately poweroff</property>
                   </object>
                 </child>
@@ -107,7 +107,7 @@
                 <child>
                   <object class="GtkToolButton" id="about_button">
                     <property name="name">about-button</property>
-                    <property name="icon-name">help-about</property>
+                    <property name="icon-name">about-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">About</property>
                   </object>
                 </child>
@@ -118,27 +118,27 @@
                 <child>
                   <object class="GtkToolButton" id="minimize_button">
                     <property name="name">minimize-button</property>
-                    <property name="icon-name">go-bottom-cus</property>
+                    <property name="icon-name">minimize-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">Minimize</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="fullscreen_button">
                     <property name="name">fullscreen-button</property>
-                    <property name="icon-name">view-fullscreen-cus</property>
+                    <property name="icon-name">fullscreen-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">Go fullstreen</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="restore_button">
                     <property name="name">restore-button</property>
-                    <property name="icon-name">view-restore-cus</property>
+                    <property name="icon-name">restore-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">Restore view</property>
                   </object>
                 </child>
                 <child>
                   <object class="GtkToolButton" id="close_button">
-                    <property name="icon-name">window-close-cus</property>
+                    <property name="icon-name">close-flexvdi</property>
                     <property name="tooltip-text" translatable="yes">Close connection</property>
                   </object>
                 </child>

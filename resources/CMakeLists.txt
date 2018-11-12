@@ -16,21 +16,20 @@ add_custom_command(OUTPUT ${resources_c}
                         images/logo-client.png
                         icons/16x16/actions/user.png
                         icons/16x16/actions/lock.png
-                        icons/16x16/actions/window-close.png
-                        icons/16x16/actions/window-minimize.png
-                        icons/16x16/actions/window-maximize.png
-                        icons/24x24/actions/window-close-cus.png
-                        icons/24x24/actions/edit-copy-cus.png
-                        icons/24x24/actions/edit-paste-cus.png
-                        icons/24x24/actions/view-fullscreen-cus.png
-                        icons/24x24/actions/view-restore-cus.png
-                        icons/24x24/actions/go-bottom-cus.png
-                        icons/24x24/actions/system-poweroff-cus.png
-                        icons/24x24/actions/system-reboot-cus.png
-                        icons/24x24/actions/system-shutdown-cus.png
-                        icons/24x24/actions/input-keyboard-cus.png
-                        icons/24x24/actions/drive-removable-usb-cus.png
-                        icons/24x24/actions/printer-cus.png
+                        icons/32x32/actions/close-flexvdi.png
+                        icons/32x32/actions/copy-flexvdi.png
+                        icons/32x32/actions/paste-flexvdi.png
+                        icons/32x32/actions/fullscreen-flexvdi.png
+                        icons/32x32/actions/restore-flexvdi.png
+                        icons/32x32/actions/minimize-flexvdi.png
+                        icons/32x32/actions/system-poweroff-flexvdi.png
+                        icons/32x32/actions/system-reboot-flexvdi.png
+                        icons/32x32/actions/system-shutdown-flexvdi.png
+                        icons/32x32/actions/keyboard-flexvdi.png
+                        icons/32x32/actions/usb-flexvdi.png
+                        icons/32x32/actions/printer-flexvdi.png
+                        icons/32x32/actions/about-flexvdi.png
+                        icons/24x24/actions/about-flexvdi-white.png
                   )
 
 add_library(resource_objects OBJECT ${resources_c})

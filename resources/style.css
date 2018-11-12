@@ -99,13 +99,13 @@ revealer #toolbar {
 }
 
 toolbar button {
-	min-width:24px;
+    padding: 2px;
+    min-width:32px;
     border-color: transparent;
     outline: none;
 }
 
 toolbar button:hover {
-	min-width:24px;
 	border-color: #909090;
 }
 
