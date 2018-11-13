@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <gst/gst.h>
 #include "configuration.h"
+#include "client-log.h"
 
 struct _ClientConf {
     GObject parent;
@@ -159,6 +160,8 @@ static void client_conf_init(ClientConf * conf) {
     // Load the configuration file
     conf->file = g_key_file_new();
     client_conf_load(conf);
+    if (conf->log_level)
+        client_log_set_log_levels(conf->log_level);
 }
 
 
