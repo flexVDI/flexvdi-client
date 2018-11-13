@@ -1,5 +1,5 @@
 set(client_sources
-    client-app.c client-win.c client-conn.c
+    client-app.c client-win.c client-conn.c client-log.c
     flexvdi-port.c configuration.c client-request.c
     spice-win.c printclient.c PPDGenerator.c about.c)
 if (WIN32)
