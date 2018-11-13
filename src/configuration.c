@@ -571,7 +571,8 @@ void client_conf_set_window_size(ClientConf * conf, gint id,
 static void read_string(GKeyFile * file, const gchar * group, const gchar * key, gchar ** val) {
     gchar * str_val = g_key_file_get_string(file, group, key, NULL);
     if (str_val) {
-        g_debug("Option %s:%s = %s", group, key, str_val);
+        if (!g_str_equal(key, "password"))
+            g_debug("Option %s:%s = %s", group, key, str_val);
         *val = str_val;
     }
 }
