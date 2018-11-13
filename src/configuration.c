@@ -18,6 +18,7 @@ struct _ClientConf {
     gchar * password;
     gchar * terminal_id;
     gchar * uri;
+    gchar * log_level;
     // Session options
     gchar * desktop;
     gchar * proxy_uri;
@@ -71,8 +72,10 @@ static void client_conf_init(ClientConf * conf) {
         "User name", "<user name>" },
         { "password", 'w', 0, G_OPTION_ARG_STRING, &conf->password,
         "Password", "<password>" },
-        { "terminal_id", 0, 0, G_OPTION_ARG_STRING, &conf->terminal_id,
+        { "terminal-id", 0, 0, G_OPTION_ARG_STRING, &conf->terminal_id,
         "Use a given Terminal ID instead of calculating it automatically", "<terminal ID>" },
+        { "log-level", 'v', 0, G_OPTION_ARG_STRING, &conf->log_level,
+        "Log level for each domain, or for all messages if domain is ommited. 0 = ERROR, 5 = DEBUG", "<[domain:]level,...>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -170,6 +173,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->password);
     g_free(conf->desktop);
     g_free(conf->proxy_uri);
+    g_free(conf->log_level);
     g_strfreev(conf->serial_params);
     g_strfreev(conf->redir_rports);
     g_strfreev(conf->redir_lports);

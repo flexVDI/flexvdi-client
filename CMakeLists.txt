@@ -76,6 +76,7 @@ if (WIN32)
     # WINVER = 0x0501 -> Windows XP
     add_definitions(-DWIN32 -DUNICODE -D_UNICODE -DWINVER=0x0501 -DWIN32_LEAN_AND_MEAN)
 endif ()
+add_definitions(-DG_LOG_USE_STRUCTURED)
 
 
 # Summary
