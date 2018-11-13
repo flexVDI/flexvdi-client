@@ -35,6 +35,7 @@ struct _SpiceWindow {
     GMenu * printers_menu;
     GtkMenuButton * printers_button;
     GSimpleActionGroup * printer_actions;
+    GHashTable * printer_name_for_actions;
     GtkMenuButton * usb_button;
     GtkRevealer * notification_revealer;
     GtkLabel * notification;
@@ -151,6 +152,7 @@ static void spice_window_init(SpiceWindow * win) {
 
     win->printer_actions = g_simple_action_group_new();
     win->printers_menu = g_menu_new();
+    win->printer_name_for_actions = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, g_free);
     gtk_widget_insert_action_group(GTK_WIDGET(win), "printer", G_ACTION_GROUP(win->printer_actions));
     gtk_menu_button_set_menu_model(win->printers_button, G_MENU_MODEL(win->printers_menu));
 }
@@ -162,6 +164,9 @@ static void spice_window_dispose(GObject * obj) {
     if (win->display_channel)
         g_signal_handler_disconnect(win->display_channel, win->channel_event_handler_id);
     g_clear_object(&win->display_channel);
+    if (win->printer_name_for_actions)
+        g_hash_table_unref(win->printer_name_for_actions);
+    win->printer_name_for_actions = NULL;
     G_OBJECT_CLASS(spice_window_parent_class)->dispose(obj);
 }
 
@@ -552,15 +557,21 @@ static void spice_window_get_printers(SpiceWindow * win) {
     flexvdi_get_printer_list(&printers);
     for (printer = printers; printer != NULL; printer = g_slist_next(printer)) {
         const char * printer_name = (const char *)printer->data;
+        g_autofree gchar * parsed_printer_name = g_strdup(printer_name);
+        g_strcanon(parsed_printer_name,
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_",
+            '_');
         gboolean state = client_conf_is_printer_shared(win->conf, printer_name);
         g_debug("  %s, %s", printer_name, state ? "shared" : "not shared");
 
-        GSimpleAction * action = g_simple_action_new_stateful(printer_name, NULL,
+        GSimpleAction * action = g_simple_action_new_stateful(parsed_printer_name, NULL,
             g_variant_new_boolean(state));
         g_action_map_add_action(G_ACTION_MAP(win->printer_actions), G_ACTION(action));
         g_signal_connect(G_OBJECT(action), "activate", G_CALLBACK(printer_toggled), win);
+        g_hash_table_insert(win->printer_name_for_actions, action, g_strdup(printer_name));
 
-        g_autofree gchar * full_action_name = g_strconcat("printer.", printer_name, NULL);
+        g_autofree gchar * full_action_name =
+            g_strconcat("printer.", parsed_printer_name, NULL);
         GMenuItem * item = g_menu_item_new(printer_name, full_action_name);
         g_menu_append_item(win->printers_menu, item);
     }
@@ -574,21 +585,30 @@ static gboolean set_printer_menu_item_sensitive(gpointer user_data) {
     return G_SOURCE_REMOVE;
 }
 
+typedef struct _ActionAndPrinter {
+    GSimpleAction * action;
+    gchar * printer;
+} ActionAndPrinter;
+
 static gpointer share_printer_thread(gpointer user_data) {
-    GSimpleAction * action = G_SIMPLE_ACTION(user_data);
-    const char * printer = g_action_get_name(G_ACTION(action));
-    flexvdi_share_printer(printer);
-    g_idle_add(set_printer_menu_item_sensitive, action);
+    ActionAndPrinter * data = (ActionAndPrinter *)user_data;
+    flexvdi_share_printer(data->printer);
+    g_idle_add(set_printer_menu_item_sensitive, data->action);
+    g_free(data->printer);
+    g_free(data);
     return NULL;
 }
 
-static void share_printer_async(GSimpleAction * action) {
+static void share_printer_async(GSimpleAction * action, const gchar * printer) {
     // flexvdi_share_printer can be a bit slow and "hang" the GUI
     g_simple_action_set_enabled(action, FALSE);
+    ActionAndPrinter * data = g_new(ActionAndPrinter, 1);
+    data->action = action;
+    data->printer = g_strdup(printer);
     GThread * thread = g_thread_try_new(NULL, share_printer_thread,
-                                        action, NULL);
+                                        data, NULL);
     if (!thread) {
-        share_printer_thread(action);
+        share_printer_thread(data);
     } else {
         g_thread_unref(thread);
     }
@@ -596,12 +616,12 @@ static void share_printer_async(GSimpleAction * action) {
 
 static void printer_toggled(GSimpleAction * action, GVariant * parameter, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
-    const char * printer = g_action_get_name(G_ACTION(action));
+    const char * printer = g_hash_table_lookup(win->printer_name_for_actions, action);
     gboolean active = !g_variant_get_boolean(g_action_get_state(G_ACTION(action)));
     g_simple_action_set_state(action, g_variant_new_boolean(active));
     client_conf_share_printer(win->conf, printer, active);
     if (active) {
-        share_printer_async(action);
+        share_printer_async(action, printer);
     } else {
         flexvdi_unshare_printer(printer);
     }
@@ -610,16 +630,16 @@ static void printer_toggled(GSimpleAction * action, GVariant * parameter, gpoint
 static void share_current_printers(gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
     if (flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING)) {
-        gchar ** action_names = g_action_group_list_actions(G_ACTION_GROUP(win->printer_actions)),
-            ** action_name;
-        for (action_name = action_names; *action_name; ++action_name) {
-            GSimpleAction * action =
-                G_SIMPLE_ACTION(g_action_map_lookup_action(G_ACTION_MAP(win->printer_actions), *action_name));
+        GHashTableIter iter;
+        gpointer key, value;
+
+        g_hash_table_iter_init(&iter, win->printer_name_for_actions);
+        while (g_hash_table_iter_next(&iter, &key, &value)) {
+            GSimpleAction * action = G_SIMPLE_ACTION(key);
             if (g_variant_get_boolean(g_action_get_state(G_ACTION(action)))) {
-                share_printer_async(action);
+                share_printer_async(action, value);
             }
         }
-        g_strfreev(action_names);
     }
 }
 
