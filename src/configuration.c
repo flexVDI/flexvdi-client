@@ -61,6 +61,7 @@ static void client_conf_class_init(ClientConfClass * class) {
 
 
 static void client_conf_load(ClientConf * conf);
+static gboolean set_proxy_uri(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
 
 static void client_conf_init(ClientConf * conf) {
     // Inline initialization of the command-line options groups
@@ -84,7 +85,7 @@ static void client_conf_init(ClientConf * conf) {
     GOptionEntry session_options[] = {
         { "desktop", 'd', 0, G_OPTION_ARG_STRING, &conf->desktop,
         "Desktop name to connect to", "<desktop name>" },
-        { "proxy-uri", 0, 0, G_OPTION_ARG_STRING, &conf->proxy_uri,
+        { "proxy-uri", 0, 0, G_OPTION_ARG_CALLBACK, set_proxy_uri,
         "Use this URI to connect through a proxy server (default use system settings)", "<uri>" },
         { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, &conf->fullscreen,
         "Show desktop in fullscreen mode", NULL },
@@ -237,10 +238,10 @@ void client_conf_set_application_options(ClientConf * conf, GApplication * app) 
     g_application_add_main_option_entries(app, conf->main_options);
     g_application_add_main_option_entries(app, version_option);
     GOptionGroup * session_group = g_option_group_new("session",
-        "Session options", "Show session options", NULL, NULL);
+        "Session options", "Show session options", conf, NULL);
     g_option_group_add_entries(session_group, conf->session_options);
     GOptionGroup * devices_group = g_option_group_new("device",
-        "Device options", "Show device options", NULL, NULL);
+        "Device options", "Show device options", conf, NULL);
     g_option_group_add_entries(devices_group, conf->device_options);
     g_application_add_option_group(app, session_group);
     g_application_add_option_group(app, devices_group);
@@ -426,16 +427,6 @@ gboolean client_conf_get_auto_clipboard(ClientConf * conf) {
 
 
 SoupSession * client_conf_get_soup_session(ClientConf * conf) {
-    if (conf->proxy_uri && conf->proxy_uri[0]) {
-        SoupURI * uri = soup_uri_new(conf->proxy_uri);
-        if (uri) {
-            g_object_set(conf->soup, "proxy-uri", uri, NULL);
-        } else {
-            g_warning("Invalid proxy uri %s", conf->proxy_uri);
-        }
-    } else {
-        g_object_set(conf->soup, "proxy-uri", NULL, NULL);
-    }
     return conf->soup;
 }
 
@@ -545,10 +536,29 @@ void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
 }
 
 
-void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri) {
+static gboolean set_proxy_uri(const gchar * option_name, const gchar * value, gpointer data, GError ** error) {
+    ClientConf * conf = CLIENT_CONF(data);
     g_free(conf->proxy_uri);
-    conf->proxy_uri = g_strdup(proxy_uri);
-    write_string(conf->file, "General", "proxy-uri", conf->proxy_uri);
+    conf->proxy_uri = value ? g_strdup(value) : NULL;
+
+    if (conf->proxy_uri && conf->proxy_uri[0]) {
+        SoupURI * uri = soup_uri_new(conf->proxy_uri);
+        if (uri) {
+            g_object_set(conf->soup, "proxy-uri", uri, NULL);
+        } else {
+            g_warning("Invalid proxy uri %s", conf->proxy_uri);
+        }
+    } else {
+        g_object_set(conf->soup, "proxy-uri", NULL, NULL);
+    }
+
+    return TRUE;
+}
+
+
+void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri) {
+    set_proxy_uri("", proxy_uri, conf, NULL);
+    write_string(conf->file, "Session", "proxy-uri", conf->proxy_uri);
 }
 
 
@@ -702,6 +712,7 @@ static void client_conf_load(ClientConf * conf) {
     GError * error = NULL;
     g_autofree gchar * config_filename = get_config_filename();
     int i;
+    gchar * cb_arg;
 
     if (!g_key_file_load_from_file(conf->file, config_filename,
             G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
@@ -725,6 +736,14 @@ static void client_conf_load(ClientConf * conf) {
             case G_OPTION_ARG_STRING:
                 read_string(conf->file, groups[i].group, option->long_name,
                             (gchar **)option->arg_data);
+                break;
+            case G_OPTION_ARG_CALLBACK:
+                cb_arg = NULL;
+                read_string(conf->file, groups[i].group, option->long_name, &cb_arg);
+                if (cb_arg) {
+                    ((GOptionArgFunc)option->arg_data)("", cb_arg, conf, NULL);
+                    g_free(cb_arg);
+                }
                 break;
             case G_OPTION_ARG_INT:
                 read_int(conf->file, groups[i].group, option->long_name,
