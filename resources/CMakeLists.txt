@@ -16,6 +16,10 @@ add_custom_command(OUTPUT ${resources_c}
                         images/logo-client.png
                         icons/16x16/actions/user.png
                         icons/16x16/actions/lock.png
+                        icons/16x16/actions/window-close.png
+                        icons/16x16/actions/window-minimize.png
+                        icons/16x16/actions/window-maximize.png
+                        icons/16x16/actions/window-restore.png
                         icons/32x32/actions/close-flexvdi.png
                         icons/32x32/actions/copy-flexvdi.png
                         icons/32x32/actions/paste-flexvdi.png
