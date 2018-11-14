@@ -3,6 +3,7 @@
  **/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "client-log.h"
 
 
@@ -15,6 +16,7 @@ typedef struct _LevelForDomain {
 static gboolean configured = FALSE;
 static GList * level_for_domains = NULL;
 static GLogLevelFlags default_level = G_LOG_LEVEL_MESSAGE;
+static GLogLevelFlags fatal_level = G_LOG_LEVEL_ERROR;
 static FILE * log_file = NULL;
 
 
@@ -83,11 +85,23 @@ static GLogWriterOutput log_to_file(GLogLevelFlags log_level, const GLogField * 
     fprintf(log_file, "%s.%03d: %s-%s: %s\n", now_str, g_date_time_get_microsecond(now)/1000,
             log_domain, log_level_str, message);
 
-    if (log_level & G_LOG_FLAG_FATAL) G_BREAKPOINT();
+    if (log_level <= fatal_level) G_BREAKPOINT();
 
     return G_LOG_WRITER_HANDLED;
 }
 
+static gboolean map_level(int level_num, GLogLevelFlags * level) {
+    GLogLevelFlags map[] = {
+        G_LOG_LEVEL_ERROR, G_LOG_LEVEL_CRITICAL, G_LOG_LEVEL_WARNING,
+        G_LOG_LEVEL_MESSAGE, G_LOG_LEVEL_INFO, G_LOG_LEVEL_DEBUG
+    };
+
+    if (level_num >= 0 && level_num <= 5) {
+        *level = map[level_num];
+        return TRUE;
+    }
+    return FALSE;
+}
 
 void client_log_setup(int argc, char * argv[]) {
     const gchar * verbose_levels = g_getenv("FLEXVDI_LOG_LEVEL");
@@ -122,15 +136,15 @@ void client_log_setup(int argc, char * argv[]) {
     setvbuf(log_file, NULL, _IOLBF, 0);
 
     g_log_set_writer_func(log_to_file, NULL, NULL);
+
+    const gchar * fatal_str = g_getenv("FLEXVDI_FATAL_LEVEL");
+    if (fatal_str) {
+        map_level(strtol(fatal_str, NULL, 10), &fatal_level);
+    }
 }
 
 
 void client_log_set_log_levels(const gchar * verbose_str) {
-    GLogLevelFlags map[] = {
-        G_LOG_LEVEL_ERROR, G_LOG_LEVEL_CRITICAL, G_LOG_LEVEL_WARNING,
-        G_LOG_LEVEL_MESSAGE, G_LOG_LEVEL_INFO, G_LOG_LEVEL_DEBUG
-    };
-
     // Configure levels only once. First one takes precedence: command-line, then config file
     if (configured) return;
     configured = TRUE;
@@ -141,17 +155,14 @@ void client_log_set_log_levels(const gchar * verbose_str) {
 
         gchar ** terms = g_strsplit(*level, ":", 0);
         if (*(terms + 1) == NULL) {
-            long int level_num = strtol(*terms, NULL, 10);
-            if (level_num >= 0 && level_num <= 5) {
-                default_level = map[level_num];
-            }
+            map_level(strtol(*terms, NULL, 10), &default_level);
         } else {
-            long int level_num = strtol(*(terms + 1), NULL, 10);
-            if (level_num >= 0 && level_num <= 5) {
+            GLogLevelFlags glevel;
+            if (map_level(strtol(*(terms + 1), NULL, 10), &glevel)) {
                 if (g_str_equal(*terms, "all")) {
-                    default_level = map[level_num];
+                    default_level = glevel;
                 } else {
-                    update_level_for_domain(*terms, map[level_num]);
+                    update_level_for_domain(*terms, glevel);
                 }
             }
         }
