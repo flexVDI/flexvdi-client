@@ -16,6 +16,7 @@ struct _SpiceWindow {
     gint width, height;
     gboolean fullscreen;
     gboolean maximized;
+    gint monitor;
     GtkRevealer * revealer;
     SpiceDisplay * spice;
     GtkBox * content_box;
@@ -97,8 +98,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
 }
 
 static void realize_window(GtkWidget * toplevel, gpointer user_data);
-static void size_allocate(GtkWidget * widget, GtkAllocation * allocation,
-                          gpointer user_data);
+static gboolean configure_event(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 static void copy_from_guest(GtkToolButton * toolbutton, gpointer user_data);
 static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data);
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
@@ -135,7 +135,7 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect(win->poweroff_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win, "window-state-event", G_CALLBACK(window_state_cb), win);
     g_signal_connect(win, "realize", G_CALLBACK(realize_window), win);
-    g_signal_connect(win, "size-allocate", G_CALLBACK(size_allocate), NULL);
+    g_signal_connect(win, "configure-event", G_CALLBACK(configure_event), NULL);
     g_signal_connect(win->about_button, "clicked", G_CALLBACK(show_about), win);
 
     g_action_map_add_action_entries(G_ACTION_MAP(win), keystroke_entry, 1, win);
@@ -251,9 +251,9 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
             flexvdi_on_agent_connected(share_current_printers, win);
     }
 
-    if (client_conf_get_window_size(conf, id, &win->width, &win->height, &win->maximized)) {
+    win->monitor = -1;
+    if (client_conf_get_window_size(conf, id, &win->width, &win->height, &win->maximized, &win->monitor)) {
         gtk_window_set_default_size(GTK_WINDOW(win), win->width, win->height);
-        if (win->maximized) gtk_window_maximize(GTK_WINDOW(win));
     }
 
     return win;
@@ -269,10 +269,25 @@ static void set_printers_menu_visibility(gpointer user_data) {
     }
 }
 
+static int get_monitor(SpiceWindow * win) {
+    GdkDisplay * display = gdk_display_get_default();
+    GdkWindow * gwin = gtk_widget_get_window(GTK_WIDGET(win));
+    g_return_val_if_fail(gwin != NULL, 0);
+    GdkMonitor * monitor = gdk_display_get_monitor_at_window(display, gwin);
+    int i;
+    for (i = 0; i < gdk_display_get_n_monitors(display); ++i)
+        if (gdk_display_get_monitor(display, i) == monitor)
+            return i;
+    return 0;
+}
+
 static void realize_window(GtkWidget * toplevel, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
+
     gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
-    client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized);
+    if (win->monitor == -1)
+        win->monitor = get_monitor(win);
+    client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
 
     if (flexvdi_is_agent_connected())
         set_printers_menu_visibility(win);
@@ -283,8 +298,17 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
     gtk_widget_hide(GTK_WIDGET(win->usb_button));
 #endif
 
+    GdkRectangle r;
+    GdkDisplay * display = gdk_display_get_default();
+    GdkMonitor * monitor = gdk_display_get_monitor(display, win->monitor);
+    gdk_monitor_get_geometry(monitor, &r);
+    g_debug("Moving window to monitor %d (%d,%d+%dx%d) at %d,%d",
+        win->monitor, r.x, r.y, r.width, r.height, r.x + (r.width - win->width) / 2, r.y + (r.height - win->height) / 2);
+    gtk_window_move(GTK_WINDOW(win), r.x + (r.width - win->width) / 2, r.y + (r.height - win->height) / 2);
+    if (win->maximized) gtk_window_maximize(GTK_WINDOW(win));
+
     if (win->fullscreen) {
-        gtk_window_fullscreen(GTK_WINDOW(win));
+        gtk_window_fullscreen_on_monitor(GTK_WINDOW(win), gdk_screen_get_default(), win->monitor);
     } else {
         gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
         gtk_widget_hide(GTK_WIDGET(win->restore_button));
@@ -293,16 +317,17 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
     }
 }
 
-static void size_allocate(GtkWidget * widget, GtkAllocation * allocation,
-                          gpointer user_data) {
+static gboolean configure_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(widget);
-    GTK_WIDGET_CLASS(spice_window_parent_class)->size_allocate(widget, allocation);
 
+    win->monitor = get_monitor(win);
     // save the window geometry only if we are not maximized of fullscreen
     if (!(win->maximized || win->fullscreen)) {
         gtk_window_get_size(GTK_WINDOW(widget), &win->width, &win->height);
-        client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized);
     }
+    client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
+
+    return GDK_EVENT_PROPAGATE;
 }
 
 static void channel_event(SpiceChannel * channel, SpiceChannelEvent event, gpointer user_data) {
@@ -344,7 +369,7 @@ static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data) {
     if (win->fullscreen) {
         gtk_window_unfullscreen(GTK_WINDOW(win));
     } else {
-        gtk_window_fullscreen(GTK_WINDOW(win));
+        gtk_window_fullscreen_on_monitor(GTK_WINDOW(win), gdk_screen_get_default(), win->monitor);
     }
 }
 
@@ -367,7 +392,8 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
         (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0;
     win->fullscreen =
         (event->new_window_state & GDK_WINDOW_STATE_FULLSCREEN) != 0;
-    client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized);
+    win->monitor = get_monitor(win);
+    client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
     client_conf_set_fullscreen(win->conf, win->fullscreen);
 
     if (event->changed_mask & GDK_WINDOW_STATE_FULLSCREEN) {
