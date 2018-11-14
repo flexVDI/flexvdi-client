@@ -1,6 +1,6 @@
 set(LIB_SOURCES
     client-conn.c client-log.c flexvdi-port.c configuration.c client-request.c
-    printclient.c PPDGenerator.c)
+    printclient.c PPDGenerator.c ws-tunnel.c)
 set(LIB_HEADERS
     client-conn.h client-log.h flexvdi-port.h configuration.h client-request.h
     printclient.h)
@@ -13,7 +13,7 @@ if (WIN32)
     file(WRITE icon.rc "IDI_ICON1 ICON DISCARDABLE \"${CMAKE_CURRENT_BINARY_DIR}/icon.ico\"")
     set(LIB_SOURCES ${LIB_SOURCES}
         terminalid-win32.c printclient-win32.c)
-    set(LIB_LIBRARIES ${LIB_LIBRARIES} iphlpapi)
+    set(LIB_LIBRARIES ${LIB_LIBRARIES} iphlpapi ws2_32)
     set(ICON icon.rc)
 elseif (APPLE)
     set(LIB_SOURCES ${LIB_SOURCES}

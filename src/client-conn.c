@@ -18,6 +18,7 @@
 */
 
 #include "client-conn.h"
+#include "ws-tunnel.h"
 
 
 struct _ClientConn {
@@ -26,6 +27,10 @@ struct _ClientConn {
     SpiceMainChannel * main;
     SpiceAudio * audio;
     int channels;
+    gboolean use_ws;
+    gchar * ws_host, * ws_port, * ws_token;
+    SoupSession * soup;
+    GList * tunnels;
     gboolean disconnecting;
     ClientConnDisconnectReason reason;
 };
@@ -80,11 +85,16 @@ static void client_conn_init(ClientConn * conn) {
 static void client_conn_dispose(GObject * obj) {
     ClientConn * conn = CLIENT_CONN(obj);
     g_clear_object(&conn->session);
+    g_list_free_full(conn->tunnels, (GDestroyNotify)ws_tunnel_unref);
     G_OBJECT_CLASS(client_conn_parent_class)->dispose(obj);
 }
 
 
 static void client_conn_finalize(GObject * obj) {
+    ClientConn * conn = CLIENT_CONN(obj);
+    g_free(conn->ws_host);
+    g_free(conn->ws_port);
+    g_free(conn->ws_token);
     G_OBJECT_CLASS(client_conn_parent_class)->finalize(obj);
 }
 
@@ -93,15 +103,21 @@ ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
     ClientConn * conn = CLIENT_CONN(g_object_new(CLIENT_CONN_TYPE, NULL));
 
     g_object_set(conn->session,
-                 "host", json_object_get_string_member(params, "spice_address"),
-                 "port", json_object_get_string_member(params, "spice_port"),
                  "password", json_object_get_string_member(params, "spice_password"),
                  NULL);
-    if (json_object_get_boolean_member(params, "use_ws")) {
+    conn->use_ws = json_object_get_boolean_member(params, "use_ws");
+    if (conn->use_ws) {
+        conn->ws_host = g_strdup(json_object_get_string_member(params, "spice_address"));
         const gchar * port = client_conf_get_port(conf);
-        g_object_set(conn->session, "ws-port", port ? port : "443", NULL);
+        conn->ws_port = g_strdup(port ? port : "443");
+        conn->ws_token = g_strdup(json_object_get_string_member(params, "spice_port"));
+        conn->soup = client_conf_get_soup_session(conf);
+    } else {
+        g_object_set(conn->session,
+                     "host", json_object_get_string_member(params, "spice_address"),
+                     "port", json_object_get_string_member(params, "spice_port"),
+                     NULL);
     }
-
     client_conf_set_session_options(conf, conn->session);
 
     return conn;
@@ -110,6 +126,7 @@ ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
 
 ClientConn * client_conn_new_with_uri(ClientConf * conf, const char * uri) {
     ClientConn * conn = CLIENT_CONN(g_object_new(CLIENT_CONN_TYPE, NULL));
+    conn->use_ws = FALSE;
     g_object_set(conn->session, "uri", uri, NULL);
     client_conf_set_session_options(conf, conn->session);
 
@@ -119,7 +136,10 @@ ClientConn * client_conn_new_with_uri(ClientConf * conf, const char * uri) {
 
 void client_conn_connect(ClientConn * conn) {
     conn->disconnecting = FALSE;
-    spice_session_connect(conn->session);
+    if (conn->use_ws)
+        spice_session_open_fd(conn->session, -1);
+    else
+        spice_session_connect(conn->session);
 }
 
 
@@ -128,6 +148,8 @@ void client_conn_disconnect(ClientConn * conn, ClientConnDisconnectReason reason
         return;
     conn->disconnecting = TRUE;
     conn->reason = reason;
+    if (conn->use_ws)
+        soup_session_abort(conn->soup);
     spice_session_disconnect(conn->session);
 }
 
@@ -136,6 +158,8 @@ SpiceSession * client_conn_get_session(ClientConn * conn) {
     return conn->session;
 }
 
+
+static void open_ws_tunnel(SpiceChannel * channel, int with_tls, gpointer user_data);
 
 /*
  * New channel handler. Finishes the connection process of each channel.
@@ -157,6 +181,9 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
         conn->audio = spice_audio_get(s, NULL);
     }
 
+    if (conn->use_ws)
+        g_signal_connect(channel, "open-fd", G_CALLBACK(open_ws_tunnel), conn);
+
     spice_channel_connect(channel);
 }
 
@@ -177,6 +204,56 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer d
         g_signal_emit(conn, signals[CLIENT_CONN_DISCONNECTED], 0, conn->reason);
         g_object_unref(conn);
     }
+}
+
+
+static void tunnel_error(WsTunnel * tunnel, GError * error, gpointer user_data);
+static void tunnel_eof(WsTunnel * tunnel, gpointer user_data);
+
+/*
+ * open_ws_tunnel
+ *
+ * Create a WebSocket connection for this channel. Then, setup a socket pair. Pass one end to
+ * spice_channel_open_fd and use the other one to forward communication to the WebSocket.
+ */
+static void open_ws_tunnel(SpiceChannel * channel, int with_tls, gpointer user_data) {
+    ClientConn * conn = CLIENT_CONN(user_data);
+
+    int id, type;
+    g_object_get(channel, "channel-id", &id, "channel-type", &type, NULL);
+
+    GList * tunnels;
+    for (tunnels = conn->tunnels; tunnels; tunnels = tunnels->next)
+        if (ws_tunnel_is_channel((WsTunnel *)tunnels->data, channel)) {
+            g_debug("There is already a WS tunnel for channel %d:%d", type, id);
+            return;
+        }
+
+    g_autofree gchar * uri = g_strdup_printf("wss://%s:%s/?ver=2&token=%s",
+        conn->ws_host, conn->ws_port, conn->ws_token);
+    g_debug("Creating a WS tunnel for channel %d:%d on uri %s", type, id, uri);
+    WsTunnel * tunnel = ws_tunnel_new(channel, conn->soup, uri);
+    if (!tunnel) {
+        g_critical("Failed to create a WS tunnel");
+        client_conn_disconnect(conn, CLIENT_CONN_DISCONNECT_IO_ERROR);
+    } else {
+        conn->tunnels = g_list_append(conn->tunnels, tunnel);
+        g_signal_connect(tunnel, "error", G_CALLBACK(tunnel_error), conn);
+        g_signal_connect(tunnel, "eof", G_CALLBACK(tunnel_eof), conn);
+    }
+}
+
+
+static void tunnel_error(WsTunnel * tunnel, GError * error, gpointer user_data) {
+    ClientConn * conn = CLIENT_CONN(user_data);
+    g_error_free(error);
+    client_conn_disconnect(conn, CLIENT_CONN_DISCONNECT_IO_ERROR);
+}
+
+
+static void tunnel_eof(WsTunnel * tunnel, gpointer user_data) {
+    ClientConn * conn = CLIENT_CONN(user_data);
+    client_conn_disconnect(conn, CLIENT_CONN_DISCONNECT_NO_ERROR);
 }
 
 
