@@ -381,12 +381,6 @@ static void minimize(GtkToolButton * toolbutton, gpointer user_data) {
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
                                 gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
-    gboolean result = GDK_EVENT_PROPAGATE;
-
-    if (GTK_WIDGET_CLASS(spice_window_parent_class)->window_state_event != NULL) {
-        result = GTK_WIDGET_CLASS(spice_window_parent_class)->
-            window_state_event(widget, event);
-    }
 
     win->maximized =
         (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0;
@@ -422,7 +416,7 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
         }
     }
 
-    return result;
+    return GDK_EVENT_PROPAGATE;
 }
 
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data) {
