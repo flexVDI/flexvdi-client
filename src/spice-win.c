@@ -14,6 +14,7 @@ struct _SpiceWindow {
     gint id;
     SpiceChannel * display_channel;
     gint width, height;
+    gboolean initially_fullscreen;
     gboolean fullscreen;
     gboolean maximized;
     gint monitor;
@@ -99,6 +100,7 @@ static void spice_window_class_init(SpiceWindowClass * class) {
 
 static void realize_window(GtkWidget * toplevel, gpointer user_data);
 static gboolean configure_event(GtkWidget * widget, GdkEvent * event, gpointer user_data);
+gboolean map_event(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 static void copy_from_guest(GtkToolButton * toolbutton, gpointer user_data);
 static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data);
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
@@ -136,6 +138,7 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect(win, "window-state-event", G_CALLBACK(window_state_cb), win);
     g_signal_connect(win, "realize", G_CALLBACK(realize_window), win);
     g_signal_connect(win, "configure-event", G_CALLBACK(configure_event), NULL);
+    g_signal_connect(win, "map-event", G_CALLBACK(map_event), NULL);
     g_signal_connect(win->about_button, "clicked", G_CALLBACK(show_about), win);
 
     g_action_map_add_action_entries(G_ACTION_MAP(win), keystroke_entry, 1, win);
@@ -230,7 +233,7 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     gtk_menu_button_set_popover(win->usb_button, popover);
     gtk_widget_show_all(popover);
 
-    win->fullscreen = client_conf_get_fullscreen(conf);
+    win->initially_fullscreen = client_conf_get_fullscreen(conf);
     client_conf_set_display_options(conf, win->spice);
     if (client_conf_get_disable_power_actions(conf)) {
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->power_actions_separator));
@@ -302,30 +305,36 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
     GdkDisplay * display = gdk_display_get_default();
     GdkMonitor * monitor = gdk_display_get_monitor(display, win->monitor);
     gdk_monitor_get_geometry(monitor, &r);
-    g_debug("Moving window to monitor %d (%d,%d+%dx%d) at %d,%d",
-        win->monitor, r.x, r.y, r.width, r.height, r.x + (r.width - win->width) / 2, r.y + (r.height - win->height) / 2);
     gtk_window_move(GTK_WINDOW(win), r.x + (r.width - win->width) / 2, r.y + (r.height - win->height) / 2);
     if (win->maximized) gtk_window_maximize(GTK_WINDOW(win));
 
-    if (win->fullscreen) {
-        gtk_window_fullscreen_on_monitor(GTK_WINDOW(win), gdk_screen_get_default(), win->monitor);
-    } else {
-        gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
-        gtk_widget_hide(GTK_WIDGET(win->restore_button));
-        gtk_widget_hide(GTK_WIDGET(win->minimize_button));
-        gtk_widget_hide(GTK_WIDGET(win->close_button));
-    }
+    // Do not go fullscreen until a map event is received, or it will fail in Windows.
 }
 
 static gboolean configure_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(widget);
 
     win->monitor = get_monitor(win);
-    // save the window geometry only if we are not maximized of fullscreen
+    // save the window geometry only if we are not maximized or fullscreen
     if (!(win->maximized || win->fullscreen)) {
         gtk_window_get_size(GTK_WINDOW(widget), &win->width, &win->height);
     }
     client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
+
+    return GDK_EVENT_PROPAGATE;
+}
+
+gboolean map_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(widget);
+
+    if (win->initially_fullscreen) {
+        gtk_window_fullscreen(GTK_WINDOW(win));
+    } else {
+        gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
+        gtk_widget_hide(GTK_WIDGET(win->restore_button));
+        gtk_widget_hide(GTK_WIDGET(win->minimize_button));
+        gtk_widget_hide(GTK_WIDGET(win->close_button));
+    }
 
     return GDK_EVENT_PROPAGATE;
 }
@@ -369,7 +378,7 @@ static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data) {
     if (win->fullscreen) {
         gtk_window_unfullscreen(GTK_WINDOW(win));
     } else {
-        gtk_window_fullscreen_on_monitor(GTK_WINDOW(win), gdk_screen_get_default(), win->monitor);
+        gtk_window_fullscreen(GTK_WINDOW(win));
     }
 }
 
