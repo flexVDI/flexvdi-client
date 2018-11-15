@@ -22,7 +22,7 @@
 
 #include <glib-object.h>
 #include <json-glib/json-glib.h>
-#include <spice-client-gtk.h>
+#include <spice-client.h>
 
 #include "configuration.h"
 
@@ -85,13 +85,6 @@ void client_conn_disconnect(ClientConn * conn, ClientConnDisconnectReason reason
  * Get the SpiceSession object associated with this connection.
  */
 SpiceSession * client_conn_get_session(ClientConn * conn);
-
-/*
- * client_conn_get_gtk_session
- *
- * Get the SpiceGtkSession object associated with this connection.
- */
-SpiceGtkSession * client_conn_get_gtk_session(ClientConn * conn);
 
 /*
  * client_conn_get_main_channel

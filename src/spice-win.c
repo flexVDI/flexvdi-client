@@ -377,14 +377,14 @@ static void channel_event(SpiceChannel * channel, SpiceChannelEvent event, gpoin
 static void copy_from_guest(GtkToolButton * toolbutton, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
     spice_gtk_session_paste_from_guest(
-        client_conn_get_gtk_session(win->conn)
+        spice_gtk_session_get(client_conn_get_session(win->conn))
     );
 }
 
 static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
     spice_gtk_session_copy_to_guest(
-        client_conn_get_gtk_session(win->conn)
+        spice_gtk_session_get(client_conn_get_session(win->conn))
     );
 }
 

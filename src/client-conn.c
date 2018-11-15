@@ -23,7 +23,6 @@
 struct _ClientConn {
     GObject parent;
     SpiceSession * session;
-    SpiceGtkSession * gtk_session;
     SpiceMainChannel * main;
     SpiceAudio * audio;
     int channels;
@@ -49,7 +48,6 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer d
 
 static void client_conn_init(ClientConn * conn) {
     conn->session = spice_session_new();
-    conn->gtk_session = spice_gtk_session_get(conn->session);
     spice_set_session_option(conn->session);
 
     g_signal_connect(conn->session, "channel-new",
@@ -117,11 +115,6 @@ void client_conn_disconnect(ClientConn * conn, ClientConnDisconnectReason reason
 
 SpiceSession * client_conn_get_session(ClientConn * conn) {
     return conn->session;
-}
-
-
-SpiceGtkSession * client_conn_get_gtk_session(ClientConn * conn) {
-    return conn->gtk_session;
 }
 
 
