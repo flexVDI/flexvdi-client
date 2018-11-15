@@ -21,7 +21,7 @@
 #define _FLEXVDI_PORT_H_
 
 #include <glib.h>
-#include <spice-client-gtk.h>
+#include <spice-client.h>
 #include "flexdp.h"
 
 // strnlen is not defined in MinGW32
