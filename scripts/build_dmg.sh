@@ -23,7 +23,7 @@ export PKG_CONFIG_PATH="$PREFIX"/lib/pkgconfig:"$PREFIX"/share/pkgconfig
 
 set -e
 
-SRCDIR=`dirname "$0"`/..
+export SRCDIR=`dirname "$0"`/..
 
 rm -fr icons.iconset flexvdi-client.app "${PKG_NAME}.tmp.dmg" "${PKG_NAME}.dmg"
 ICONDIR=icons.iconset

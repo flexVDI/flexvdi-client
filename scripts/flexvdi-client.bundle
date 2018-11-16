@@ -22,11 +22,12 @@
 
   <meta>
     <prefix name="default">${env:PREFIX}</prefix>
+    <prefix name="source">${env:SRCDIR}</prefix>
 
     <!-- Comment this out to keep the install names in binaries -->
     <run-install-name-tool/>
  
-    <!-- <launcher-script>${project}/gtk3-launcher.sh</launcher-script > -->
+    <launcher-script>${prefix:source}/scripts/bundle-launcher.sh</launcher-script >
 
     <gtk>gtk+-3.0</gtk>
   </meta>
@@ -43,6 +44,9 @@
     ${prefix}/lib/gio/modules/libgiognutls.so
   </binary>
 
+  <binary dest="${bundle}/Contents/MacOS">
+    ${prefix}/libexec/gstreamer-1.0/gst-plugin-scanner
+  </binary>
   <binary>
     ${prefix}/lib/gstreamer-1.0/libgstapp.so
   </binary>
