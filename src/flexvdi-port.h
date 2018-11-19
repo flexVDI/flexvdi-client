@@ -24,15 +24,6 @@
 #include <spice-client.h>
 #include "flexdp.h"
 
-// strnlen is not defined in MinGW32
-#ifndef HAVE_STRNLEN
-static __inline__ size_t strnlen(const char * start, size_t maxlen) {
-    const char * stop = start;
-    while (((stop - start) < maxlen) && *stop) ++stop;
-    return stop - start;
-}
-#endif
-
 
 /*
  * flexvdi_port_get_msg_buffer

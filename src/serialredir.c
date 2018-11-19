@@ -104,7 +104,7 @@ static void set_serial_params(SerialPort * serial, const char * device,
     serial->tio.c_cc[VMIN] = 1;
     serial->tio.c_cc[VTIME] = 5;
 
-    if (strnlen(mode, 3) == 3) {
+    if (strlen(mode) == 3) {
         switch (mode[0] - '0') {
             case 5: serial->tio.c_cflag |= CS5; break;
             case 6: serial->tio.c_cflag |= CS6; break;

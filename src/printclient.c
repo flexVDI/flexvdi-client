@@ -131,7 +131,7 @@ int flexvdi_share_printer(const char * printer) {
     size_t buf_size, name_len, ppd_len;
     GStatBuf stat_buf;
     g_autofree gchar * ppd_name = get_ppd_file(printer);
-    name_len = strnlen(printer, 1024);
+    name_len = strlen(printer);
     if (!g_stat(ppd_name, &stat_buf)) {
         ppd_len = stat_buf.st_size;
         buf_size = sizeof(FlexVDISharePrinterMsg) + name_len + 1 + ppd_len;
@@ -161,7 +161,7 @@ int flexvdi_unshare_printer(const char * printer) {
         return FALSE;
     }
     g_debug("Unsharing printer %s", printer);
-    size_t name_len = strnlen(printer, 1024);
+    size_t name_len = strlen(printer);
     size_t buf_size = sizeof(FlexVDIUnsharePrinterMsg) + name_len + 1;
     uint8_t * buf = flexvdi_port_get_msg_buffer(buf_size);
     if (buf) {
