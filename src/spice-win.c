@@ -278,6 +278,37 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
         gtk_window_set_default_size(GTK_WINDOW(win), win->width, win->height);
     }
 
+    switch (client_conf_get_toolbar_edge(conf)) {
+        case WINDOW_EDGE_DOWN:
+            g_object_set(win->revealer,
+                         "transition-type", GTK_REVEALER_TRANSITION_TYPE_SLIDE_UP,
+                         "valign", GTK_ALIGN_END, "halign", GTK_ALIGN_CENTER,
+                         NULL);
+            g_object_set(win->toolbar, "orientation", GTK_ORIENTATION_HORIZONTAL, NULL);
+            break;
+        case WINDOW_EDGE_LEFT:
+            g_object_set(win->revealer,
+                         "transition-type", GTK_REVEALER_TRANSITION_TYPE_SLIDE_RIGHT,
+                         "valign", GTK_ALIGN_CENTER, "halign", GTK_ALIGN_START,
+                         NULL);
+            g_object_set(win->toolbar, "orientation", GTK_ORIENTATION_VERTICAL, NULL);
+            break;
+        case WINDOW_EDGE_RIGHT:
+            g_object_set(win->revealer,
+                         "transition-type", GTK_REVEALER_TRANSITION_TYPE_SLIDE_LEFT,
+                         "valign", GTK_ALIGN_CENTER, "halign", GTK_ALIGN_END,
+                         NULL);
+            g_object_set(win->toolbar, "orientation", GTK_ORIENTATION_VERTICAL, NULL);
+            break;
+        default:
+            g_object_set(win->revealer,
+                         "transition-type", GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN,
+                         "valign", GTK_ALIGN_START, "halign", GTK_ALIGN_CENTER,
+                         NULL);
+            g_object_set(win->toolbar, "orientation", GTK_ORIENTATION_HORIZONTAL, NULL);
+            break;
+    }
+
     return win;
 }
 
@@ -485,8 +516,20 @@ static gboolean hide_widget_cb(gpointer user_data) {
 static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * event,
                                        gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
+    gdouble edge_x = -1000000.0, edge_y = -1000000.0;
+    switch (client_conf_get_toolbar_edge(win->conf)) {
+        case WINDOW_EDGE_DOWN:
+            edge_y = gtk_widget_get_allocated_height(GTK_WIDGET(win->spice)) - 1.0; break;
+        case WINDOW_EDGE_LEFT:
+            edge_x = 0.0; break;
+        case WINDOW_EDGE_RIGHT:
+            edge_x = gtk_widget_get_allocated_width(GTK_WIDGET(win->spice)) - 1.0; break;
+        default:
+            edge_y = 0.0; break;
+    }
+
     if (win->fullscreen) {
-        if (event->y == 0.0) {
+        if (event->x == edge_x || event->y == edge_y) {
             gtk_widget_show(GTK_WIDGET(win->revealer));
             gtk_revealer_set_reveal_child(win->revealer, TRUE);
         } else if (gtk_revealer_get_reveal_child(win->revealer)) {
@@ -524,6 +567,7 @@ void spice_win_show_notification(SpiceWindow * win, const gchar * text, gint dur
 static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
                                 gpointer user_data) {
     GdkEventMotion mevent = {
+        .x = event->x,
         .y = event->y
     };
     return motion_notify_event_cb(widget, &mevent, user_data);
