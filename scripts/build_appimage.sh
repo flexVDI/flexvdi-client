@@ -39,7 +39,7 @@ cp "$SRCDIR"/resources/images/icon.png $TMPDIR
 
 copy_with_deps() {
     cp "$@"
-    ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep "$PREFIX" | sort -u | xargs -r cp -t $TMPDIR/lib
+    ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep "$PREFIX" | sort -u | xargs -r cp -t $TMPDIR/lib -u
 }
 
 mkdir -p $TMPDIR/bin $TMPDIR/lib/gstreamer-1.0 $TMPDIR/lib/gio $TMPDIR/share/fonts
