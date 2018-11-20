@@ -20,7 +20,7 @@
 #ifndef _CONFIGURATION_H
 #define _CONFIGURATION_H
 
-#include <spice-client-gtk.h>
+#include <spice-client.h>
 #include <glib-object.h>
 #include <json-glib/json-glib.h>
 #include <libsoup/soup.h>
@@ -69,11 +69,19 @@ void client_conf_set_application_options(ClientConf * conf, GApplication * app);
 void client_conf_set_session_options(ClientConf * conf, SpiceSession * session);
 
 /*
+ * client_conf_set_gtk_session_options
+ *
+ * Transfer session options to a SpiceGtkSession object. The object is not typed
+ * to avoid depending on libspice-client-gtk.
+ */
+void client_conf_set_gtk_session_options(ClientConf * conf, GObject * gtk_session);
+
+/*
  * client_conf_set_display_options
  *
  * Transfer display options to a SpiceDisplay object, like pointer grab behaviour.
  */
-void client_conf_set_display_options(ClientConf * conf, SpiceDisplay * display);
+void client_conf_set_display_options(ClientConf * conf, GObject * display);
 
 /*
  * Getters for some options, those needed directly by the application. Some options

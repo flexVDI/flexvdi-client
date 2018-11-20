@@ -249,7 +249,11 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     gtk_widget_show_all(popover);
 
     win->initially_fullscreen = client_conf_get_fullscreen(conf);
-    client_conf_set_display_options(conf, win->spice);
+    client_conf_set_display_options(conf, G_OBJECT(win->spice));
+    SpiceGrabSequence *seq = spice_grab_sequence_new_from_string(client_conf_get_grab_sequence(conf));
+    spice_display_set_grab_keys(win->spice, seq);
+    spice_grab_sequence_free(seq);
+
     if (client_conf_get_disable_power_actions(conf)) {
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->power_actions_separator));
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->reboot_button));

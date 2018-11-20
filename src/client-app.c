@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <gtk/gtk.h>
+#include <gst/gst.h>
 #include <spice-client-gtk.h>
 
 #include "client-app.h"
@@ -91,6 +92,7 @@ static void client_app_init(ClientApp * app) {
 
     // Sets valid command-line options
     client_conf_set_application_options(app->conf, G_APPLICATION(app));
+    g_application_add_option_group(G_APPLICATION(app), gst_init_get_option_group());
     g_signal_connect(app, "handle-local-options",
         G_CALLBACK(client_app_handle_options), NULL);
 }
@@ -486,6 +488,8 @@ static void client_app_connect(ClientApp * app) {
 static void client_app_connect_with_response(ClientApp * app, JsonObject * params) {
     client_conf_get_options_from_response(app->conf, params);
     app->connection = client_conn_new(app->conf, params);
+    SpiceSession * session = client_conn_get_session(app->connection);
+    client_conf_set_gtk_session_options(app->conf, G_OBJECT(spice_gtk_session_get(session)));
     client_app_connect(app);
 }
 
@@ -494,6 +498,8 @@ static void client_app_connect_with_response(ClientApp * app, JsonObject * param
  */
 static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri) {
     app->connection = client_conn_new_with_uri(app->conf, uri);
+    SpiceSession * session = client_conn_get_session(app->connection);
+    client_conf_set_gtk_session_options(app->conf, G_OBJECT(spice_gtk_session_get(session)));
     client_app_connect(app);
 }
 

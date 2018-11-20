@@ -18,7 +18,6 @@
 */
 
 #include <stdlib.h>
-#include <gst/gst.h>
 #include "configuration.h"
 #include "client-log.h"
 
@@ -260,7 +259,6 @@ void client_conf_set_application_options(ClientConf * conf, GApplication * app) 
     g_option_group_add_entries(devices_group, conf->device_options);
     g_application_add_option_group(app, session_group);
     g_application_add_option_group(app, devices_group);
-    g_application_add_option_group(app, gst_init_get_option_group());
 }
 
 
@@ -316,8 +314,10 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
         parse_preferred_compression(session, conf->preferred_compression);
     g_object_set(session, "enable-audio",
         !conf->disable_audio_playback && !conf->disable_audio_record, NULL);
+}
 
-    SpiceGtkSession * gtk_session = spice_gtk_session_get(session);
+
+void client_conf_set_gtk_session_options(ClientConf * conf, GObject * gtk_session) {
     g_object_set(gtk_session,
         "sync-modifiers", TRUE,
         "auto-clipboard", conf->auto_clipboard,
@@ -328,7 +328,7 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
 }
 
 
-void client_conf_set_display_options(ClientConf * conf, SpiceDisplay * display) {
+void client_conf_set_display_options(ClientConf * conf, GObject * display) {
     g_object_set(display,
         "grab-keyboard", TRUE,
         "grab-mouse", conf->grab_mouse,
@@ -336,9 +336,6 @@ void client_conf_set_display_options(ClientConf * conf, SpiceDisplay * display) 
         "scaling", TRUE,
         "disable-inputs", FALSE,
         NULL);
-    SpiceGrabSequence *seq = spice_grab_sequence_new_from_string(conf->grab_sequence);
-    spice_display_set_grab_keys(display, seq);
-    spice_grab_sequence_free(seq);
 }
 
 
