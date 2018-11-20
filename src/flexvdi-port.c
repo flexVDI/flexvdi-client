@@ -26,7 +26,7 @@
 #define FLEXVDI_PROTO_IMPL
 #include "flexdp.h"
 #include "flexvdi-port.h"
-#include "printclient.h"
+#include "printclient-priv.h"
 
 typedef enum {
     WAIT_NEW_MESSAGE,

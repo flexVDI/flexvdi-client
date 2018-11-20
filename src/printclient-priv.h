@@ -17,21 +17,21 @@
     along with flexVDI Client. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <glib.h>
-#include "src/printclient.h"
-#include "src/printclient-priv.h"
-#include "src/flexvdi-port.h"
+#ifndef _PRINTCLIENT_PRIV_H_
+#define _PRINTCLIENT_PRIV_H_
 
+#include "flexdp.h"
 
-int main(int argc, char * argv[]) {
-    GSList * printers, * i;
-    flexvdi_get_printer_list(&printers);
-    for (i = printers; i != NULL; i = g_slist_next(i)) {
-        char * fileName = get_ppd_file((const char *)i->data);
-        printf("Printer %s: %s\n", (const char *)i->data, fileName);
-        g_free(fileName);
-    }
-    g_slist_free_full(printers, g_free);
-    return 0;
-}
+typedef struct PrintJob {
+    int file_handle;
+    char * name;
+    char * options;
+} PrintJob;
+
+void handle_print_job(FlexVDIPrintJobMsg * msg);
+void handle_print_job_data(FlexVDIPrintJobDataMsg * msg);
+char * get_ppd_file(const char * printer);
+void print_job(PrintJob * job);
+char * get_job_options(char * options, const char * opName);
+
+#endif /* _PRINTCLIENT_PRIV_H_ */

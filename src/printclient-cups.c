@@ -22,7 +22,7 @@
 #include <glib.h>
 #include <math.h>
 #include <cups/cups.h>
-#include "printclient.h"
+#include "printclient-priv.h"
 #include "PPDGenerator.h"
 #include "flexvdi-port.h"
 

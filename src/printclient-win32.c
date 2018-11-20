@@ -24,7 +24,7 @@
 #include <shellapi.h>
 #include <poppler.h>
 #include <cairo/cairo-win32.h>
-#include "printclient.h"
+#include "printclient-priv.h"
 #include "PPDGenerator.h"
 #include "flexvdi-port.h"
 

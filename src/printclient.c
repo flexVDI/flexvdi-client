@@ -25,6 +25,7 @@
 #include <glib/gstdio.h>
 #include <unistd.h>
 #include "printclient.h"
+#include "printclient-priv.h"
 #include "flexvdi-port.h"
 
 static GHashTable * print_jobs;
