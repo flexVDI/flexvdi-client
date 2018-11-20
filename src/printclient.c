@@ -115,7 +115,7 @@ char * get_job_options(char * options, const char * op_name) {
 }
 
 
-void init_print_client() {
+void flexvdi_init_print_client() {
     print_jobs = g_hash_table_new_full(g_direct_hash, NULL, NULL, g_free);
     g_timeout_add_seconds(300, remove_temp_files, NULL);
 }

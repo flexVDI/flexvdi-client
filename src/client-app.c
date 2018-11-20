@@ -69,7 +69,7 @@ static void client_app_class_init(ClientAppClass * class) {
  * port redirection after the configuration has been read from file and/or command-line.
  */
 static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {
-    init_print_client();
+    flexvdi_init_print_client();
 
 #ifdef ENABLE_SERIALREDIR
     ClientApp * app = CLIENT_APP(gapp);

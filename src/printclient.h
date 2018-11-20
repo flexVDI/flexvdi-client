@@ -22,7 +22,7 @@
 
 #include <glib.h>
 
-void init_print_client();
+void flexvdi_init_print_client();
 int flexvdi_get_printer_list(GSList ** printerList);
 int flexvdi_share_printer(const char * printer);
 int flexvdi_unshare_printer(const char * printer);
