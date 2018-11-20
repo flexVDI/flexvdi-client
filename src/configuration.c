@@ -753,7 +753,12 @@ static void client_conf_load(ClientConf * conf) {
                 cb_arg = NULL;
                 read_string(conf->file, groups[i].group, option->long_name, &cb_arg);
                 if (cb_arg) {
-                    ((GOptionArgFunc)option->arg_data)("", cb_arg, conf, NULL);
+                    error = NULL;
+                    ((GOptionArgFunc)option->arg_data)("", cb_arg, conf, &error);
+                    if (error) {
+                        g_warning("Error reading option %s: %s", option->long_name, error->message);
+                        g_error_free(error);
+                    }
                     g_free(cb_arg);
                 }
                 break;
