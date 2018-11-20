@@ -20,6 +20,7 @@
 PREFIX="$1"
 PKG_NAME="$2"
 BIN=src/flexvdi-client
+LIB=src/libflexvdi-client.so
 export PKG_CONFIG_PATH="$PREFIX"/lib/pkgconfig:"$PREFIX"/share/pkgconfig
 
 set -e
@@ -43,6 +44,7 @@ copy_with_deps() {
 
 mkdir -p $TMPDIR/bin $TMPDIR/lib/gstreamer-1.0 $TMPDIR/lib/gio $TMPDIR/share/fonts
 copy_with_deps "$BIN" $TMPDIR/bin/flexvdi-client
+copy_with_deps "$LIB" $TMPDIR/lib/libflexvdi-client.so
 ldd "$BIN" | sed 's;.* => \(/.*\) (.*;\1;' | grep -e libudev | xargs -r cp -t $TMPDIR/lib
 copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,alsa,pulseaudio}.so "$TMPDIR"/lib/gstreamer-1.0
 copy_with_deps $(pkg-config gstreamer-1.0 --variable prefix)/libexec/gstreamer-1.0/gst-plugin-scanner "$TMPDIR"/bin

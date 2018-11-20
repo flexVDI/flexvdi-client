@@ -122,7 +122,7 @@ add_custom_target(dist
 if (WIN32)
     configure_file("${PROJECT_SOURCE_DIR}/scripts/setup-tpl.nsi"
                    "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
-    add_custom_target(installer DEPENDS flexvdi-client "${PROJECT_BINARY_DIR}/src/icon.ico"
+    add_custom_target(installer DEPENDS flexvdi-client-bin "${PROJECT_BINARY_DIR}/src/icon.ico"
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_installer_win.sh" ${CMAKE_INSTALL_PREFIX}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 elseif (APPLE)
@@ -130,11 +130,11 @@ elseif (APPLE)
                    "${PROJECT_BINARY_DIR}/Info.plist" @ONLY)
     configure_file("${PROJECT_SOURCE_DIR}/scripts/flexvdi-client.bundle"
                    "${PROJECT_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.bundle" COPYONLY)
-    add_custom_target(installer DEPENDS flexvdi-client
+    add_custom_target(installer DEPENDS flexvdi-client-bin
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_dmg.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 else ()
-    add_custom_target(installer DEPENDS flexvdi-client
+    add_custom_target(installer DEPENDS flexvdi-client-bin
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_appimage.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 endif ()
