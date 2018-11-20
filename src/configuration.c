@@ -54,6 +54,7 @@ struct _ClientConf {
     gboolean disable_audio_record;
     gchar * preferred_compression;
     gchar * grab_sequence;
+    WindowEdge toolbar_edge;
     // Device options
     gchar ** redir_rports;
     gchar ** redir_lports;
@@ -76,6 +77,7 @@ static void client_conf_class_init(ClientConfClass * class) {
 
 static void client_conf_load(ClientConf * conf);
 static gboolean set_proxy_uri(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
+static gboolean set_toolbar_edge(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
 
 static void client_conf_init(ClientConf * conf) {
     // Inline initialization of the command-line options groups
@@ -143,6 +145,8 @@ static void client_conf_init(ClientConf * conf) {
         "Disable audio record to guest", NULL },
         { "preferred-compression", 0, 0, G_OPTION_ARG_STRING, &conf->preferred_compression,
         "Preferred image compression algorithm", "<auto-glz,auto-lz,quic,glz,lz,lz4,off>" },
+        { "toolbar-edge", 0, 0, G_OPTION_ARG_CALLBACK, set_toolbar_edge,
+        "Window edge where toolbar is shown (default up)", "<up,down,left,right>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -173,6 +177,12 @@ static void client_conf_init(ClientConf * conf) {
     conf->session_options = g_memdup(session_options, sizeof(session_options));
     conf->device_options = g_memdup(device_options, sizeof(device_options));
     conf->printers = g_strsplit("", ".", 0);
+    conf->toolbar_edge =
+#ifdef __APPLE__
+        WINDOW_EDGE_DOWN;
+#else
+        WINDOW_EDGE_UP;
+#endif
     // Load the configuration file
     conf->file = g_key_file_new();
     client_conf_load(conf);
@@ -443,6 +453,11 @@ SoupSession * client_conf_get_soup_session(ClientConf * conf) {
 }
 
 
+WindowEdge client_conf_get_toolbar_edge(ClientConf * conf) {
+    return conf->toolbar_edge;
+}
+
+
 /*
  * write_string
  *
@@ -571,6 +586,29 @@ static gboolean set_proxy_uri(const gchar * option_name, const gchar * value, gp
 void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri) {
     set_proxy_uri("", proxy_uri, conf, NULL);
     write_string(conf->file, "Session", "proxy-uri", conf->proxy_uri);
+}
+
+
+static gboolean set_toolbar_edge(const gchar * option_name, const gchar * value,
+                                 gpointer data, GError ** error) {
+    ClientConf * conf = CLIENT_CONF(data);
+
+    g_autofree gchar * edge = g_strstrip(g_strdup(value));
+    if (g_str_equal(edge, "up"))
+        conf->toolbar_edge = WINDOW_EDGE_UP;
+    else if (g_str_equal(edge, "down"))
+        conf->toolbar_edge = WINDOW_EDGE_DOWN;
+    else if (g_str_equal(edge, "left"))
+        conf->toolbar_edge = WINDOW_EDGE_LEFT;
+    else if (g_str_equal(edge, "right"))
+        conf->toolbar_edge = WINDOW_EDGE_RIGHT;
+    else {
+        g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_BAD_VALUE,
+                    "Unknown window edge %s", edge);
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 

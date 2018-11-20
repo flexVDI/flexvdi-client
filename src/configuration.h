@@ -26,6 +26,14 @@
 #include <libsoup/soup.h>
 
 
+typedef enum _WindowEdge {
+    WINDOW_EDGE_UP = 0,
+    WINDOW_EDGE_DOWN,
+    WINDOW_EDGE_LEFT,
+    WINDOW_EDGE_RIGHT
+} WindowEdge;
+
+
 /*
  * ClientConf
  *
@@ -108,6 +116,7 @@ gchar * client_conf_get_grab_sequence(ClientConf * conf);
 gint client_conf_get_inactivity_timeout(ClientConf * conf);
 gboolean client_conf_get_auto_clipboard(ClientConf * conf);
 SoupSession * client_conf_get_soup_session(ClientConf * conf);
+WindowEdge client_conf_get_toolbar_edge(ClientConf * conf);
 
 /*
  * Setters for those options that can be saved to disk.
