@@ -13,7 +13,7 @@ if (WIN32)
     file(WRITE icon.rc "IDI_ICON1 ICON DISCARDABLE \"${CMAKE_CURRENT_BINARY_DIR}/icon.ico\"")
     set(LIB_SOURCES ${LIB_SOURCES}
         terminalid-win32.c printclient-win32.c)
-    set(CLIENT_LIBRARIES ${CLIENT_LIBRARIES} iphlpapi)
+    set(LIB_LIBRARIES ${LIB_LIBRARIES} iphlpapi)
     set(ICON icon.rc)
 elseif (APPLE)
     set(LIB_SOURCES ${LIB_SOURCES}
@@ -30,7 +30,7 @@ add_definitions(-DG_LOG_DOMAIN=\"flexvdi\" -DVERSION_STRING=\"${FLEXVDI_VERSION}
 
 # libflexvdi-client
 add_library(flexvdi-client SHARED ${LIB_SOURCES})
-target_link_libraries(flexvdi-client ${CLIENT_LIBRARIES})
+target_link_libraries(flexvdi-client ${LIB_LIBRARIES})
 set_target_properties(flexvdi-client PROPERTIES PUBLIC_HEADER "${LIB_HEADERS}")
 if (APPLE)
     target_compile_options(flexvdi-client PRIVATE -xobjective-c -mmacosx-version-min=10.10)
