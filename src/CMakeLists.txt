@@ -1,38 +1,38 @@
-set(lib_sources
+set(LIB_SOURCES
     client-conn.c client-log.c flexvdi-port.c configuration.c client-request.c
     printclient.c PPDGenerator.c)
-set(lib_headers
+set(LIB_HEADERS
     client-conn.h client-log.h flexvdi-port.h configuration.h client-request.h
     printclient.h)
-set(client_sources client-app.c client-win.c spice-win.c about.c)
+set(CLIENT_SOURCES client-app.c client-win.c spice-win.c about.c)
 
 if (WIN32)
     add_custom_target(ico_icon
                       COMMAND convert "${PROJECT_SOURCE_DIR}/resources/images/icon.png" icon.ico
                       DEPENDS "${PROJECT_SOURCE_DIR}/resources/images/icon.png")
     file(WRITE icon.rc "IDI_ICON1 ICON DISCARDABLE \"${CMAKE_CURRENT_BINARY_DIR}/icon.ico\"")
-    set(lib_sources ${lib_sources}
+    set(LIB_SOURCES ${LIB_SOURCES}
         terminalid-win32.c printclient-win32.c)
     set(CLIENT_LIBRARIES ${CLIENT_LIBRARIES} iphlpapi)
     set(ICON icon.rc)
 elseif (APPLE)
-    set(lib_sources ${lib_sources}
+    set(LIB_SOURCES ${LIB_SOURCES}
         terminalid-macos.c printclient-cups.c)
     set(ICON "")
 else ()
-    set(lib_sources ${lib_sources}
+    set(LIB_SOURCES ${LIB_SOURCES}
         terminalid-linux.c printclient-cups.c serialredir.c)
-    set(lib_headers ${lib_headers} serialredir.h)
+    set(LIB_HEADERS ${LIB_HEADERS} serialredir.h)
     set(ICON "")
 endif ()
 
 add_definitions(-DG_LOG_DOMAIN=\"flexvdi\" -DVERSION_STRING=\"${FLEXVDI_VERSION}\")
 
-add_library(flexvdi-client SHARED ${lib_sources})
+add_library(flexvdi-client SHARED ${LIB_SOURCES})
 target_link_libraries(flexvdi-client ${CLIENT_LIBRARIES})
-set_target_properties(flexvdi-client PROPERTIES PUBLIC_HEADER "${lib_headers}")
+set_target_properties(flexvdi-client PROPERTIES PUBLIC_HEADER "${LIB_HEADERS}")
 
-add_library(client_objects OBJECT ${client_sources})
+add_library(client_objects OBJECT ${CLIENT_SOURCES})
 set_target_properties(client_objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
 add_executable(flexvdi-client-bin WIN32 main.c ${ICON} $<TARGET_OBJECTS:client_objects>

@@ -1,8 +1,8 @@
-set(resources_c "${CMAKE_CURRENT_BINARY_DIR}/resources.c")
-add_custom_command(OUTPUT ${resources_c}
+set(RESOURCES_C "${CMAKE_CURRENT_BINARY_DIR}/resources.c")
+add_custom_command(OUTPUT ${RESOURCES_C}
                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
                    COMMAND glib-compile-resources
-                   ARGS --target=${resources_c} --generate-source flexvdi-client.gresource.xml
+                   ARGS --target=${RESOURCES_C} --generate-source flexvdi-client.gresource.xml
                    DEPENDS
                         flexvdi-client.gresource.xml
                         window.ui
@@ -36,5 +36,5 @@ add_custom_command(OUTPUT ${resources_c}
                         icons/24x24/actions/about-flexvdi-white.png
                   )
 
-add_library(resource_objects OBJECT ${resources_c})
+add_library(resource_objects OBJECT ${RESOURCES_C})
 set_target_properties(resource_objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
