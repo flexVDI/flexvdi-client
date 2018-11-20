@@ -28,23 +28,31 @@ endif ()
 
 add_definitions(-DG_LOG_DOMAIN=\"flexvdi\" -DVERSION_STRING=\"${FLEXVDI_VERSION}\")
 
+# libflexvdi-client
 add_library(flexvdi-client SHARED ${LIB_SOURCES})
 target_link_libraries(flexvdi-client ${CLIENT_LIBRARIES})
 set_target_properties(flexvdi-client PROPERTIES PUBLIC_HEADER "${LIB_HEADERS}")
+if (APPLE)
+    target_compile_options(flexvdi-client PRIVATE -xobjective-c -mmacosx-version-min=10.10)
+    target_link_libraries(flexvdi-client "-framework Cocoa")
+endif ()
 
+# client objects
 add_library(client_objects OBJECT ${CLIENT_SOURCES})
 set_target_properties(client_objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
+if (APPLE)
+    target_compile_options(client_objects PRIVATE -xobjective-c -mmacosx-version-min=10.10)
+endif ()
 
+# main binary
 add_executable(flexvdi-client-bin WIN32 main.c ${ICON} $<TARGET_OBJECTS:client_objects>
                $<TARGET_OBJECTS:resource_objects>)
 set_target_properties(flexvdi-client-bin
                       PROPERTIES OUTPUT_NAME flexvdi-client)
-
 if (WIN32)
     add_dependencies(flexvdi-client-bin ico_icon)
 elseif (APPLE)
-    target_compile_options(client_objects PRIVATE -xobjective-c -mmacosx-version-min=10.10)
-    target_link_libraries(flexvdi-client "-framework Cocoa")
+    target_link_libraries(flexvdi-client-bin "-framework Cocoa")
 endif ()
 target_link_libraries(flexvdi-client-bin flexvdi-client ${CLIENT_LIBRARIES} m)
 
