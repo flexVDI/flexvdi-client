@@ -22,6 +22,14 @@
 #include "printclient.h"
 #include "about.h"
 
+#ifdef __APPLE__
+#include <gdk/gdkquartz.h>
+NSWindow * ns(SpiceWindow * win) {
+    GdkWindow * gwin = gtk_widget_get_window(GTK_WIDGET(win));
+    return gdk_quartz_window_get_nswindow(GDK_QUARTZ_WINDOW(gwin));
+}
+#endif
+
 struct _SpiceWindow {
     GtkApplicationWindow parent;
     ClientConn * conn;
@@ -426,6 +434,9 @@ static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data) {
 static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
     if (win->fullscreen) {
+#ifdef __APPLE__
+        ns(win).level = NSNormalWindowLevel;
+#endif
         gtk_window_unfullscreen(GTK_WINDOW(win));
     } else {
         gtk_window_fullscreen(GTK_WINDOW(win));
@@ -462,6 +473,9 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
             gtk_revealer_set_reveal_child(win->revealer, TRUE);
             g_object_unref(win->toolbar);
             gtk_widget_grab_focus(GTK_WIDGET(win->spice));
+#ifdef __APPLE__
+            ns(win).level = NSMainMenuWindowLevel + 1;
+#endif
         } else {
             gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
             gtk_widget_hide(GTK_WIDGET(win->restore_button));
@@ -472,6 +486,9 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
                                  GTK_WIDGET(win->toolbar));
             gtk_box_pack_start(win->content_box, GTK_WIDGET(win->toolbar), FALSE, FALSE, 0);
             g_object_unref(win->toolbar);
+#ifdef __APPLE__
+            ns(win).level = NSNormalWindowLevel;
+#endif
         }
     }
 
