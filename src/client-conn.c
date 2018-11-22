@@ -30,6 +30,13 @@ struct _ClientConn {
     ClientConnDisconnectReason reason;
 };
 
+enum {
+    CLIENT_CONN_DISCONNECTED = 0,
+    CLIENT_CONN_LAST_SIGNAL
+};
+
+static guint signals[CLIENT_CONN_LAST_SIGNAL];
+
 G_DEFINE_TYPE(ClientConn, client_conn, G_TYPE_OBJECT);
 
 
@@ -40,6 +47,18 @@ static void client_conn_class_init(ClientConnClass * class) {
     GObjectClass * object_class = G_OBJECT_CLASS(class);
     object_class->dispose = client_conn_dispose;
     object_class->finalize = client_conn_finalize;
+
+    // Emited when the connection is disconnected
+    signals[CLIENT_CONN_DISCONNECTED] =
+        g_signal_new("disconnected",
+                     CLIENT_CONN_TYPE,
+                     G_SIGNAL_RUN_FIRST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__INT,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_INT);
 }
 
 
@@ -154,8 +173,8 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer d
     conn->channels--;
 
     if (conn->channels <= 0) {
-        // What? Notify app?
         g_debug("No more channels left");
+        g_signal_emit(conn, signals[CLIENT_CONN_DISCONNECTED], 0, conn->reason);
         g_object_unref(conn);
     }
 }
