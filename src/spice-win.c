@@ -403,7 +403,6 @@ static void channel_event(SpiceChannel * channel, SpiceChannelEvent event, gpoin
     switch (event) {
     case SPICE_CHANNEL_CLOSED:
         client_conn_disconnect(win->conn, CLIENT_CONN_DISCONNECT_NO_ERROR);
-        gtk_window_close(GTK_WINDOW(win));
         return;
     case SPICE_CHANNEL_ERROR_IO:
     case SPICE_CHANNEL_ERROR_TLS:
@@ -411,7 +410,6 @@ static void channel_event(SpiceChannel * channel, SpiceChannelEvent event, gpoin
     case SPICE_CHANNEL_ERROR_CONNECT:
     case SPICE_CHANNEL_ERROR_AUTH:
         client_conn_disconnect(win->conn, CLIENT_CONN_DISCONNECT_CONN_ERROR);
-        gtk_window_close(GTK_WINDOW(win));
     default:
         return;
     }

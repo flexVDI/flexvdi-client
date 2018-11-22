@@ -243,25 +243,6 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
         }
     }
 
-    GList * windows = gtk_application_get_windows(GTK_APPLICATION(app));
-    g_debug("Closing window, %d remaining", g_list_length(windows));
-    if (g_list_length(windows) == 1 && app->connection) {
-        ClientConnDisconnectReason reason = client_conn_get_reason(app->connection);
-        if (reason != CLIENT_CONN_DISCONNECT_USER) {
-            GtkMessageType type =
-                reason == CLIENT_CONN_DISCONNECT_NO_ERROR || reason == CLIENT_CONN_DISCONNECT_INACTIVITY ?
-                    GTK_MESSAGE_INFO : GTK_MESSAGE_ERROR;
-            g_autofree gchar * text = client_conn_get_reason_str(app->connection);
-            g_warning("Closing app, reason %d: %s", reason, text);
-            GtkWidget * dialog = gtk_message_dialog_new(GTK_WINDOW(widget),
-                GTK_DIALOG_MODAL, type, GTK_BUTTONS_CLOSE, "%s", text);
-            gtk_window_set_title(GTK_WINDOW(dialog), "Connection closed");
-            gtk_dialog_run(GTK_DIALOG (dialog));
-            gtk_widget_destroy(dialog);
-        }
-        client_conf_save(app->conf);
-    }
-
     return FALSE;
 }
 
@@ -450,6 +431,8 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
 
 
 static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_data);
+static void connection_disconnected(ClientConn * conn, ClientConnDisconnectReason reason,
+                                    gpointer user_data);
 void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
                         GError * error, gpointer user_data);
 static gboolean check_inactivity(gpointer user_data);
@@ -464,6 +447,8 @@ static void client_app_connect(ClientApp * app) {
     SpiceSession * session = client_conn_get_session(app->connection);
     g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), app);
+    g_signal_connect(app->connection, "disconnected",
+                     G_CALLBACK(connection_disconnected), app);
 
     SpiceUsbDeviceManager * manager = spice_usb_device_manager_get(session, NULL);
     if (manager) {
@@ -552,6 +537,38 @@ static void client_app_close_windows(ClientApp * app) {
 
 
 /*
+ * Connection disconnected handler. If the connection fails at startup and the main
+ * window is still showing, show an error message and return to login. Otherwise, show
+ * a message dialog if the disconnection reason is other than NO_ERROR.
+ */
+static void connection_disconnected(ClientConn * conn, ClientConnDisconnectReason reason,
+                                    gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+
+    if (app->main_window) {
+        client_app_show_login(app, "Failed to establish the connection, see the log file for further information.");
+        client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+    } else {
+        if (reason != CLIENT_CONN_DISCONNECT_USER) {
+            GtkMessageType type =
+                reason == CLIENT_CONN_DISCONNECT_NO_ERROR || reason == CLIENT_CONN_DISCONNECT_INACTIVITY ?
+                    GTK_MESSAGE_INFO : GTK_MESSAGE_ERROR;
+            g_autofree gchar * text = client_conn_get_reason_str(app->connection);
+            g_warning("Closing app, reason %d: %s", reason, text);
+            GtkWindow * active_window = gtk_application_get_active_window(GTK_APPLICATION(app));
+            GtkWidget * dialog = gtk_message_dialog_new(active_window,
+                GTK_DIALOG_MODAL, type, GTK_BUTTONS_CLOSE, "%s", text);
+            gtk_window_set_title(GTK_WINDOW(dialog), "Connection closed");
+            gtk_dialog_run(GTK_DIALOG (dialog));
+            gtk_widget_destroy(dialog);
+        }
+        client_conf_save(app->conf);
+        client_app_close_windows(app);
+    }
+}
+
+
+/*
  * Main channel even handler. Mainly handles connection problems.
  */
 static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
@@ -582,12 +599,10 @@ static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
             g_debug("channel error: %s", error->message);
         }
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_CONN_ERROR);
-        client_app_close_windows(app);
         break;
     case SPICE_CHANNEL_ERROR_AUTH:
         g_warning("main channel: auth failure (wrong password?)");
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_AUTH_ERROR);
-        client_app_close_windows(app);
         break;
     default:
         g_warning("unknown main channel event: %u", event);
