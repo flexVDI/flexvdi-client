@@ -289,7 +289,6 @@ static void on_ws_error(SoupWebsocketConnection * self, GError * error, gpointer
 
 static void on_ws_msg(SoupWebsocketConnection * self, gint type,
                       GBytes * message, gpointer user_data) {
-    g_debug("on_ws_msg");
     WsTunnel * tunnel = WS_TUNNEL(user_data);
     if (!g_cancellable_is_cancelled(tunnel->cancel)) {
         g_debug("WS tunnel %s read %d bytes from ws", tunnel->channel_name,
