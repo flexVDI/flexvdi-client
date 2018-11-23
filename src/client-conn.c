@@ -173,6 +173,9 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
     g_debug("New Spice channel (%d:%d)", type, id);
     conn->channels++;
 
+    if (conn->use_ws)
+        g_signal_connect(channel, "open-fd", G_CALLBACK(open_ws_tunnel), conn);
+
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         conn->main = SPICE_MAIN_CHANNEL(channel);
     }
@@ -180,9 +183,6 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         conn->audio = spice_audio_get(s, NULL);
     }
-
-    if (conn->use_ws)
-        g_signal_connect(channel, "open-fd", G_CALLBACK(open_ws_tunnel), conn);
 
     spice_channel_connect(channel);
 }
