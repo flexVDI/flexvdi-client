@@ -634,7 +634,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
 
     for (i = 0; i < monitors->len; ++i) {
         if (!app->windows[i]) {
-            g_autofree gchar * title = g_strdup_printf("%s #%d", app->desktop_name, i);
+            g_autofree gchar * title = g_strdup_printf("%s - flexVDI Client", app->desktop_name);
             SpiceWindow * win = spice_window_new(app->connection, display, app->conf, i, title);
             app->windows[i] = win;
             // Inform GTK that this is an application window
