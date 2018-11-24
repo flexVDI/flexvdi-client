@@ -93,6 +93,10 @@ static void client_app_init(ClientApp * app) {
     // Sets valid command-line options
     client_conf_set_application_options(app->conf, G_APPLICATION(app));
     g_application_add_option_group(G_APPLICATION(app), gst_init_get_option_group());
+    g_application_set_option_context_parameter_string(G_APPLICATION(app), "[Spice URI]");
+    g_application_set_option_context_summary(G_APPLICATION(app),
+        "flexVDI Client is a Virtual Desktop client for flexVDI platforms. "
+        "It can also be used as a generic Spice client providing a Spice URI on the command line.");
     g_signal_connect(app, "handle-local-options",
         G_CALLBACK(client_app_handle_options), NULL);
 }
