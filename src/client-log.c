@@ -144,7 +144,7 @@ void client_log_setup(int argc, char * argv[]) {
         FILE * file = fopen(file_path, "a");
         log_file = file ? file : stderr;
     }
-    setvbuf(log_file, NULL, _IOLBF, 0);
+    setvbuf(log_file, NULL, _IONBF, 2);
 
     g_log_set_writer_func(log_to_file, NULL, NULL);
 
