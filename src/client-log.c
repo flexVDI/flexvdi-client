@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <spice-client.h>
 #include "client-log.h"
 
 
@@ -32,7 +33,6 @@ static gboolean configured = FALSE;
 static GList * level_for_domains = NULL;
 static GLogLevelFlags default_level = G_LOG_LEVEL_MESSAGE;
 static GLogLevelFlags fatal_level = G_LOG_LEVEL_ERROR;
-static FILE * log_file = NULL;
 
 
 static int get_level_for_domain(const gchar * domain) {
@@ -97,7 +97,7 @@ static GLogWriterOutput log_to_file(GLogLevelFlags log_level, const GLogField * 
 
     g_autoptr(GDateTime) now = g_date_time_new_now_local();
     g_autofree gchar * now_str = g_date_time_format(now, "%Y/%m/%d %H:%M:%S");
-    fprintf(log_file, "%s.%03d: %s-%s: %s\n", now_str, g_date_time_get_microsecond(now)/1000,
+    fprintf(stderr, "%s.%03d: %s-%s: %s\n", now_str, g_date_time_get_microsecond(now)/1000,
             log_domain, log_level_str, message);
 
     if (log_level <= fatal_level) G_BREAKPOINT();
@@ -132,19 +132,17 @@ void client_log_setup(int argc, char * argv[]) {
     if (verbose_levels)
         client_log_set_log_levels(verbose_levels);
 
-    g_setenv("SPICE_DEBUG", "1", FALSE);
+    spice_util_set_debug(TRUE);
 
-    if (g_getenv("FLEXVDI_LOG_STDERR")) {
-        log_file = stderr;
-    } else {
+    if (!g_getenv("FLEXVDI_LOG_STDERR")) {
         g_autoptr(GDateTime) now = g_date_time_new_now_local();
         g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
         g_autofree gchar * file_path = g_build_filename(log_dir, "flexvdi-client.log", NULL);
         g_mkdir_with_parents(log_dir, 0700);
-        FILE * file = fopen(file_path, "a");
-        log_file = file ? file : stderr;
+        freopen(file_path, "a", stderr);
+        freopen(file_path, "a", stdout);
     }
-    setvbuf(log_file, NULL, _IONBF, 2);
+    setvbuf(stderr, NULL, _IONBF, 2);
 
     g_log_set_writer_func(log_to_file, NULL, NULL);
 
