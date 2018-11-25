@@ -35,6 +35,38 @@
 
 #define MAX_WINDOWS 16
 
+
+#ifdef _WIN32
+static void print_to_dialog(const gchar * string) {
+    gtk_icon_theme_add_resource_path(gtk_icon_theme_get_default(), "/com/flexvdi/client/icons");
+    GtkWidget * dialog = GTK_WIDGET(gtk_window_new(GTK_WINDOW_TOPLEVEL));
+    g_object_set(dialog, "title", "Help",
+        "default-width", 800, "default-height", 600, "window-position", GTK_WIN_POS_CENTER,
+        "icon", gdk_pixbuf_new_from_resource("/com/flexvdi/client/images/icon.png", NULL),
+        "type-hint", GDK_WINDOW_TYPE_HINT_DIALOG, NULL);
+    GtkWidget * scroll = gtk_scrolled_window_new(NULL, NULL);
+    g_object_set(scroll, "hexpand", TRUE, "vexpand", TRUE, NULL);
+    GtkWidget * view = gtk_text_view_new();
+    g_object_set(view, "editable", FALSE, "monospace", TRUE, "wrap-mode", GTK_WRAP_WORD, NULL);
+    GtkTextBuffer * buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(view));
+    gtk_text_buffer_set_text(buffer, string, -1);
+    gtk_container_add(GTK_CONTAINER(scroll), view);
+    gtk_container_add(GTK_CONTAINER(dialog), scroll);
+    gtk_widget_show_all(dialog);
+
+    GMainLoop * loop = g_main_loop_new(NULL, FALSE);
+    g_signal_connect_swapped(dialog, "unmap", G_CALLBACK(g_main_loop_quit), loop);
+    g_signal_connect_swapped(dialog, "delete-event", G_CALLBACK(g_main_loop_quit), loop);
+    g_signal_connect_swapped(dialog, "destroy", G_CALLBACK(g_main_loop_quit), loop);
+    g_main_loop_run(loop);
+
+    gtk_widget_destroy(dialog);
+    g_main_loop_unref(loop);
+}
+static GPrintFunc old_print_func = NULL;
+#endif
+
+
 struct _ClientApp {
     GtkApplication parent;
     ClientConf * conf;
@@ -77,6 +109,10 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
     serial_port_init(app->conf);
 #endif
 
+#ifdef _WIN32
+    g_set_print_handler(old_print_func);
+#endif
+
     return -1;
 }
 
@@ -85,6 +121,13 @@ static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, 
  * Initialize the application instance. Called just after client_app_new by GObject.
  */
 static void client_app_init(ClientApp * app) {
+#ifdef _WIN32
+    old_print_func = g_set_print_handler(print_to_dialog);
+    // Call gtk_init here because normally it is called from GtkApplication::startup,
+    // which is too late, after the --help* options have already been processed.
+    gtk_init(NULL, NULL);
+#endif
+
     // Create the configuration object. Reads options from config file.
     app->conf = client_conf_new();
     app->username = app->password = app->desktop = "";
