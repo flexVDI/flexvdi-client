@@ -96,7 +96,7 @@ static GLogWriterOutput log_to_file(GLogLevelFlags log_level, const GLogField * 
     }
 
     g_autoptr(GDateTime) now = g_date_time_new_now_local();
-    g_autofree gchar * now_str = g_date_time_format(now, "%H:%M:%S");
+    g_autofree gchar * now_str = g_date_time_format(now, "%Y/%m/%d %H:%M:%S");
     fprintf(log_file, "%s.%03d: %s-%s: %s\n", now_str, g_date_time_get_microsecond(now)/1000,
             log_domain, log_level_str, message);
 
@@ -134,16 +134,12 @@ void client_log_setup(int argc, char * argv[]) {
 
     g_setenv("SPICE_DEBUG", "1", FALSE);
 
-    const gchar * log_file_pattern = g_getenv("FLEXVDI_LOG_FILE");
-    if (!log_file_pattern)
-        log_file_pattern = "flexvdi-client-%Y-%m-%d.log";
-    if (!g_strcmp0(log_file_pattern, "-")) {
+    if (g_getenv("FLEXVDI_LOG_STDERR")) {
         log_file = stderr;
     } else {
         g_autoptr(GDateTime) now = g_date_time_new_now_local();
-        g_autofree gchar * file_name = g_date_time_format(now, log_file_pattern);
         g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
-        g_autofree gchar * file_path = g_build_filename(log_dir, file_name, NULL);
+        g_autofree gchar * file_path = g_build_filename(log_dir, "flexvdi-client.log", NULL);
         g_mkdir_with_parents(log_dir, 0700);
         FILE * file = fopen(file_path, "a");
         log_file = file ? file : stderr;
