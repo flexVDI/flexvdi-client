@@ -132,7 +132,8 @@ void client_log_setup(int argc, char * argv[]) {
     if (verbose_levels)
         client_log_set_log_levels(verbose_levels);
 
-    spice_util_set_debug(TRUE);
+    if (get_level_for_domain("GSpice") == G_LOG_LEVEL_DEBUG)
+        spice_util_set_debug(TRUE);
 
     if (!g_getenv("FLEXVDI_LOG_STDERR")) {
         g_autoptr(GDateTime) now = g_date_time_new_now_local();
