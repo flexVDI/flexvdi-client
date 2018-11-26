@@ -462,7 +462,10 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
         if (win->fullscreen) {
             gtk_widget_hide(GTK_WIDGET(win->fullscreen_button));
             gtk_widget_show(GTK_WIDGET(win->restore_button));
+#ifndef __APPLE__
+            // Mac fullscreen windows cannot be minimized
             gtk_widget_show(GTK_WIDGET(win->minimize_button));
+#endif
             gtk_widget_show(GTK_WIDGET(win->close_button));
             g_object_ref(win->toolbar);
             gtk_container_remove(GTK_CONTAINER(win->content_box),
