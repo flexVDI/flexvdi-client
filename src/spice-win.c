@@ -752,5 +752,12 @@ static void share_current_printers(gpointer user_data) {
 
 static void show_about(GtkToolButton * toolbutton, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
+#ifdef __APPLE__
+    if (win->fullscreen) {
+        g_autofree gchar * terminal_id = g_strdup_printf("Terminal ID: %s",
+            client_conf_get_terminal_id(win->conf));
+        spice_win_show_notification(win, terminal_id, 10000);
+    } else
+#endif
     client_show_about(GTK_WINDOW(win), win->conf);
 }
