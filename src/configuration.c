@@ -146,7 +146,7 @@ static void client_conf_init(ClientConf * conf) {
         { "preferred-compression", 0, 0, G_OPTION_ARG_STRING, &conf->preferred_compression,
         "Preferred image compression algorithm", "<auto-glz,auto-lz,quic,glz,lz,lz4,off>" },
         { "toolbar-edge", 0, 0, G_OPTION_ARG_CALLBACK, set_toolbar_edge,
-        "Window edge where toolbar is shown (default up)", "<up,down,left,right>" },
+        "Window edge where toolbar is shown (default top)", "<top,bottom,left,right>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
 
@@ -594,9 +594,9 @@ static gboolean set_toolbar_edge(const gchar * option_name, const gchar * value,
     ClientConf * conf = CLIENT_CONF(data);
 
     g_autofree gchar * edge = g_strstrip(g_strdup(value));
-    if (g_str_equal(edge, "up"))
+    if (g_str_equal(edge, "top"))
         conf->toolbar_edge = WINDOW_EDGE_UP;
-    else if (g_str_equal(edge, "down"))
+    else if (g_str_equal(edge, "bottom"))
         conf->toolbar_edge = WINDOW_EDGE_DOWN;
     else if (g_str_equal(edge, "left"))
         conf->toolbar_edge = WINDOW_EDGE_LEFT;
