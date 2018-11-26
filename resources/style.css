@@ -112,11 +112,32 @@ treeview:hover {
 }
 
 revealer #toolbar {
+    border: 1px outset lighter(gray) ;
+    padding: 15px;
+}
+
+revealer.top #toolbar {
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
-    border: 1px outset lighter(gray) ;
     border-top: none;
-    padding: 15px;
+}
+
+revealer.bottom #toolbar {
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom: none;
+}
+
+revealer.left #toolbar {
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    border-left: none;
+}
+
+revealer.right #toolbar {
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-right: none;
 }
 
 toolbar button {
