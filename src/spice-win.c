@@ -208,6 +208,7 @@ static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * even
 static gboolean leave_window_cb(GtkWidget * widget, GdkEventCrossing * event,
                                 gpointer user_data);
 static void mouse_grab_cb(SpiceDisplay * display, gint status, gpointer user_data);
+static void spice_size_allocate(GtkWidget * widget, GdkRectangle * a, gpointer user_data);
 
 void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
                         GError * error, gpointer user_data);
@@ -230,12 +231,14 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     gtk_box_pack_end(win->content_box, GTK_WIDGET(win->spice), TRUE, TRUE, 0);
     gtk_widget_grab_focus(GTK_WIDGET(win->spice));
 
-    g_signal_connect(G_OBJECT(win->spice), "motion-notify-event",
+    g_signal_connect(win->spice, "motion-notify-event",
                      G_CALLBACK(motion_notify_event_cb), win);
-    g_signal_connect(G_OBJECT(win->spice), "leave-notify-event",
+    g_signal_connect(win->spice, "leave-notify-event",
                      G_CALLBACK(leave_window_cb), win);
-    g_signal_connect(G_OBJECT(win->spice), "mouse-grab",
+    g_signal_connect(win->spice, "mouse-grab",
                      G_CALLBACK(mouse_grab_cb), win);
+    g_signal_connect(win->spice, "size-allocate",
+                     G_CALLBACK(spice_size_allocate), win);
     g_signal_connect_swapped(win->spice, "scroll-event",
                              G_CALLBACK(user_activity), win);
     g_signal_connect_swapped(win->spice, "button-press-event",
@@ -372,14 +375,23 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
 static gboolean configure_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(widget);
 
+    // Do not save the window size here. Save it only when the spice widget's size changes.
+    // In this way, we prevent unwanted effects, like saving the size while the window
+    // is changing to fullscreen state.
     win->monitor = get_monitor(win);
-    // save the window geometry only if we are not maximized or fullscreen
-    if (!(win->maximized || win->fullscreen)) {
-        gtk_window_get_size(GTK_WINDOW(widget), &win->width, &win->height);
-    }
     client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
 
     return GDK_EVENT_PROPAGATE;
+}
+
+static void spice_size_allocate(GtkWidget * widget, GdkRectangle * a, gpointer user_data) {
+    SpiceWindow * win = SPICE_WIN(user_data);
+
+    // Save the window geometry only if we are not maximized or fullscreen.
+    if (!(win->maximized || win->fullscreen)) {
+        gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
+        client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
+    }
 }
 
 gboolean map_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
