@@ -72,7 +72,7 @@ static int socketpair(int domain, int type, int protocol, SOCKET fds[2]) {
 
 
 struct _WsTunnel {
-    GObject * parent;
+    GObject parent;
     SoupMessage * msg;
     SpiceChannel * channel;
     gchar * channel_name;
