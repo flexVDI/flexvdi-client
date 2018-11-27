@@ -184,6 +184,7 @@ WsTunnel * ws_tunnel_new(SpiceChannel * channel, SoupSession * soup, gchar * ws_
             ws_tunnel_connect, tunnel);
         g_debug("Created WS tunnel %s to uri %s",
             tunnel->channel_name, ws_uri);
+        // Get one extra ref until ws_tunnel_connect is called
         return g_object_ref(tunnel);
     } else {
         g_critical("Cannot create WS tunnel %s: socketpair failed",
@@ -230,12 +231,16 @@ static void ws_tunnel_connect(GObject *source_object, GAsyncResult * res,
         g_critical("IO error connecting WS tunnel %s: %s",
             tunnel->channel_name, error->message);
         g_signal_emit(tunnel, signals[WS_TUNNEL_ERROR], 0, error);
+        // Release the extra ref from ws_tunnel_new
         g_object_unref(tunnel);
         return;
     }
 
     g_debug("WS tunnel %s connected", tunnel->channel_name);
 
+    // Get a second extra ref. They are released when we read and write
+    // for the last time on the local socket.
+    g_object_ref(tunnel);
     g_signal_connect(tunnel->ws_conn, "error", G_CALLBACK(on_ws_error), tunnel);
     g_signal_connect(tunnel->ws_conn, "message", G_CALLBACK(on_ws_msg), tunnel);
     g_signal_connect(tunnel->ws_conn, "closed", G_CALLBACK(on_ws_closed), tunnel);
@@ -274,9 +279,12 @@ static void read_local_finished(GObject * source_object, GAsyncResult * res,
                     g_bytes_get_data(bytes, NULL), g_bytes_get_size(bytes));
                 g_bytes_unref(bytes);
                 next_local_read(tunnel);
+                return;
             }
         }
     }
+
+    g_object_unref(tunnel);
 }
 
 
@@ -340,6 +348,9 @@ static void write_local_finished(GObject * source_object, GAsyncResult * res,
 
             g_bytes_unref(bytes);
             next_local_write(tunnel);
+            return;
         }
     }
+
+    g_object_unref(tunnel);
 }
