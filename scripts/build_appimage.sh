@@ -54,7 +54,7 @@ find $TMPDIR/{bin,lib} -type f -exec chmod 755 \{\} + -exec strip -s \{\} + &> /
 
 cp -a "$PREFIX"/share/glib-2.0/schemas $TMPDIR/share
 cp "$PREFIX"/bin/usb.ids $TMPDIR
-find /usr/share/fonts -name "Lato-Regular.ttf" -exec cp \{\} $TMPDIR/share/fonts \; -quit
+find /usr/share/fonts -name "Lato-Reg*.ttf" -exec cp \{\} $TMPDIR/share/fonts \; -quit
 cat > $TMPDIR/share/fonts/fonts.conf <<\EOF
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
