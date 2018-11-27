@@ -489,6 +489,8 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
             g_object_unref(win->toolbar);
 #ifdef __APPLE__
             ns(win).level = NSNormalWindowLevel;
+            // GDK bug: a wrong window size is reported
+            gtk_window_resize(GTK_WINDOW(win), win->width, win->height);
 #endif
         }
     }
