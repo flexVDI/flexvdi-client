@@ -36,7 +36,6 @@ struct _ClientConf {
     gchar * password;
     gchar * terminal_id;
     gchar * uri;
-    gchar * log_level;
     // Session options
     gchar * desktop;
     gchar * proxy_uri;
@@ -80,6 +79,7 @@ static void client_conf_class_init(ClientConfClass * class) {
 static void client_conf_load(ClientConf * conf);
 static gboolean set_proxy_uri(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
 static gboolean set_toolbar_edge(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
+static gboolean set_log_level(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
 static gboolean add_option_to_table(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
 
 static void client_conf_init(ClientConf * conf) {
@@ -96,7 +96,7 @@ static void client_conf_init(ClientConf * conf) {
         "Password", "<password>" },
         { "terminal-id", 0, 0, G_OPTION_ARG_STRING, &conf->terminal_id,
         "Use a given Terminal ID instead of calculating it automatically", "<terminal ID>" },
-        { "log-level", 'v', 0, G_OPTION_ARG_STRING, &conf->log_level,
+        { "log-level", 'v', 0, G_OPTION_ARG_CALLBACK, set_log_level,
         "Log level for each domain, or for all messages if domain is ommited. 0 = ERROR, 5 = DEBUG", "<[domain:]level,...>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
@@ -221,7 +221,6 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->password);
     g_free(conf->desktop);
     g_free(conf->proxy_uri);
-    g_free(conf->log_level);
     g_strfreev(conf->serial_params);
     g_strfreev(conf->redir_rports);
     g_strfreev(conf->redir_lports);
@@ -278,6 +277,9 @@ void client_conf_set_original_arguments(ClientConf * conf, gchar ** arguments) {
 static gint client_conf_handle_options(GApplication * gapp, GVariantDict * opts, gpointer user_data) {
     ClientConf * conf = CLIENT_CONF(user_data);
 
+    // Command line parsing is finished, program starts now
+    g_message("Starting flexVDI Client v" VERSION_STRING);
+
     g_autoptr(GOptionContext) ctx = g_option_context_new(NULL);
     g_autoptr(GOptionGroup) options = g_option_group_new("", "", "", conf, NULL);
     g_option_group_add_entries(options, conf->all_options);
@@ -294,8 +296,6 @@ static gint client_conf_handle_options(GApplication * gapp, GVariantDict * opts,
         g_debug("Command line option '%s' = '%s'", (gchar *)key, (gchar *)value);
 
     client_conf_load(conf);
-    if (conf->log_level)
-        client_log_set_log_levels(conf->log_level);
 
     return -1;
 }
@@ -685,6 +685,12 @@ static gboolean set_toolbar_edge(const gchar * option_name, const gchar * value,
         return FALSE;
     }
 
+    return TRUE;
+}
+
+
+static gboolean set_log_level(const gchar * option_name, const gchar * value, gpointer data, GError ** error) {
+    client_log_set_log_levels(value);
     return TRUE;
 }
 

@@ -29,7 +29,6 @@ typedef struct _LevelForDomain {
 } LevelForDomain;
 
 
-static gboolean configured = FALSE;
 static GList * level_for_domains = NULL;
 static GLogLevelFlags default_level = G_LOG_LEVEL_MESSAGE;
 static GLogLevelFlags fatal_level = G_LOG_LEVEL_ERROR;
@@ -118,23 +117,7 @@ static gboolean map_level(int level_num, GLogLevelFlags * level) {
     return FALSE;
 }
 
-void client_log_setup(int argc, char * argv[]) {
-    const gchar * verbose_levels = g_getenv("FLEXVDI_LOG_LEVEL");
-
-    int i;
-    for (i = 0; i < argc; ++i) {
-        if (g_strcmp0(argv[i], "--log-level") == 0 || g_strcmp0(argv[i], "-v") == 0) {
-            if (i + 1 < argc)
-                verbose_levels = argv[i + 1];
-        }
-    }
-
-    if (verbose_levels)
-        client_log_set_log_levels(verbose_levels);
-
-    if (get_level_for_domain("GSpice") == G_LOG_LEVEL_DEBUG)
-        spice_util_set_debug(TRUE);
-
+void client_log_setup() {
     if (!g_getenv("FLEXVDI_LOG_STDERR")) {
         g_autoptr(GDateTime) now = g_date_time_new_now_local();
         g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
@@ -155,9 +138,8 @@ void client_log_setup(int argc, char * argv[]) {
 
 
 void client_log_set_log_levels(const gchar * verbose_str) {
-    // Configure levels only once. First one takes precedence: command-line, then config file
-    if (configured) return;
-    configured = TRUE;
+    g_list_free_full(level_for_domains, g_free);
+    level_for_domains = NULL;
 
     gchar ** levels = g_strsplit(verbose_str, ",", 0), ** level;
     for (level = levels; *level; ++level) {
@@ -181,4 +163,6 @@ void client_log_set_log_levels(const gchar * verbose_str) {
     }
 
     g_strfreev(levels);
+
+    spice_util_set_debug(get_level_for_domain("GSpice") == G_LOG_LEVEL_DEBUG);
 }

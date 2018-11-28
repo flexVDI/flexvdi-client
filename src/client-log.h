@@ -26,9 +26,9 @@
 /*
  * client_log_setup
  *
- * Setup logging, possibly getting the loglevel option from command line
+ * Setup logging file
  */
-void client_log_setup(int argc, char * argv[]);
+void client_log_setup();
 
 /*
  * client_log_set_log_levels
