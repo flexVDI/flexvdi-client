@@ -104,7 +104,6 @@ void client_conf_set_display_options(ClientConf * conf, GObject * display);
  * Getters for some options, those needed directly by the application. Some options
  * that are set through the previous two functions do not have a corresponding getter.
  */
-gboolean client_conf_show_version(ClientConf * conf);
 const gchar * client_conf_get_host(ClientConf * conf);
 const gchar * client_conf_get_port(ClientConf * conf);
 const gchar * client_conf_get_username(ClientConf * conf);

@@ -27,7 +27,6 @@ struct _ClientConf {
     GHashTable * cmdline_options;
     GOptionEntry * main_options, * session_options, * device_options, * all_options;
     GKeyFile * file;
-    gboolean version;
     SoupSession * soup;
     // Main options
     gchar * host;
@@ -277,6 +276,12 @@ void client_conf_set_original_arguments(ClientConf * conf, gchar ** arguments) {
 static gint client_conf_handle_options(GApplication * gapp, GVariantDict * opts, gpointer user_data) {
     ClientConf * conf = CLIENT_CONF(user_data);
 
+    if (g_variant_dict_contains(opts, "version")) {
+        g_print("flexVDI Client v" VERSION_STRING "\n"
+                "Copyright (C) 2018 Flexible Software Solutions S.L.\n");
+        return 0;
+    }
+
     // Command line parsing is finished, program starts now
     g_message("Starting flexVDI Client v" VERSION_STRING);
 
@@ -330,7 +335,7 @@ void client_conf_get_options_from_response(ClientConf * conf, JsonObject * param
 void client_conf_set_application_options(ClientConf * conf, GApplication * app) {
     // The version option is here so that it is not read from the config file
     GOptionEntry version_option[] = {
-        { "version", 0, 0, G_OPTION_ARG_NONE, &conf->version,
+        { "version", 'V', 0, G_OPTION_ARG_NONE, NULL,
         "Show version and exit", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
@@ -423,11 +428,6 @@ void client_conf_set_display_options(ClientConf * conf, GObject * display) {
         "scaling", TRUE,
         "disable-inputs", FALSE,
         NULL);
-}
-
-
-gboolean client_conf_show_version(ClientConf * conf) {
-    return conf->version;
 }
 
 
