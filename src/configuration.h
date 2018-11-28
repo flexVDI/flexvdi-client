@@ -55,6 +55,15 @@ G_DECLARE_FINAL_TYPE(ClientConf, client_conf, CLIENT, CONF, GObject)
 ClientConf * client_conf_new(void);
 
 /*
+ * client_conf_set_original_arguments
+ *
+ * Pass the original argument list so that we can know whan arguments were
+ * specified in the command line, to keep them from being overwritten by the
+ * configuration file
+ */
+void client_conf_set_original_arguments(ClientConf * conf, gchar ** arguments);
+
+/*
  * client_conf_get_options_from_response
  *
  * Set some parameters as provided by the response from the Manager, like disabled

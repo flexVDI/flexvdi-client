@@ -86,12 +86,15 @@ struct _ClientApp {
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
 
 
+static gboolean client_app_local_command_line(GApplication * gapp, gchar *** arguments,
+                                              int * exit_status);
 static void client_app_startup(GApplication * gapp);
 static void client_app_activate(GApplication * gapp);
 static void client_app_open(GApplication * application, GFile ** files,
                             gint n_files, const gchar * hint);
 
 static void client_app_class_init(ClientAppClass * class) {
+    G_APPLICATION_CLASS(class)->local_command_line = client_app_local_command_line;
     G_APPLICATION_CLASS(class)->startup = client_app_startup;
     G_APPLICATION_CLASS(class)->activate = client_app_activate;
     G_APPLICATION_CLASS(class)->open = client_app_open;
@@ -129,6 +132,14 @@ ClientApp * client_app_new(void) {
                         "application-id", "com.flexvdi.client",
                         "flags", G_APPLICATION_NON_UNIQUE | G_APPLICATION_HANDLES_OPEN,
                         NULL);
+}
+
+
+static gboolean client_app_local_command_line(GApplication * gapp, gchar *** arguments,
+                                              int * exit_status) {
+    ClientApp * app = CLIENT_APP(gapp);
+    client_conf_set_original_arguments(app->conf, *arguments);
+    return G_APPLICATION_CLASS(client_app_parent_class)->local_command_line(gapp, arguments, exit_status);
 }
 
 

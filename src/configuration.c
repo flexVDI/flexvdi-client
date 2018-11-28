@@ -23,7 +23,9 @@
 
 struct _ClientConf {
     GObject parent;
-    GOptionEntry * main_options, * session_options, * device_options;
+    gchar ** arguments;
+    GHashTable * cmdline_options;
+    GOptionEntry * main_options, * session_options, * device_options, * all_options;
     GKeyFile * file;
     gboolean version;
     SoupSession * soup;
@@ -78,6 +80,7 @@ static void client_conf_class_init(ClientConfClass * class) {
 static void client_conf_load(ClientConf * conf);
 static gboolean set_proxy_uri(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
 static gboolean set_toolbar_edge(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
+static gboolean add_option_to_table(const gchar * option_name, const gchar * value, gpointer data, GError ** error);
 
 static void client_conf_init(ClientConf * conf) {
     // Inline initialization of the command-line options groups
@@ -97,6 +100,7 @@ static void client_conf_init(ClientConf * conf) {
         "Log level for each domain, or for all messages if domain is ommited. 0 = ERROR, 5 = DEBUG", "<[domain:]level,...>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
+    gsize num_main_options = G_N_ELEMENTS(main_options) - 1;
 
     GOptionEntry session_options[] = {
         { "desktop", 'd', 0, G_OPTION_ARG_STRING, &conf->desktop,
@@ -149,6 +153,7 @@ static void client_conf_init(ClientConf * conf) {
         "Window edge where toolbar is shown (default top)", "<top,bottom,left,right>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
+    gsize num_session_options = G_N_ELEMENTS(session_options) - 1;
 
     GOptionEntry device_options[] = {
         { "redirect-rport", 'R', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_rports,
@@ -167,6 +172,7 @@ static void client_conf_init(ClientConf * conf) {
         "<printer_name>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
+    gsize num_device_options = G_N_ELEMENTS(device_options) - 1;
 
     // Dafault values other than 0, NULL or FALSE
     conf->auto_clipboard = TRUE;
@@ -176,6 +182,16 @@ static void client_conf_init(ClientConf * conf) {
     conf->main_options = g_memdup(main_options, sizeof(main_options));
     conf->session_options = g_memdup(session_options, sizeof(session_options));
     conf->device_options = g_memdup(device_options, sizeof(device_options));
+    conf->all_options = g_new0(GOptionEntry, num_main_options + num_session_options + num_device_options + 1);
+    GOptionEntry * o = conf->all_options;
+    memcpy(o, main_options, sizeof(main_options));
+    memcpy(o + num_main_options, session_options, sizeof(session_options));
+    memcpy(o + num_main_options + num_session_options, device_options, sizeof(device_options));
+    for (; o->long_name; ++o) {
+        o->flags = G_OPTION_FLAG_OPTIONAL_ARG;
+        o->arg = G_OPTION_ARG_CALLBACK;
+        o->arg_data = add_option_to_table;
+    }
     conf->printers = g_strsplit("", ".", 0);
     conf->toolbar_edge =
 #ifdef __APPLE__
@@ -183,6 +199,7 @@ static void client_conf_init(ClientConf * conf) {
 #else
         WINDOW_EDGE_UP;
 #endif
+    conf->cmdline_options = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
     // Load the configuration file
     conf->file = g_key_file_new();
     client_conf_load(conf);
@@ -201,6 +218,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->main_options);
     g_free(conf->session_options);
     g_free(conf->device_options);
+    g_free(conf->all_options);
     g_free(conf->host);
     g_free(conf->port);
     g_free(conf->username);
@@ -217,12 +235,69 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->terminal_id);
     g_strfreev(conf->printers);
     g_key_file_free(conf->file);
+    g_hash_table_unref(conf->cmdline_options);
+    g_strfreev(conf->arguments);
     G_OBJECT_CLASS(client_conf_parent_class)->finalize(obj);
 }
 
 
 ClientConf * client_conf_new(void) {
     return g_object_new(CLIENT_CONF_TYPE, NULL);
+}
+
+
+static gboolean add_option_to_table(const gchar * option_name, const gchar * value, gpointer data, GError ** error) {
+    ClientConf * conf = CLIENT_CONF(data);
+
+    if (g_str_has_prefix(option_name, "--no-") && !value) {
+        g_hash_table_insert(conf->cmdline_options, g_strdup(&option_name[5]), g_strdup("false"));
+    } else {
+        if (!value) value = "true";
+        if (g_str_has_prefix(option_name, "--")) {
+            g_hash_table_insert(conf->cmdline_options, g_strdup(&option_name[2]), g_strdup(value));
+        } else {
+            // Single letter, look for long name
+            GOptionEntry * option = conf->all_options;
+            for(; option->long_name; ++option) {
+                if (option->short_name == option_name[1]) {
+                    g_hash_table_insert(conf->cmdline_options, g_strdup(option->long_name), g_strdup(value));
+                    break;
+                }
+            }
+        }
+    }
+
+    return TRUE;
+}
+
+
+void client_conf_set_original_arguments(ClientConf * conf, gchar ** arguments) {
+    conf->arguments = g_strdupv(arguments);
+}
+
+
+/*
+ * Handle command-line options once GLib has gone over them. Return -1 on success.
+ */
+static gint client_conf_handle_options(GApplication * gapp, GVariantDict * opts, gpointer user_data) {
+    ClientConf * conf = CLIENT_CONF(user_data);
+
+    g_autoptr(GOptionContext) ctx = g_option_context_new(NULL);
+    g_autoptr(GOptionGroup) options = g_option_group_new("", "", "", conf, NULL);
+    g_option_group_add_entries(options, conf->all_options);
+    g_option_context_add_group(ctx, options);
+    g_option_context_set_help_enabled(ctx, FALSE);
+    g_option_context_set_ignore_unknown_options(ctx, TRUE);
+    g_option_context_parse_strv(ctx, &conf->arguments, NULL);
+
+    GHashTableIter iter;
+    gpointer key, value;
+
+    g_hash_table_iter_init(&iter, conf->cmdline_options);
+    while (g_hash_table_iter_next(&iter, &key, &value))
+        g_debug("Command line option '%s' = '%s'", (gchar *)key, (gchar *)value);
+
+    return -1;
 }
 
 
@@ -269,6 +344,8 @@ void client_conf_set_application_options(ClientConf * conf, GApplication * app) 
     g_option_group_add_entries(devices_group, conf->device_options);
     g_application_add_option_group(app, session_group);
     g_application_add_option_group(app, devices_group);
+    g_signal_connect(app, "handle-local-options",
+        G_CALLBACK(client_conf_handle_options), conf);
 }
 
 
