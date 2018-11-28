@@ -86,34 +86,15 @@ struct _ClientApp {
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
 
 
+static void client_app_startup(GApplication * gapp);
 static void client_app_activate(GApplication * gapp);
 static void client_app_open(GApplication * application, GFile ** files,
                             gint n_files, const gchar * hint);
 
 static void client_app_class_init(ClientAppClass * class) {
+    G_APPLICATION_CLASS(class)->startup = client_app_startup;
     G_APPLICATION_CLASS(class)->activate = client_app_activate;
     G_APPLICATION_CLASS(class)->open = client_app_open;
-}
-
-
-/*
- * Handle command-line options once GTK has gone over them. Return -1 on success.
- * Actually, we just use this function to initialize the print client and the serial
- * port redirection after the configuration has been read from file and/or command-line.
- */
-static gint client_app_handle_options(GApplication * gapp, GVariantDict * opts, gpointer u) {
-    flexvdi_init_print_client();
-
-#ifdef ENABLE_SERIALREDIR
-    ClientApp * app = CLIENT_APP(gapp);
-    serial_port_init(app->conf);
-#endif
-
-#ifdef _WIN32
-    g_set_print_handler(old_print_func);
-#endif
-
-    return -1;
 }
 
 
@@ -140,8 +121,6 @@ static void client_app_init(ClientApp * app) {
     g_application_set_option_context_summary(G_APPLICATION(app),
         "flexVDI Client is a Virtual Desktop client for flexVDI platforms. "
         "It can also be used as a generic Spice client providing a Spice URI on the command line.");
-    g_signal_connect(app, "handle-local-options",
-        G_CALLBACK(client_app_handle_options), NULL);
 }
 
 
@@ -161,6 +140,20 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
 static void client_app_configure(ClientApp * app, const gchar * error);
 static void client_app_show_login(ClientApp * app, const gchar * error);
 static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri);
+
+static void client_app_startup(GApplication * gapp) {
+#ifdef _WIN32
+    g_set_print_handler(old_print_func);
+#endif
+
+    flexvdi_init_print_client();
+#ifdef ENABLE_SERIALREDIR
+    ClientApp * app = CLIENT_APP(gapp);
+    serial_port_init(app->conf);
+#endif
+
+    G_APPLICATION_CLASS(client_app_parent_class)->startup(gapp);
+}
 
 /*
  * Activate application, called when no URI is provided in the command-line.
