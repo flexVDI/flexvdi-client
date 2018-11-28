@@ -55,15 +55,6 @@ find $TMPDIR/{bin,lib} -type f -exec chmod 755 \{\} + -exec strip -s \{\} + &> /
 cp -a "$PREFIX"/share/glib-2.0/schemas $TMPDIR/share
 cp "$PREFIX"/bin/usb.ids $TMPDIR
 find /usr/share/fonts -name "Lato-Reg*.ttf" -exec cp \{\} $TMPDIR/share/fonts \;
-cat > $TMPDIR/share/fonts/fonts.conf <<\EOF
-<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-<!-- /etc/fonts/fonts.conf file to configure system font access -->
-<fontconfig>
-    <dir>share/fonts</dir>
-    <cachedir prefix="xdg">fontconfig</cachedir>
-</fontconfig>
-EOF
 
 cat > $TMPDIR/AppRun <<\EOF
 #!/bin/sh
@@ -79,14 +70,19 @@ export GST_PLUGIN_SCANNER="${HERE}"/bin/gst-plugin-scanner
 export LIBVA_DRIVERS_PATH="${HERE}"/lib
 export GIO_MODULE_DIR="${HERE}"/lib/gio
 export GTK_PATH="${HERE}"/lib/gtk-3.0
-export FONTCONFIG_PATH="${HERE}"/share/fonts
-
-# Currently we change into the APPDIR directory, this only because of gdk-pixbuf
-# and pango cache files which need to specify relative paths.
-cd "${HERE}"
+export FONTCONFIG_PATH=$(mktemp -d)
+trap "rm -fr $FONTCONFIG_PATH" EXIT
+cat > $FONTCONFIG_PATH/fonts.conf <<FOO
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+    <dir>$HERE/share/fonts</dir>
+    <cachedir prefix="xdg">fontconfig</cachedir>
+</fontconfig>
+FOO
 
 # Check dependencies are met, to avoid cryptic error messages
-ERRORS=`find -type f -executable | xargs ldd | grep "not found" | sort -u`
+ERRORS=`find "${HERE}" -type f -executable | xargs ldd | grep "not found" | sort -u`
 if [ -n "$ERRORS" ]; then
     echo "*************************************************"
     echo "WARNING!!! There are missing dependencies:"
