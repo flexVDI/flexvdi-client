@@ -200,11 +200,7 @@ static void client_conf_init(ClientConf * conf) {
         WINDOW_EDGE_UP;
 #endif
     conf->cmdline_options = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-    // Load the configuration file
     conf->file = g_key_file_new();
-    client_conf_load(conf);
-    if (conf->log_level)
-        client_log_set_log_levels(conf->log_level);
     // FIXME: Disable checking server certificate
     conf->soup = soup_session_new_with_options(
         "ssl-strict", FALSE,
@@ -296,6 +292,10 @@ static gint client_conf_handle_options(GApplication * gapp, GVariantDict * opts,
     g_hash_table_iter_init(&iter, conf->cmdline_options);
     while (g_hash_table_iter_next(&iter, &key, &value))
         g_debug("Command line option '%s' = '%s'", (gchar *)key, (gchar *)value);
+
+    client_conf_load(conf);
+    if (conf->log_level)
+        client_log_set_log_levels(conf->log_level);
 
     return -1;
 }
@@ -859,6 +859,8 @@ static void client_conf_load(ClientConf * conf) {
     for (i = 0; i < G_N_ELEMENTS(groups); ++i) {
         GOptionEntry * option = groups[i].options;
         for (; option->long_name != NULL; ++option) {
+            // Skip options provided in the command line
+            if (g_hash_table_contains(conf->cmdline_options, option->long_name)) continue;
             switch (option->arg) {
             case G_OPTION_ARG_STRING:
                 read_string(conf->file, groups[i].group, option->long_name,
