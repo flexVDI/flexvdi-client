@@ -18,7 +18,6 @@
 */
 
 #include <gtk/gtk.h>
-#include <gst/gst.h>
 #include "client-app.h"
 #include "client-log.h"
 
@@ -37,6 +36,5 @@ int main (int argc, char * argv[]) {
     client_log_setup(argc, argv);
     g_message("Starting flexVDI Client v" VERSION_STRING);
 
-    gst_init(&argc, &argv);
     return g_application_run(G_APPLICATION(client_app_new()), argc, argv);
 }
