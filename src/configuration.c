@@ -27,6 +27,7 @@ struct _ClientConf {
     GHashTable * cmdline_options;
     GOptionEntry * main_options, * session_options, * device_options, * all_options;
     GKeyFile * file;
+    gchar * file_name;
     SoupSession * soup;
     // Main options
     gchar * host;
@@ -200,6 +201,12 @@ static void client_conf_init(ClientConf * conf) {
 #endif
     conf->cmdline_options = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
     conf->file = g_key_file_new();
+    conf->file_name = g_build_filename(
+        g_get_user_config_dir(),
+        "flexvdi-client",
+        "settings.ini",
+        NULL
+    );
     // FIXME: Disable checking server certificate
     conf->soup = soup_session_new_with_options(
         "ssl-strict", FALSE,
@@ -333,14 +340,16 @@ void client_conf_get_options_from_response(ClientConf * conf, JsonObject * param
 
 
 void client_conf_set_application_options(ClientConf * conf, GApplication * app) {
-    // The version option is here so that it is not read from the config file
-    GOptionEntry version_option[] = {
+    // Main options not to be read from the config file
+    GOptionEntry non_file_options[] = {
         { "version", 'V', 0, G_OPTION_ARG_NONE, NULL,
         "Show version and exit", NULL },
+        { "config-file", 'c', 0, G_OPTION_ARG_STRING, &conf->file_name,
+        "Alternative configuration file name", "<file name>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
     };
     g_application_add_main_option_entries(app, conf->main_options);
-    g_application_add_main_option_entries(app, version_option);
+    g_application_add_main_option_entries(app, non_file_options);
     GOptionGroup * session_group = g_option_group_new("session",
         "Session options", "Show session options", conf, NULL);
     g_option_group_add_entries(session_group, conf->session_options);
@@ -808,46 +817,16 @@ gboolean client_conf_get_window_size(ClientConf * conf, gint id,
 
 
 /*
- * get_config_dir
- *
- * Get the directory where the configuration file is saved.
- */
-static gchar * get_config_dir() {
-    return g_build_filename(
-        g_get_user_config_dir(),
-        "flexvdi-client",
-        NULL
-    );
-}
-
-
-/*
- * get_config_filename
- *
- * Get the path to the configuration file
- */
-static gchar * get_config_filename() {
-    g_autofree gchar * config_dir = get_config_dir();
-    return g_build_filename(
-        config_dir,
-        "settings.ini",
-        NULL
-    );
-}
-
-
-/*
  * client_conf_load
  *
  * Load the configuration file
  */
 static void client_conf_load(ClientConf * conf) {
     GError * error = NULL;
-    g_autofree gchar * config_filename = get_config_filename();
     int i;
     gchar * cb_arg;
 
-    if (!g_key_file_load_from_file(conf->file, config_filename,
+    if (!g_key_file_load_from_file(conf->file, conf->file_name,
             G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
         if (!g_error_matches(error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
             g_warning("Error loading settings file: %s", error->message);
@@ -907,8 +886,7 @@ static void client_conf_load(ClientConf * conf) {
 
 void client_conf_save(ClientConf * conf) {
     GError * error = NULL;
-    g_autofree gchar * config_filename = get_config_filename();
-    g_autofree gchar * config_dir = get_config_dir();
+    g_autofree gchar * config_dir = g_path_get_dirname(conf->file_name);
 #ifdef _WIN32
     g_autofree gchar * tmp_data = g_key_file_to_data(conf->file, NULL, NULL);
     gchar ** lines = g_strsplit(tmp_data, "\n", 0);
@@ -919,7 +897,7 @@ void client_conf_save(ClientConf * conf) {
 #endif
 
     g_mkdir_with_parents(config_dir, 0755);
-    if (!g_file_set_contents(config_filename, config_data, -1, &error)) {
+    if (!g_file_set_contents(conf->file_name, config_data, -1, &error)) {
         g_warning("Error saving settings file: %s", error->message);
         g_error_free(error);
     }
