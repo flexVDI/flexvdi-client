@@ -152,6 +152,27 @@ static void client_app_configure(ClientApp * app, const gchar * error);
 static void client_app_show_login(ClientApp * app, const gchar * error);
 static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri);
 
+static void about_activated(GSimpleAction * action, GVariant * parameter, gpointer gapp) {
+    ClientApp * app = CLIENT_APP(gapp);
+    GtkWindow * active_window = gtk_application_get_active_window(GTK_APPLICATION(app));
+    if (active_window)
+        client_show_about(active_window, app->conf);
+}
+
+static void preferences_activated(GSimpleAction * action, GVariant * parameter, gpointer gapp) {
+    client_app_configure(CLIENT_APP(gapp), NULL);
+}
+
+static void quit_activated(GSimpleAction * action, GVariant * parameter, gpointer gapp) {
+    g_application_quit(G_APPLICATION(gapp));
+}
+
+static GActionEntry app_entries[] = {
+    { "about", about_activated, NULL, NULL, NULL },
+    { "preferences", preferences_activated, NULL, NULL, NULL },
+    { "quit", quit_activated, NULL, NULL, NULL }
+};
+
 static void client_app_startup(GApplication * gapp) {
 #ifdef _WIN32
     g_set_print_handler(old_print_func);
@@ -164,6 +185,9 @@ static void client_app_startup(GApplication * gapp) {
 #endif
 
     G_APPLICATION_CLASS(client_app_parent_class)->startup(gapp);
+
+    g_action_map_add_action_entries(G_ACTION_MAP(gapp), app_entries,
+        G_N_ELEMENTS(app_entries), gapp);
 }
 
 /*
@@ -702,6 +726,9 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
             if (app->main_window) {
                 gtk_widget_destroy(GTK_WIDGET(app->main_window));
                 app->main_window = NULL;
+                GSimpleAction * prefs_action =
+                    G_SIMPLE_ACTION(g_action_map_lookup_action(G_ACTION_MAP(app), "preferences"));
+                g_simple_action_set_enabled(prefs_action, FALSE);
             }
         }
     }
