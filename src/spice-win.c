@@ -133,6 +133,9 @@ static void minimize(GtkToolButton * toolbutton, gpointer user_data);
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data);
 static void keystroke(GSimpleAction * action, GVariant * parameter, gpointer user_data);
 static void show_about(GtkToolButton * toolbutton, gpointer user_data);
+#ifndef GDK_WINDOWING_X11
+static gboolean leave_event(GtkWidget * widget, GdkEventCrossing * event, gpointer user_data);
+#endif
 
 static void spice_window_get_printers(SpiceWindow * win);
 static void share_current_printers(gpointer user_data);
@@ -163,6 +166,9 @@ static void spice_window_init(SpiceWindow * win) {
     g_signal_connect(win, "configure-event", G_CALLBACK(configure_event), NULL);
     g_signal_connect(win, "map-event", G_CALLBACK(map_event), NULL);
     g_signal_connect(win->about_button, "clicked", G_CALLBACK(show_about), win);
+#ifndef GDK_WINDOWING_X11
+    g_signal_connect(win, "leave-notify-event", G_CALLBACK(leave_event), NULL);
+#endif
 
     g_action_map_add_action_entries(G_ACTION_MAP(win), keystroke_entry, 1, win);
     GtkBuilder * builder = gtk_builder_new_from_resource(
@@ -458,9 +464,42 @@ static void minimize(GtkToolButton * toolbutton, gpointer user_data) {
     gtk_window_iconify(GTK_WINDOW(win));
 }
 
+#ifndef GDK_WINDOWING_X11
+static gboolean leave_event(GtkWidget * widget, GdkEventCrossing * event, gpointer user_data) {
+    g_debug("Window leave event");
+    SpiceWindow * win = SPICE_WIN(widget);
+    GtkWidgetClass * klass = GTK_WIDGET_GET_CLASS(win->spice);
+    // Simulate an enter event on the SpiceDisplay widget to regrab the keyboard
+    klass->enter_notify_event(GTK_WIDGET(win->spice), event);
+    return GDK_EVENT_PROPAGATE;
+}
+#endif
+
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
                                 gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
+
+#ifndef GDK_WINDOWING_X11
+    // Grab/release the keyboard based on the window focus state. This does not work in X11
+    // as the focus events are not received when the keyboard is grabbed.
+    if (event->changed_mask & GDK_WINDOW_STATE_FOCUSED) {
+        GtkWidgetClass * klass = GTK_WIDGET_GET_CLASS(win->spice);
+        GdkEventCrossing crossing;
+        GdkEventFocus fevent;
+        if (event->new_window_state & GDK_WINDOW_STATE_FOCUSED) {
+            g_debug("Window focused");
+            // Simulate an enter and focus-in events on the SpiceDisplay widget to regrab the keyboard
+            klass->enter_notify_event(GTK_WIDGET(win->spice), &crossing);
+            gtk_widget_grab_focus(GTK_WIDGET(win->spice));
+            klass->focus_in_event(GTK_WIDGET(win->spice), &fevent);
+        } else {
+            g_debug("Window lost focus");
+            // Simulate an focus-out and leave events on the SpiceDisplay widget to release the keyboard
+            klass->focus_out_event(GTK_WIDGET(win->spice), &fevent);
+            klass->leave_notify_event(GTK_WIDGET(win->spice), &crossing);
+        }
+    }
+#endif
 
     win->maximized =
         (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0;
