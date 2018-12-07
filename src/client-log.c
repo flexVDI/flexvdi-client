@@ -164,5 +164,8 @@ void client_log_set_log_levels(const gchar * verbose_str) {
 
     g_strfreev(levels);
 
-    spice_util_set_debug(get_level_for_domain("GSpice") == G_LOG_LEVEL_DEBUG);
+    if (get_level_for_domain("GSpice") == G_LOG_LEVEL_DEBUG)
+        g_setenv("SPICE_DEBUG", "1", TRUE);
+    else
+        g_unsetenv("SPICE_DEBUG");
 }
