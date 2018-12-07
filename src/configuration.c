@@ -187,11 +187,6 @@ static void client_conf_init(ClientConf * conf) {
     memcpy(o, main_options, sizeof(main_options));
     memcpy(o + num_main_options, session_options, sizeof(session_options));
     memcpy(o + num_main_options + num_session_options, device_options, sizeof(device_options));
-    for (; o->long_name; ++o) {
-        o->flags = G_OPTION_FLAG_OPTIONAL_ARG;
-        o->arg = G_OPTION_ARG_CALLBACK;
-        o->arg_data = add_option_to_table;
-    }
     conf->printers = g_strsplit("", ".", 0);
     conf->toolbar_edge =
 #ifdef __APPLE__
@@ -292,6 +287,14 @@ static gint client_conf_handle_options(GApplication * gapp, GVariantDict * opts,
     // Command line parsing is finished, program starts now
     g_message("Starting flexVDI Client v" VERSION_STRING);
 
+    // Parse again the conf->arguments copy of the command line arguments,
+    // just to make a list of the options that must not be loaded from file
+    GOptionEntry * o = conf->all_options;
+    for (; o->long_name; ++o) {
+        o->flags = G_OPTION_FLAG_OPTIONAL_ARG;
+        o->arg = G_OPTION_ARG_CALLBACK;
+        o->arg_data = add_option_to_table;
+    }
     g_autoptr(GOptionContext) ctx = g_option_context_new(NULL);
     g_autoptr(GOptionGroup) options = g_option_group_new("", "", "", conf, NULL);
     g_option_group_add_entries(options, conf->all_options);
