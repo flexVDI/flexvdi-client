@@ -284,6 +284,7 @@ static void read_local_finished(GObject * source_object, GAsyncResult * res,
         }
     }
 
+    g_bytes_unref(bytes);
     g_object_unref(tunnel);
 }
 
@@ -320,7 +321,7 @@ static void next_local_write(WsTunnel * tunnel) {
         GBytes * bytes = (GBytes *)tunnel->in_buffer->data;
         GOutputStream * stream = g_io_stream_get_output_stream(G_IO_STREAM(tunnel->local));
         g_output_stream_write_bytes_async(
-            stream, g_bytes_ref(bytes), G_PRIORITY_DEFAULT, tunnel->cancel,
+            stream, bytes, G_PRIORITY_DEFAULT, tunnel->cancel,
             write_local_finished, tunnel);
     }
 }
