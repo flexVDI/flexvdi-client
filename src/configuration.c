@@ -50,7 +50,6 @@ struct _ClientConf {
     gboolean resize_guest;
     gboolean disable_power_actions;
     gboolean disable_usbredir;
-    gboolean disable_video_streaming;
     gboolean disable_audio_playback;
     gboolean disable_audio_record;
     gchar * preferred_compression;
@@ -141,8 +140,6 @@ static void client_conf_init(ClientConf * conf) {
         "Disable reset/poweroff guest actions", NULL },
         { "disable-usbredir", 0, 0, G_OPTION_ARG_NONE, &conf->disable_usbredir,
         "Disable USB device redirection", NULL },
-        { "disable-video-streaming", 0, 0, G_OPTION_ARG_NONE, &conf->disable_video_streaming,
-        "Disable video streaming", NULL },
         { "disable-audio-playback", 0, 0, G_OPTION_ARG_NONE, &conf->disable_audio_playback,
         "Disable audio playback from guest", NULL },
         { "disable-audio-record", 0, 0, G_OPTION_ARG_NONE, &conf->disable_audio_record,
@@ -321,8 +318,6 @@ void client_conf_get_options_from_response(ClientConf * conf, JsonObject * param
         conf->disable_power_actions |= !json_object_get_boolean_member(params, "enable_power_actions");
     if (json_object_has_member(params, "enable_usb_redir"))
         conf->disable_usbredir |= !json_object_get_boolean_member(params, "enable_usb_redir");
-    if (json_object_has_member(params, "enable_video_streaming"))
-        conf->disable_video_streaming |= !json_object_get_boolean_member(params, "enable_video_streaming");
     if (json_object_has_member(params, "enable_audio_playback"))
         conf->disable_audio_playback |= !json_object_get_boolean_member(params, "enable_audio_playback");
     if (json_object_has_member(params, "enable_audio_record"))
