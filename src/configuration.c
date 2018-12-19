@@ -421,8 +421,6 @@ void client_conf_set_gtk_session_options(ClientConf * conf, GObject * gtk_sessio
         "sync-modifiers", TRUE,
         "auto-clipboard", conf->auto_clipboard,
         "auto-usbredir", conf->auto_usbredir,
-        "disable-paste-from-guest", conf->disable_copy_from_guest,
-        "disable-copy-to-guest", conf->disable_paste_to_guest,
         NULL);
 }
 
