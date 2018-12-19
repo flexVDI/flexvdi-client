@@ -411,8 +411,6 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
     }
     if (conf->preferred_compression)
         parse_preferred_compression(session, conf->preferred_compression);
-    g_object_set(session, "enable-audio",
-        !conf->disable_audio_playback && !conf->disable_audio_record, NULL);
 }
 
 
