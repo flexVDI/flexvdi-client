@@ -19,6 +19,7 @@
 
 PREFIX="$1"
 PKG_NAME="$2"
+BUILD_TYPE="$3"
 BIN=src/flexvdi-client
 LIB=src/libflexvdi-client.so
 export PKG_CONFIG_PATH="$PREFIX"/lib/pkgconfig:"$PREFIX"/share/pkgconfig
@@ -50,7 +51,9 @@ copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,core
 copy_with_deps $(pkg-config gstreamer-1.0 --variable prefix)/libexec/gstreamer-1.0/gst-plugin-scanner "$TMPDIR"/bin
 copy_with_deps $(pkg-config gio-2.0 --variable giomoduledir)/libgiognutls.so "$TMPDIR"/lib/gio
 cp -a "$PREFIX"/lib/gtk-3.0 "$TMPDIR"/lib
-find $TMPDIR/{bin,lib} -type f -exec chmod 755 \{\} + -exec strip -s \{\} + &> /dev/null | true
+if [ "$BUILD_TYPE" != "Debug" ]; then
+    find $TMPDIR/{bin,lib} -type f -exec chmod 755 \{\} + -exec strip -s \{\} + &> /dev/null | true
+fi
 
 cp -a "$PREFIX"/share/glib-2.0/schemas $TMPDIR/share
 cp "$PREFIX"/bin/usb.ids $TMPDIR
@@ -90,8 +93,21 @@ if [ -n "$ERRORS" ]; then
     echo "$ERRORS"
 fi
 
-"${HERE}"/bin/flexvdi-client "$@"
 EOF
+
+if [ "$BUILD_TYPE" != "Debug" ]; then
+    echo '"${HERE}"/bin/flexvdi-client "$@"'
+else
+    cat <<\EOF
+if [ -n "$DEBUG_APPIMAGE" ]; then
+    gdb --args "${HERE}"/bin/flexvdi-client "$@"
+elif [ -n "$VALGRIND_TOOL" ]; then
+    valgrind --tool=$VALGRIND_TOOL "${HERE}"/bin/flexvdi-client "$@"
+else
+    "${HERE}"/bin/flexvdi-client "$@"
+fi
+EOF
+fi >> $TMPDIR/AppRun
 chmod 755 $TMPDIR/AppRun
 
 appimagetool -n $TMPDIR ./${PKG_NAME}.AppImage || {

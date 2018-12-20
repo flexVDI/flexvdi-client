@@ -140,6 +140,6 @@ elseif (APPLE)
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 else ()
     add_custom_target(installer DEPENDS flexvdi-client-bin
-                      COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_appimage.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME}
+                      COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_appimage.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME} ${CMAKE_BUILD_TYPE}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 endif ()
