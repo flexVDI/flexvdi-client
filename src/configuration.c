@@ -50,8 +50,6 @@ struct _ClientConf {
     gboolean resize_guest;
     gboolean disable_power_actions;
     gboolean disable_usbredir;
-    gboolean disable_audio_playback;
-    gboolean disable_audio_record;
     gchar * preferred_compression;
     gchar * grab_sequence;
     WindowEdge toolbar_edge;
@@ -122,10 +120,6 @@ static void client_conf_init(ClientConf * conf) {
         "Automatically redirect newly connected USB devices", NULL },
         { "no-auto-usbredir", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
         G_OPTION_ARG_NONE, &conf->auto_usbredir, "", NULL },
-        { "disable-copy-from-guest", 0, 0, G_OPTION_ARG_NONE, &conf->disable_copy_from_guest,
-        "Disable clipboard from guest to client", NULL },
-        { "disable-paste-to-guest", 0, 0, G_OPTION_ARG_NONE, &conf->disable_paste_to_guest,
-        "Disable clipboard from client to guest", NULL },
         { "grab-mouse", 0, 0, G_OPTION_ARG_NONE, &conf->grab_mouse,
         "Grab mouse in server mode", NULL },
         { "no-grab-mouse", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
@@ -140,10 +134,6 @@ static void client_conf_init(ClientConf * conf) {
         "Disable reset/poweroff guest actions", NULL },
         { "disable-usbredir", 0, 0, G_OPTION_ARG_NONE, &conf->disable_usbredir,
         "Disable USB device redirection", NULL },
-        { "disable-audio-playback", 0, 0, G_OPTION_ARG_NONE, &conf->disable_audio_playback,
-        "Disable audio playback from guest", NULL },
-        { "disable-audio-record", 0, 0, G_OPTION_ARG_NONE, &conf->disable_audio_record,
-        "Disable audio record to guest", NULL },
         { "preferred-compression", 0, 0, G_OPTION_ARG_STRING, &conf->preferred_compression,
         "Preferred image compression algorithm", "<auto-glz,auto-lz,quic,glz,lz,lz4,off>" },
         { "toolbar-edge", 0, 0, G_OPTION_ARG_CALLBACK, set_toolbar_edge,
@@ -318,10 +308,6 @@ void client_conf_get_options_from_response(ClientConf * conf, JsonObject * param
         conf->disable_power_actions |= !json_object_get_boolean_member(params, "enable_power_actions");
     if (json_object_has_member(params, "enable_usb_redir"))
         conf->disable_usbredir |= !json_object_get_boolean_member(params, "enable_usb_redir");
-    if (json_object_has_member(params, "enable_audio_playback"))
-        conf->disable_audio_playback |= !json_object_get_boolean_member(params, "enable_audio_playback");
-    if (json_object_has_member(params, "enable_audio_record"))
-        conf->disable_audio_record |= !json_object_get_boolean_member(params, "enable_audio_record");
     if (json_object_has_member(params, "enable_copy_paste_g2h"))
         conf->disable_copy_from_guest |= !json_object_get_boolean_member(params, "enable_copy_paste_g2h");
     if (json_object_has_member(params, "enable_copy_paste_h2g"))
