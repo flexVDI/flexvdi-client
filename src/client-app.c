@@ -147,6 +147,7 @@ static void button_pressed_handler(ClientAppWindow * win, int button, gpointer u
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data);
 static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data);
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data);
+static void network_changed(GNetworkMonitor * net_monitor, gboolean network_available, gpointer user_data);
 
 static void client_app_configure(ClientApp * app, const gchar * error);
 static void client_app_show_login(ClientApp * app, const gchar * error);
@@ -212,6 +213,26 @@ static void client_app_activate(GApplication * gapp) {
     g_signal_connect(app->main_window, "delete-event",
         G_CALLBACK(delete_cb), app);
 
+    GNetworkMonitor * net_monitor = g_network_monitor_get_default();
+    g_debug("Using network monitor @0x%p, connectivity %d", net_monitor, g_network_monitor_get_connectivity(net_monitor));
+    if (g_network_monitor_get_network_available(net_monitor)) {
+        g_debug("Network is available");
+        network_changed(net_monitor, TRUE, app);
+    } else {
+        g_debug("Network is NOT available");
+        client_app_window_set_central_widget(app->main_window, "login");
+        client_app_window_status(app->main_window, "Waiting for network connectivity...");
+        client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
+        g_signal_connect(net_monitor, "network-changed", G_CALLBACK(network_changed), app);
+    }
+}
+
+static void network_changed(GNetworkMonitor * net_monitor, gboolean network_available, gpointer user_data) {
+    if (!network_available) return;
+    ClientApp * app = CLIENT_APP(user_data);
+
+    g_debug("Network is available NOW");
+    g_signal_handlers_disconnect_by_func(net_monitor, G_CALLBACK(network_changed), app);
     if (client_conf_get_uri(app->conf) != NULL) {
         client_app_connect_with_spice_uri(app, client_conf_get_uri(app->conf));
         client_app_window_status(app->main_window, "Connecting to desktop...");
