@@ -24,26 +24,27 @@
 #include <glib.h>
 
 gchar * discover_terminal_id() {
-    int i;
-    struct ifconf ifc;
-    struct ifreq ifr[10];
-    ifc.ifc_len = sizeof(ifr);
-    ifc.ifc_req = ifr;
+    gchar * id = NULL;
+    struct ifreq ifr;
 
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-    if (sock != -1 && ioctl(sock, SIOCGIFCONF, &ifc) != -1 && ifc.ifc_len > 0) {
-        for (i = 0; i < ifc.ifc_len / sizeof(struct ifreq); ++i) {
-            if (ioctl(sock, SIOCGIFFLAGS, &ifr[i]) == 0
-                && !(ifr[i].ifr_flags & IFF_LOOPBACK) // don't count loopback
-                && ioctl(sock, SIOCGIFHWADDR, &ifr[i]) == 0) {
+    struct if_nameindex * if_ni = if_nameindex(), * i;
+    if (sock != -1 && if_ni != NULL) {
+        for (i = if_ni; i->if_index != 0 && i->if_name != NULL; ++i) {
+            memcpy(ifr.ifr_name, i->if_name, strlen(i->if_name));
+            if (ioctl(sock, SIOCGIFFLAGS, &ifr) == 0
+                && !(ifr.ifr_flags & IFF_LOOPBACK) // don't count loopback
+                && ioctl(sock, SIOCGIFHWADDR, &ifr) == 0) {
                 close(sock);
-                unsigned char * mac = (unsigned char *)ifr[i].ifr_hwaddr.sa_data;
-                return g_strdup_printf("%02x:%02x:%02x:%02x:%02x:%02x",
+                unsigned char * mac = (unsigned char *)ifr.ifr_hwaddr.sa_data;
+                id = g_strdup_printf("%02x:%02x:%02x:%02x:%02x:%02x",
                     mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+                break;
             }
         }
-        close(sock);
     }
 
-    return g_strdup("");
+    close(sock);
+    if_freenameindex(if_ni);
+    return id ? id : g_strdup("");
 }
