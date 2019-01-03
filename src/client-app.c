@@ -730,9 +730,9 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
 
     for (i = 0; i < monitors->len; ++i) {
         if (!app->windows[i]) {
-            gchar * name = NULL;
+            g_autofree gchar * name = NULL;
             if (app->desktop_name) {
-                name = app->desktop_name;
+                name = g_strdup(app->desktop_name);
             } else {
                 g_object_get(client_conn_get_session(app->connection), "name", &name, NULL);
             }
@@ -804,7 +804,7 @@ static void main_agent_update(SpiceChannel * channel, ClientApp * app) {
 
 
 static void port_opened(SpiceChannel * channel, GParamSpec * pspec) {
-    gchar * name = NULL;
+    g_autofree gchar * name = NULL;
     gboolean opened;
 
     g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);

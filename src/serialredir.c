@@ -249,7 +249,7 @@ static void open_serial(SerialPort * serial) {
 static void serial_port_data(SpicePortChannel * channel, gpointer data, int size);
 
 void serial_port_open(SpiceChannel * channel) {
-    gchar * name = NULL;
+    g_autofree gchar * name = NULL;
     gboolean opened = FALSE;
     g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
     if (!strncmp(name, "serialredir", 11)) {
