@@ -554,13 +554,13 @@ static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data) {
     int event_type = 0;
     if (toolbutton == win->reboot_button) {
         action_name = "reset";
-        event_type = SPICE_POWER_EVENT_RESET;
+        event_type = FLEXVDI_POWER_EVENT_RESET;
     } else if (toolbutton == win->shutdown_button) {
         action_name = "orderly shutdown";
-        event_type = SPICE_POWER_EVENT_POWERDOWN;
+        event_type = FLEXVDI_POWER_EVENT_SHUTDOWN;
     } else if (toolbutton == win->poweroff_button) {
         action_name = "immediately power off";
-        event_type = SPICE_POWER_EVENT_SHUTDOWN;
+        event_type = FLEXVDI_POWER_EVENT_POWEROFF;
     }
 
     GtkWidget * dialog = gtk_message_dialog_new(GTK_WINDOW(win),
@@ -572,7 +572,11 @@ static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data) {
     gint result = gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
     if (result == GTK_RESPONSE_YES) {
-        spice_main_power_event_request(client_conn_get_main_channel(win->conn), event_type);
+        FlexvdiPort * control_port = client_conn_get_control_port(win->conn);
+        uint8_t * buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDIPowerEventMsg));
+        FlexVDIPowerEventMsg * msg = (FlexVDIPowerEventMsg *)buf;
+        msg->event = event_type;
+        flexvdi_port_send_msg(control_port, FLEXVDI_POWEREVENT, buf);
     }
 }
 
