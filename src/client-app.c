@@ -589,7 +589,6 @@ static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
                                gpointer user_data);
 static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app);
 static void main_agent_update(SpiceChannel * channel, ClientApp * app);
-static void port_opened(SpiceChannel * channel, GParamSpec * pspec);
 
 /*
  * New channel handler. Here, only these channels are useful:
@@ -613,11 +612,6 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
         g_signal_connect(channel, "notify::monitors",
                          G_CALLBACK(display_monitors), app);
-    }
-
-    if (SPICE_IS_PORT_CHANNEL(channel)) {
-        g_signal_connect(channel, "notify::port-opened",
-                         G_CALLBACK(port_opened), app);
     }
 }
 
@@ -799,23 +793,6 @@ static void main_agent_update(SpiceChannel * channel, ClientApp * app) {
         if (app->windows[i]) {
             set_cp_sensitive(app->windows[i], app);
         }
-    }
-}
-
-
-static void port_opened(SpiceChannel * channel, GParamSpec * pspec) {
-    g_autofree gchar * name = NULL;
-    gboolean opened;
-
-    g_object_get(channel, "port-name", &name, "port-opened", &opened, NULL);
-    g_debug("Port channel %s is %s", name, opened ? "open" : "closed");
-
-    if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
-        flexvdi_port_open(channel);
-#ifdef ENABLE_SERIALREDIR
-    } else {
-        serial_port_open(channel);
-#endif
     }
 }
 

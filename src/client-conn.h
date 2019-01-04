@@ -25,6 +25,7 @@
 #include <spice-client.h>
 
 #include "configuration.h"
+#include "flexvdi-port.h"
 
 
 typedef enum {
@@ -107,5 +108,12 @@ ClientConnDisconnectReason client_conn_get_reason(ClientConn * conn);
  * Get a description of the disconnection reason
  */
 gchar * client_conn_get_reason_str(ClientConn * conn);
+
+/*
+ * client_conn_get_guest_agent_port
+ *
+ * Return the port channel to communicate with the guest agent.
+ */
+FlexvdiPort * client_conn_get_guest_agent_port(ClientConn * conn);
 
 #endif /* _CLIENT_CONN_H */

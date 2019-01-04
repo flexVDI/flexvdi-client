@@ -21,10 +21,11 @@
 #define _PRINTCLIENT_H_
 
 #include <glib.h>
+#include "flexvdi-port.h"
 
 void flexvdi_init_print_client();
 int flexvdi_get_printer_list(GSList ** printerList);
-int flexvdi_share_printer(const char * printer);
-int flexvdi_unshare_printer(const char * printer);
+int flexvdi_share_printer(FlexvdiPort * port, const char * printer);
+int flexvdi_unshare_printer(FlexvdiPort * port, const char * printer);
 
 #endif /* _PRINTCLIENT_H_ */

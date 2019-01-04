@@ -121,8 +121,8 @@ void flexvdi_init_print_client() {
 }
 
 
-int flexvdi_share_printer(const char * printer) {
-    if (!flexvdi_is_agent_connected()) {
+int flexvdi_share_printer(FlexvdiPort * port, const char * printer) {
+    if (!flexvdi_port_is_agent_connected(port)) {
         g_warning("The flexVDI guest agent is not connected");
         return FALSE;
     }
@@ -145,7 +145,7 @@ int flexvdi_share_printer(const char * printer) {
                 msg->ppdLength = ppd_len;
                 strncpy(msg->data, printer, name_len + 1);
                 fread(&msg->data[name_len + 1], 1, ppd_len, ppd);
-                flexvdi_port_send_msg(FLEXVDI_SHAREPRINTER, buf);
+                flexvdi_port_send_msg(port, FLEXVDI_SHAREPRINTER, buf);
                 result = TRUE;
             } else g_warning("Failed to open PPD file %s", ppd_name);
             fclose(ppd);
@@ -156,8 +156,8 @@ int flexvdi_share_printer(const char * printer) {
 }
 
 
-int flexvdi_unshare_printer(const char * printer) {
-    if (!flexvdi_is_agent_connected()) {
+int flexvdi_unshare_printer(FlexvdiPort * port, const char * printer) {
+    if (!flexvdi_port_is_agent_connected(port)) {
         g_warning("The flexVDI guest agent is not connected");
         return FALSE;
     }
@@ -169,7 +169,7 @@ int flexvdi_unshare_printer(const char * printer) {
         FlexVDIUnsharePrinterMsg * msg = (FlexVDIUnsharePrinterMsg *)buf;
         msg->printerNameLength = name_len;
         strncpy(msg->printerName, printer, name_len + 1);
-        flexvdi_port_send_msg(FLEXVDI_UNSHAREPRINTER, buf);
+        flexvdi_port_send_msg(port, FLEXVDI_UNSHAREPRINTER, buf);
         return TRUE;
     } else {
         g_warning("Unable to reserve memory for printer message");

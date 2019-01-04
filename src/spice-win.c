@@ -138,7 +138,7 @@ static gboolean leave_event(GtkWidget * widget, GdkEventCrossing * event, gpoint
 #endif
 
 static void spice_window_get_printers(SpiceWindow * win);
-static void share_current_printers(gpointer user_data);
+static void guest_agent_connected(FlexvdiPort * port, gboolean connected, SpiceWindow * win);
 
 static GActionEntry keystroke_entry[] = {
     { "keystroke", keystroke, "s", NULL, NULL },
@@ -284,10 +284,10 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     }
     spice_window_get_printers(win);
     if (win->id == 0) {
-        if (flexvdi_is_agent_connected())
-            share_current_printers(win);
-        else
-            flexvdi_on_agent_connected(share_current_printers, win);
+        FlexvdiPort * guest_port = client_conn_get_guest_agent_port(conn);
+        g_signal_connect(guest_port, "agent-connected", G_CALLBACK(guest_agent_connected), win);
+        if (flexvdi_port_is_agent_connected(client_conn_get_guest_agent_port(conn)))
+            guest_agent_connected(guest_port, TRUE, win);
     }
 
     win->monitor = -1;
@@ -331,7 +331,8 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
 
 static void set_printers_menu_visibility(gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
-    if (!flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING) ||
+    FlexvdiPort * guest_port = client_conn_get_guest_agent_port(win->conn);
+    if (!flexvdi_port_agent_supports_capability(guest_port, FLEXVDI_CAP_PRINTING) ||
         g_menu_model_get_n_items(G_MENU_MODEL(win->printers_menu)) == 0) {
         gtk_widget_hide(GTK_WIDGET(win->printers_button));
     } else {
@@ -359,10 +360,8 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
         win->monitor = get_monitor(win);
     client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
 
-    if (flexvdi_is_agent_connected())
+    if (flexvdi_port_is_agent_connected(client_conn_get_guest_agent_port(win->conn)))
         set_printers_menu_visibility(win);
-    else
-        flexvdi_on_agent_connected(set_printers_menu_visibility, win);
 
 #ifdef __APPLE__
     gtk_widget_hide(GTK_WIDGET(win->usb_button));
@@ -751,23 +750,25 @@ static gboolean set_printer_menu_item_sensitive(gpointer user_data) {
 typedef struct _ActionAndPrinter {
     GSimpleAction * action;
     gchar * printer;
+    FlexvdiPort * guest_port;
 } ActionAndPrinter;
 
 static gpointer share_printer_thread(gpointer user_data) {
     ActionAndPrinter * data = (ActionAndPrinter *)user_data;
-    flexvdi_share_printer(data->printer);
+    flexvdi_share_printer(data->guest_port, data->printer);
     g_idle_add(set_printer_menu_item_sensitive, data->action);
     g_free(data->printer);
     g_free(data);
     return NULL;
 }
 
-static void share_printer_async(GSimpleAction * action, const gchar * printer) {
+static void share_printer_async(FlexvdiPort * guest_port, GSimpleAction * action, const gchar * printer) {
     // flexvdi_share_printer can be a bit slow and "hang" the GUI
     g_simple_action_set_enabled(action, FALSE);
     ActionAndPrinter * data = g_new(ActionAndPrinter, 1);
     data->action = action;
     data->printer = g_strdup(printer);
+    data->guest_port = guest_port;
     GThread * thread = g_thread_try_new(NULL, share_printer_thread,
                                         data, NULL);
     if (!thread) {
@@ -783,16 +784,17 @@ static void printer_toggled(GSimpleAction * action, GVariant * parameter, gpoint
     gboolean active = !g_variant_get_boolean(g_action_get_state(G_ACTION(action)));
     g_simple_action_set_state(action, g_variant_new_boolean(active));
     client_conf_share_printer(win->conf, printer, active);
+    FlexvdiPort * guest_port = client_conn_get_guest_agent_port(win->conn);
     if (active) {
-        share_printer_async(action, printer);
+        share_printer_async(guest_port, action, printer);
     } else {
-        flexvdi_unshare_printer(printer);
+        flexvdi_unshare_printer(guest_port, printer);
     }
 }
 
-static void share_current_printers(gpointer user_data) {
-    SpiceWindow * win = SPICE_WIN(user_data);
-    if (flexvdi_agent_supports_capability(FLEXVDI_CAP_PRINTING)) {
+static void guest_agent_connected(FlexvdiPort * port, gboolean connected, SpiceWindow * win) {
+    set_printers_menu_visibility(win);
+    if (flexvdi_port_agent_supports_capability(port, FLEXVDI_CAP_PRINTING)) {
         GHashTableIter iter;
         gpointer key, value;
 
@@ -800,7 +802,7 @@ static void share_current_printers(gpointer user_data) {
         while (g_hash_table_iter_next(&iter, &key, &value)) {
             GSimpleAction * action = G_SIMPLE_ACTION(key);
             if (g_variant_get_boolean(g_action_get_state(G_ACTION(action)))) {
-                share_printer_async(action, value);
+                share_printer_async(port, action, value);
             }
         }
     }

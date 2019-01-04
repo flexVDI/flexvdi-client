@@ -25,6 +25,23 @@
 #include "flexdp.h"
 
 
+#define FLEXVDI_PORT_TYPE (flexvdi_port_get_type())
+G_DECLARE_FINAL_TYPE(FlexvdiPort, flexvdi_port, FLEXVDI, PORT, GObject)
+
+/*
+ * flexvdi_port_new
+ *
+ * Creates a flexVDI port
+ */
+FlexvdiPort * flexvdi_port_new();
+
+/*
+ * flexvdi_port_set_channel
+ *
+ * Associates a port channel with a flexVDI port.
+ */
+void flexvdi_port_set_channel(FlexvdiPort * port, SpicePortChannel * channel);
+
 /*
  * flexvdi_port_get_msg_buffer
  *
@@ -47,7 +64,7 @@ void flexvdi_port_delete_msg_buffer(uint8_t * buffer);
  * Sends a message through the flexVDI port of a certain type. The operation is
  * asynchronous, with a "fire and forget" semantic. The buffer is automatically released.
  */
-void flexvdi_port_send_msg(uint32_t type, uint8_t * buffer);
+void flexvdi_port_send_msg(FlexvdiPort * port, uint32_t type, uint8_t * buffer);
 
 /*
  * flexvdi_port_send_msg_async
@@ -55,44 +72,28 @@ void flexvdi_port_send_msg(uint32_t type, uint8_t * buffer);
  * Sends a message through the flexVDI port of a certain type, asynchronously, with
  * a callback for when the operation ends.
  */
-void flexvdi_port_send_msg_async(uint32_t type, uint8_t * buffer,
-                      GAsyncReadyCallback callback, gpointer user_data);
+void flexvdi_port_send_msg_async(FlexvdiPort * port, uint32_t type, uint8_t * buffer,
+                                 GAsyncReadyCallback callback, gpointer user_data);
 
 /*
  * flexvdi_port_send_msg_finish
  *
  * Ends an asynchronous send operation.
  */
-void flexvdi_port_send_msg_finish(GObject * source_object, GAsyncResult * res, GError ** error);
+void flexvdi_port_send_msg_finish(FlexvdiPort * port, GAsyncResult * res, GError ** error);
 
 /*
- * flexvdi_port_open
+ * flexvdi_port_is_agent_connected
  *
- * Opens the flexVDI port on a certain channel. The channel must be a SpicePortChannel
- * with the name "es.flexvdi.guest_agent"
+ * Checks whether the a flexVDI agent is connected to a port
  */
-void flexvdi_port_open(SpiceChannel * channel);
+gboolean flexvdi_port_is_agent_connected(FlexvdiPort * port);
 
 /*
- * flexvdi_is_agent_connected
+ * flexvdi_port_agent_supports_capability
  *
- * Checks whether the flexVDI guest agent is connected
+ * Checks whether the agent supports a certain flexDP capability
  */
-int flexvdi_is_agent_connected(void);
-
-/*
- * flexvdi_on_agent_connected
- *
- * Calls a callback when the guest agent connects.
- */
-typedef void (*flexvdi_agent_connected_cb)(gpointer data);
-void flexvdi_on_agent_connected(flexvdi_agent_connected_cb cb, gpointer data);
-
-/*
- * flexvdi_agent_supports_capability
- *
- * Checks whether the guest agent supports a certain flexDP capability
- */
-int flexvdi_agent_supports_capability(int cap);
+gboolean flexvdi_port_agent_supports_capability(FlexvdiPort * port, int cap);
 
 #endif /* _FLEXVDI_PORT_H_ */

@@ -19,6 +19,9 @@
 
 #include "client-conn.h"
 #include "ws-tunnel.h"
+#ifdef ENABLE_SERIALREDIR
+#include "serialredir.h"
+#endif
 
 
 struct _ClientConn {
@@ -33,6 +36,7 @@ struct _ClientConn {
     GList * tunnels;
     gboolean disconnecting;
     ClientConnDisconnectReason reason;
+    FlexvdiPort * guest_agent_port;
 };
 
 enum {
@@ -71,6 +75,7 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
 static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer data);
 
 static void client_conn_init(ClientConn * conn) {
+    conn->guest_agent_port = flexvdi_port_new();
     conn->session = spice_session_new();
     spice_set_session_option(conn->session);
 
@@ -85,6 +90,7 @@ static void client_conn_init(ClientConn * conn) {
 static void client_conn_dispose(GObject * obj) {
     ClientConn * conn = CLIENT_CONN(obj);
     g_clear_object(&conn->session);
+    g_clear_object(&conn->guest_agent_port);
     g_list_free_full(conn->tunnels, (GDestroyNotify)ws_tunnel_unref);
     G_OBJECT_CLASS(client_conn_parent_class)->dispose(obj);
 }
@@ -160,6 +166,7 @@ SpiceSession * client_conn_get_session(ClientConn * conn) {
 
 
 static void open_ws_tunnel(SpiceChannel * channel, int with_tls, gpointer user_data);
+static void port_channel(SpiceChannel * channel, GParamSpec * pspec, ClientConn * conn);
 
 /*
  * New channel handler. Finishes the connection process of each channel.
@@ -182,6 +189,11 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
 
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         conn->audio = spice_audio_get(s, NULL);
+    }
+
+    if (SPICE_IS_PORT_CHANNEL(channel)) {
+        g_signal_connect(channel, "notify::port-name",
+                         G_CALLBACK(port_channel), conn);
     }
 
     spice_channel_connect(channel);
@@ -257,6 +269,22 @@ static void tunnel_eof(WsTunnel * tunnel, gpointer user_data) {
 }
 
 
+static void port_channel(SpiceChannel * channel, GParamSpec * pspec, ClientConn * conn) {
+    g_autofree gchar * name = NULL;
+
+    g_object_get(channel, "port-name", &name, NULL);
+    g_debug("Port channel %s", name);
+
+    if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
+        flexvdi_port_set_channel(conn->guest_agent_port, SPICE_PORT_CHANNEL(channel));
+#ifdef ENABLE_SERIALREDIR
+    } else {
+        serial_port_open(channel);
+#endif
+    }
+}
+
+
 SpiceMainChannel * client_conn_get_main_channel(ClientConn * conn) {
     return conn->main;
 }
@@ -282,4 +310,9 @@ gchar * client_conn_get_reason_str(ClientConn * conn) {
         default:
             return g_strdup("The connection was closed for unknown reasons.");
     }
+}
+
+
+FlexvdiPort * client_conn_get_guest_agent_port(ClientConn * conn) {
+    return conn->guest_agent_port;
 }
