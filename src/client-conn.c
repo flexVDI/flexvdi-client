@@ -36,7 +36,7 @@ struct _ClientConn {
     GList * tunnels;
     gboolean disconnecting;
     ClientConnDisconnectReason reason;
-    FlexvdiPort * guest_agent_port;
+    FlexvdiPort * guest_agent_port, * control_port;
 };
 
 enum {
@@ -76,6 +76,7 @@ static void channel_destroy(SpiceSession * s, SpiceChannel * channel, gpointer d
 
 static void client_conn_init(ClientConn * conn) {
     conn->guest_agent_port = flexvdi_port_new();
+    conn->control_port = flexvdi_port_new();
     conn->session = spice_session_new();
     spice_set_session_option(conn->session);
 
@@ -91,6 +92,7 @@ static void client_conn_dispose(GObject * obj) {
     ClientConn * conn = CLIENT_CONN(obj);
     g_clear_object(&conn->session);
     g_clear_object(&conn->guest_agent_port);
+    g_clear_object(&conn->control_port);
     g_list_free_full(conn->tunnels, (GDestroyNotify)ws_tunnel_unref);
     G_OBJECT_CLASS(client_conn_parent_class)->dispose(obj);
 }
@@ -277,6 +279,8 @@ static void port_channel(SpiceChannel * channel, GParamSpec * pspec, ClientConn 
 
     if (g_strcmp0(name, "es.flexvdi.guest_agent") == 0) {
         flexvdi_port_set_channel(conn->guest_agent_port, SPICE_PORT_CHANNEL(channel));
+    } else if (g_strcmp0(name, "com.flexvdi.control") == 0) {
+        flexvdi_port_set_channel(conn->control_port, SPICE_PORT_CHANNEL(channel));
 #ifdef ENABLE_SERIALREDIR
     } else {
         serial_port_open(channel);
@@ -316,3 +320,9 @@ gchar * client_conn_get_reason_str(ClientConn * conn) {
 FlexvdiPort * client_conn_get_guest_agent_port(ClientConn * conn) {
     return conn->guest_agent_port;
 }
+
+
+FlexvdiPort * client_conn_get_control_port(ClientConn * conn) {
+    return conn->control_port;
+}
+

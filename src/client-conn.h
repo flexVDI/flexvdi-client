@@ -116,4 +116,11 @@ gchar * client_conn_get_reason_str(ClientConn * conn);
  */
 FlexvdiPort * client_conn_get_guest_agent_port(ClientConn * conn);
 
+/*
+ * client_conn_get_control_port
+ *
+ * Return the port channel to communicate with the guest agent.
+ */
+FlexvdiPort * client_conn_get_control_port(ClientConn * conn);
+
 #endif /* _CLIENT_CONN_H */
