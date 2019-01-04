@@ -81,6 +81,7 @@ struct _ClientApp {
     SpiceMainChannel * main;
     SpiceWindow * windows[MAX_WINDOWS];
     gint64 last_input_time;
+    gboolean autologin;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -239,10 +240,10 @@ static void network_changed(GNetworkMonitor * net_monitor, gboolean network_avai
         client_app_window_set_central_widget(app->main_window, "login");
         client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
     } else if (client_conf_get_host(app->conf) != NULL) {
-        client_app_show_login(app, NULL);
         if (client_conf_get_username(app->conf) && client_conf_get_password(app->conf)) {
-            button_pressed_handler(app->main_window, LOGIN_BUTTON, app);
+            app->autologin = TRUE;
         }
+        client_app_show_login(app, NULL);
     } else
         client_app_configure(app, NULL);
 }
@@ -356,8 +357,10 @@ static void client_app_configure(ClientApp * app, const gchar * error) {
         g_clear_object(&app->current_request);
     }
 
-    if (error != NULL)
+    if (error != NULL) {
         client_app_window_error(app->main_window, error);
+        app->autologin = FALSE;
+    }
 }
 
 
@@ -371,8 +374,10 @@ static void client_app_show_login(ClientApp * app, const gchar * error) {
     client_app_window_set_central_widget(app->main_window, "login");
     if (error == NULL)
         client_app_window_status(app->main_window, "Contacting server...");
-    else
+    else {
         client_app_window_error(app->main_window, error);
+        app->autologin = FALSE;
+    }
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
 
     app->username = app->password = app->desktop = "";
@@ -407,6 +412,8 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
         } else if (g_strcmp0(auth_mode, "active_directory") == 0) {
             client_app_window_hide_status(app->main_window);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
+            if (app->autologin)
+                button_pressed_handler(app->main_window, LOGIN_BUTTON, app);
         } else {
             // Kiosk mode, make a desktop request
             client_app_request_desktop(app);
