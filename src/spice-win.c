@@ -366,6 +366,7 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
 #ifdef __APPLE__
     gtk_widget_hide(GTK_WIDGET(win->usb_button));
 #endif
+    gtk_widget_hide(GTK_WIDGET(win->notification_revealer));
 
     GdkRectangle r;
     GdkDisplay * display = gdk_display_get_default();
