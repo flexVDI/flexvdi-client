@@ -54,8 +54,6 @@ struct _ClientConf {
     gchar * grab_sequence;
     WindowEdge toolbar_edge;
     // Device options
-    gchar ** redir_rports;
-    gchar ** redir_lports;
     gchar * usb_auto_filter;
     gchar * usb_connect_filter;
     gchar ** serial_params;
@@ -143,10 +141,6 @@ static void client_conf_init(ClientConf * conf) {
     gsize num_session_options = G_N_ELEMENTS(session_options) - 1;
 
     GOptionEntry device_options[] = {
-        { "redirect-rport", 'R', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_rports,
-        "Redirect a remote TCP port. Can appear multiple times", "[bind_address:]guest_port:host:host_port" },
-        { "redirect-lport", 'L', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_lports,
-        "Redirect a local TCP port. Can appear multiple times", "[bind_address:]local_port:host:host_port", },
         { "usbredir-auto-redirect-filter", 0, 0, G_OPTION_ARG_STRING, &conf->usb_auto_filter,
           "Filter selecting USB devices to be auto-redirected when plugged in", "<filter-string>" },
         { "usbredir-redirect-on-connect", 0, 0, G_OPTION_ARG_STRING, &conf->usb_connect_filter,
@@ -210,8 +204,6 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->desktop);
     g_free(conf->proxy_uri);
     g_strfreev(conf->serial_params);
-    g_strfreev(conf->redir_rports);
-    g_strfreev(conf->redir_lports);
     g_free(conf->usb_auto_filter);
     g_free(conf->usb_connect_filter);
     g_free(conf->preferred_compression);
@@ -379,10 +371,6 @@ static void parse_preferred_compression(SpiceSession * session, const gchar * va
 void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) {
     if (conf->proxy_uri && conf->proxy_uri[0])
         g_object_set(session, "proxy", conf->proxy_uri, NULL);
-    if (conf->redir_rports)
-        g_object_set(session, "redirected-remote-ports", conf->redir_rports, NULL);
-    if (conf->redir_lports)
-        g_object_set(session, "redirected-local-ports", conf->redir_lports, NULL);
     g_object_set(session, "enable-usbredir", !conf->disable_usbredir, NULL);
     if (!conf->disable_usbredir) {
         SpiceUsbDeviceManager * mgr = spice_usb_device_manager_get(session, NULL);
