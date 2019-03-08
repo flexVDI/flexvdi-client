@@ -41,5 +41,12 @@ void client_log_setup();
  */
 void client_log_set_log_levels(const gchar * levels);
 
+/*
+ * print_to_stdout
+ *
+ * A GLib print handler that makes sure messages are printed to stdout.
+ */
+void print_to_stdout(const gchar * string);
+
 
 #endif /* _CLIENT_LOG_H */

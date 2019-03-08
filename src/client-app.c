@@ -23,6 +23,7 @@
 #include <spice-client-gtk.h>
 
 #include "client-app.h"
+#include "client-log.h"
 #include "configuration.h"
 #include "client-win.h"
 #include "client-request.h"
@@ -63,8 +64,8 @@ static void print_to_dialog(const gchar * string) {
     gtk_widget_destroy(dialog);
     g_main_loop_unref(loop);
 }
-static GPrintFunc old_print_func = NULL;
 #endif
+static GPrintFunc old_print_func = NULL;
 
 
 struct _ClientApp {
@@ -111,6 +112,8 @@ static void client_app_init(ClientApp * app) {
     // Call gtk_init here because normally it is called from GtkApplication::startup,
     // which is too late, after the --help* options have already been processed.
     gtk_init(NULL, NULL);
+#else
+    old_print_func = g_set_print_handler(print_to_stdout);
 #endif
 
     // Create the configuration object. Reads options from config file.
@@ -176,9 +179,7 @@ static GActionEntry app_entries[] = {
 };
 
 static void client_app_startup(GApplication * gapp) {
-#ifdef _WIN32
     g_set_print_handler(old_print_func);
-#endif
 
     flexvdi_init_print_client();
 #ifdef ENABLE_SERIALREDIR

@@ -32,6 +32,7 @@ typedef struct _LevelForDomain {
 static GList * level_for_domains = NULL;
 static GLogLevelFlags default_level = G_LOG_LEVEL_MESSAGE;
 static GLogLevelFlags fatal_level = G_LOG_LEVEL_ERROR;
+static FILE * old_stdout = NULL;
 
 
 static int get_level_for_domain(const gchar * domain) {
@@ -118,6 +119,7 @@ static gboolean map_level(int level_num, GLogLevelFlags * level) {
 }
 
 void client_log_setup() {
+    old_stdout = fdopen(dup(1), "a");
     if (!g_getenv("FLEXVDI_LOG_STDERR")) {
         g_autoptr(GDateTime) now = g_date_time_new_now_local();
         g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
@@ -134,6 +136,11 @@ void client_log_setup() {
     if (fatal_str) {
         map_level(strtol(fatal_str, NULL, 10), &fatal_level);
     }
+}
+
+
+void print_to_stdout(const gchar * string) {
+    fprintf(old_stdout, "%s", string);
 }
 
 
