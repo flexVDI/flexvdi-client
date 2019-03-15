@@ -40,7 +40,7 @@ gchar * discover_terminal_id() {
     if (sock != -1 && if_ni != NULL) {
         for (i = if_ni; i->if_index != 0 && i->if_name != NULL; ++i) {
             g_debug("Checking interface %s", i->if_name);
-            memcpy(ifr.ifr_name, i->if_name, strlen(i->if_name));
+            memcpy(ifr.ifr_name, i->if_name, strlen(i->if_name) + 1);
             if (ioctl(sock, SIOCGIFFLAGS, &ifr) != 0) {
                 g_debug("SIOCGIFFLAGS ioctl failed: %s", strerror(errno));
             } else if (ifr.ifr_flags & IFF_LOOPBACK) {
