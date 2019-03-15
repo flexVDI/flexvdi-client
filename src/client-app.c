@@ -562,12 +562,6 @@ static void client_app_connect(ClientApp * app) {
                          G_CALLBACK(usb_connect_failed), app);
     }
 
-    gint inactivity_timeout = client_conf_get_inactivity_timeout(app->conf);
-    if (inactivity_timeout >= 40) {
-        app->last_input_time = g_get_monotonic_time();
-        check_inactivity(app);
-    }
-
     client_conn_connect(app->connection);
 }
 
@@ -745,8 +739,16 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
             gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(win));
             spice_g_signal_connect_object(display, "display-mark",
                                           G_CALLBACK(spice_win_display_mark), win, 0);
-            if (i == 0)
+            if (i == 0) {
                 g_signal_connect(win, "delete-event", G_CALLBACK(delete_cb), app);
+
+                // Start the inactivity timeout when the first window is created
+                gint inactivity_timeout = client_conf_get_inactivity_timeout(app->conf);
+                if (inactivity_timeout >= 40) {
+                    app->last_input_time = g_get_monotonic_time();
+                    check_inactivity(app);
+                }
+            }
             g_signal_connect(win, "user-activity", G_CALLBACK(user_activity_cb), app);
             if (monitors->len == 1)
                 gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER);
@@ -849,12 +851,13 @@ static gboolean check_inactivity(gpointer user_data) {
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_INACTIVITY);
     } else if (time_to_inactivity <= 30000) {
         g_timeout_add(100, check_inactivity, app);
-        SpiceWindow * win =
-            SPICE_WIN(gtk_application_get_active_window(GTK_APPLICATION(app)));
-        int seconds = (time_to_inactivity + 999) / 1000;
-        g_autofree gchar * text = g_strdup_printf(
-            "Your session will end in %d seconds due to inactivity", seconds);
-        spice_win_show_notification(win, text, 200);
+        GtkWindow * win = gtk_application_get_active_window(GTK_APPLICATION(app));
+        if (win != NULL && SPICE_IS_WIN(win)) {
+            int seconds = (time_to_inactivity + 999) / 1000;
+            g_autofree gchar * text = g_strdup_printf(
+                "Your session will end in %d seconds due to inactivity", seconds);
+            spice_win_show_notification(SPICE_WIN(win), text, 200);
+        }
     } else {
         g_timeout_add(time_to_inactivity - 30000, check_inactivity, app);
     }
