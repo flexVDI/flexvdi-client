@@ -189,6 +189,10 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
         conn->main = SPICE_MAIN_CHANNEL(channel);
     }
 
+    if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
+        spice_channel_connect(channel);
+    }
+
     if (SPICE_IS_PLAYBACK_CHANNEL(channel)) {
         conn->audio = spice_audio_get(s, NULL);
     }
@@ -196,9 +200,8 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
     if (SPICE_IS_PORT_CHANNEL(channel)) {
         g_signal_connect(channel, "notify::port-name",
                          G_CALLBACK(port_channel), conn);
+        spice_channel_connect(channel);
     }
-
-    spice_channel_connect(channel);
 }
 
 
