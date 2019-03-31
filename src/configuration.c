@@ -85,10 +85,14 @@ static void client_conf_init(ClientConf * conf) {
         "Connection host address", "<hostname or IP>" },
         { "port", 'p', 0, G_OPTION_ARG_STRING, &conf->port,
         "Connection port (default 443)", "<port number>" },
+        { "proxy-uri", 0, 0, G_OPTION_ARG_CALLBACK, set_proxy_uri,
+        "Use this URI to connect through a proxy server (default use system settings)", "<uri>" },
         { "username", 'u', 0, G_OPTION_ARG_STRING, &conf->username,
         "User name", "<user name>" },
         { "password", 'w', 0, G_OPTION_ARG_STRING, &conf->password,
         "Password", "<password>" },
+        { "desktop", 'd', 0, G_OPTION_ARG_STRING, &conf->desktop,
+        "Desktop name to connect to", "<desktop name>" },
         { "terminal-id", 0, 0, G_OPTION_ARG_STRING, &conf->terminal_id,
         "Use a given Terminal ID instead of calculating it automatically", "<terminal ID>" },
         { "log-level", 'v', 0, G_OPTION_ARG_CALLBACK, set_log_level,
@@ -98,10 +102,6 @@ static void client_conf_init(ClientConf * conf) {
     gsize num_main_options = G_N_ELEMENTS(main_options) - 1;
 
     GOptionEntry session_options[] = {
-        { "desktop", 'd', 0, G_OPTION_ARG_STRING, &conf->desktop,
-        "Desktop name to connect to", "<desktop name>" },
-        { "proxy-uri", 0, 0, G_OPTION_ARG_CALLBACK, set_proxy_uri,
-        "Use this URI to connect through a proxy server (default use system settings)", "<uri>" },
         { "fullscreen", 'f', 0, G_OPTION_ARG_NONE, &conf->fullscreen,
         "Show desktop in fullscreen mode", NULL },
         { "no-fullscreen", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
@@ -639,7 +639,7 @@ static gboolean set_proxy_uri(const gchar * option_name, const gchar * value, gp
 
 void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri) {
     set_proxy_uri("", proxy_uri, conf, NULL);
-    write_string(conf->file, "Session", "proxy-uri", conf->proxy_uri);
+    write_string(conf->file, "General", "proxy-uri", conf->proxy_uri);
 }
 
 
