@@ -717,6 +717,7 @@ void spice_win_set_cp_sensitive(SpiceWindow * win, gboolean copy, gboolean paste
 }
 
 static void printer_toggled(GSimpleAction * action, GVariant * parameter, gpointer user_data);
+static void invert_model_button_checkbox(GtkWidget * widget, gpointer user_data);
 
 static void spice_window_get_printers(SpiceWindow * win) {
     GSList * printers, * printer;
@@ -744,6 +745,16 @@ static void spice_window_get_printers(SpiceWindow * win) {
     }
     g_slist_free_full(printers, g_free);
     gtk_widget_hide(GTK_WIDGET(win->printers_button));
+
+    GtkPopover * printers_popover = gtk_menu_button_get_popover(win->printers_button);
+    gtk_container_forall(GTK_CONTAINER(printers_popover), invert_model_button_checkbox, NULL);
+}
+
+static void invert_model_button_checkbox(GtkWidget * widget, gpointer user_data) {
+    if (GTK_IS_MODEL_BUTTON(widget))
+        g_object_set(widget, "inverted", TRUE, NULL);
+    else if (GTK_IS_CONTAINER(widget))
+        gtk_container_forall(GTK_CONTAINER(widget), invert_model_button_checkbox, NULL);
 }
 
 static gboolean set_printer_menu_item_sensitive(gpointer user_data) {
