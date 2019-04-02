@@ -120,6 +120,7 @@ static void client_app_init(ClientApp * app) {
     app->conf = client_conf_new();
     app->username = app->password = app->desktop = "";
     app->desktops = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+    app->autologin = TRUE;
 
     // Sets valid command-line options
     client_conf_set_application_options(app->conf, G_APPLICATION(app));
@@ -241,9 +242,6 @@ static void network_changed(GNetworkMonitor * net_monitor, gboolean network_avai
         client_app_window_set_central_widget(app->main_window, "login");
         client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
     } else if (client_conf_get_host(app->conf) != NULL) {
-        if (client_conf_get_username(app->conf) && client_conf_get_password(app->conf)) {
-            app->autologin = TRUE;
-        }
         client_app_show_login(app, NULL);
     } else
         client_app_configure(app, NULL);
@@ -364,7 +362,6 @@ static void client_app_configure(ClientApp * app, const gchar * error) {
 
     if (error != NULL) {
         client_app_window_error(app->main_window, error);
-        app->autologin = FALSE;
     }
 }
 
@@ -381,7 +378,6 @@ static void client_app_show_login(ClientApp * app, const gchar * error) {
         client_app_window_status(app->main_window, "Contacting server...");
     else {
         client_app_window_error(app->main_window, error);
-        app->autologin = FALSE;
     }
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
 
@@ -417,9 +413,9 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
         } else if (g_strcmp0(auth_mode, "active_directory") == 0) {
             client_app_window_hide_status(app->main_window);
             client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
-            if (app->autologin)
+            if (app->autologin && client_conf_get_username(app->conf) && client_conf_get_password(app->conf))
                 button_pressed_handler(app->main_window, LOGIN_BUTTON, app);
-        } else {
+        } else if (app->autologin) {
             // Kiosk mode, make a desktop request
             client_app_request_desktop(app);
         }
@@ -428,6 +424,8 @@ static void authmode_request_cb(ClientRequest * req, gpointer user_data) {
         client_app_configure(app, "Invalid response from server");
         g_warning("Invalid response from server, see debug messages");
     }
+
+    app->autologin = FALSE; // Do not try to autologin again after the first request
 }
 
 
