@@ -679,7 +679,8 @@ void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolea
 
     if (share && sel_printer == NULL) {
         int i = g_strv_length(conf->printers);
-        gchar ** new_printers = g_malloc_n(i + 1, sizeof(gchar *));
+        gchar ** new_printers = g_malloc_n(i + 2, sizeof(gchar *));
+        new_printers[i + 1] = NULL;
         new_printers[i--] = g_strdup(printer);
         while (i >= 0) {
             new_printers[i] = g_strdup(conf->printers[i]);
@@ -784,6 +785,8 @@ gboolean client_conf_get_window_size(ClientConf * conf, gint id,
 }
 
 
+static void try_migrate_legacy_config_file(const gchar * new_file_name);
+
 /*
  * client_conf_load
  *
@@ -793,6 +796,9 @@ static void client_conf_load(ClientConf * conf) {
     GError * error = NULL;
     int i;
     gchar * cb_arg;
+
+    if (!g_file_test(conf->file_name, G_FILE_TEST_EXISTS))
+        try_migrate_legacy_config_file(conf->file_name);
 
     if (!g_key_file_load_from_file(conf->file, conf->file_name,
             G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, &error)) {
@@ -852,21 +858,42 @@ static void client_conf_load(ClientConf * conf) {
 }
 
 
-void client_conf_save(ClientConf * conf) {
-    GError * error = NULL;
-    g_autofree gchar * config_dir = g_path_get_dirname(conf->file_name);
+static void save_config_file(GKeyFile * file, const gchar * file_name, GError ** error) {
+    g_autofree gchar * config_dir = g_path_get_dirname(file_name);
 #ifdef _WIN32
-    g_autofree gchar * tmp_data = g_key_file_to_data(conf->file, NULL, NULL);
+    g_autofree gchar * tmp_data = g_key_file_to_data(file, NULL, NULL);
     gchar ** lines = g_strsplit(tmp_data, "\n", 0);
     g_autofree gchar * config_data = g_strjoinv("\r\n", lines);
     g_strfreev(lines);
 #else
-    g_autofree gchar * config_data = g_key_file_to_data(conf->file, NULL, NULL);
+    g_autofree gchar * config_data = g_key_file_to_data(file, NULL, NULL);
 #endif
 
     g_mkdir_with_parents(config_dir, 0755);
-    if (!g_file_set_contents(conf->file_name, config_data, -1, &error)) {
+    g_file_set_contents(file_name, config_data, -1, error);
+}
+
+
+void client_conf_save(ClientConf * conf) {
+    GError * error = NULL;
+    save_config_file(conf->file, conf->file_name, &error);
+    if (error) {
         g_warning("Error saving settings file: %s", error->message);
         g_error_free(error);
+    }
+}
+
+
+gboolean load_legacy_config_file(GKeyFile * new_file);
+
+static void try_migrate_legacy_config_file(const gchar * new_file_name) {
+    g_autoptr(GKeyFile) new_file = g_key_file_new();
+    if (load_legacy_config_file(new_file)) {
+        GError * error = NULL;
+        save_config_file(new_file, new_file_name, &error);
+        if (error) {
+            g_warning("Error migrating legacy settings file: %s", error->message);
+            g_error_free(error);
+        }
     }
 }
