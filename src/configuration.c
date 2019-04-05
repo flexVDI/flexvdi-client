@@ -28,6 +28,7 @@ struct _ClientConf {
     GOptionEntry * main_options, * session_options, * device_options, * all_options;
     GKeyFile * file;
     gchar * file_name;
+    gboolean had_file;
     SoupSession * soup;
     // Main options
     gchar * host;
@@ -336,6 +337,11 @@ void client_conf_set_application_options(ClientConf * conf, GApplication * app) 
     g_application_add_option_group(app, devices_group);
     g_signal_connect(app, "handle-local-options",
         G_CALLBACK(client_conf_handle_options), conf);
+}
+
+
+gboolean client_conf_had_file(ClientConf * conf) {
+    return conf->had_file;
 }
 
 
@@ -807,6 +813,7 @@ static void client_conf_load(ClientConf * conf) {
         g_error_free(error);
         return;
     }
+    conf->had_file = TRUE;
 
     // Load options in a section for each option group
     struct { const gchar * group; GOptionEntry * options; } groups[] = {

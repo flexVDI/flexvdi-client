@@ -101,6 +101,13 @@ void client_conf_set_gtk_session_options(ClientConf * conf, GObject * gtk_sessio
 void client_conf_set_display_options(ClientConf * conf, GObject * display);
 
 /*
+ * client_conf_had_file
+ *
+ * Return whether a config file was read.
+ */
+gboolean client_conf_had_file(ClientConf * conf);
+
+/*
  * Getters for some options, those needed directly by the application. Some options
  * that are set through the previous two functions do not have a corresponding getter.
  */
