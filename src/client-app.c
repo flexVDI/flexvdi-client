@@ -243,8 +243,23 @@ static void network_changed(GNetworkMonitor * net_monitor, gboolean network_avai
         client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
     } else if (client_conf_get_host(app->conf) != NULL) {
         client_app_show_login(app, NULL);
-    } else
+    } else {
+        if (!client_conf_had_file(app->conf)) {
+            GtkDialogFlags flags = GTK_DIALOG_DESTROY_WITH_PARENT;
+            GtkWidget * dialog =
+                gtk_message_dialog_new(GTK_WINDOW(app->main_window), GTK_DIALOG_DESTROY_WITH_PARENT,
+                                       GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO,
+                                       "\nThis seems to be your first time with flexVDI Desktop Client\n"
+                                       "Do you want to configure it to connect to the flexVDI Demo Platform?");
+            gtk_window_set_title(GTK_WINDOW(dialog), "Try flexVDI Demo!");
+            if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_YES) {
+                client_conf_set_host(app->conf, "manager.flexvdi.com");
+                client_conf_set_username(app->conf, "flexvdi");
+            }
+            gtk_widget_destroy(dialog);
+        }
         client_app_configure(app, NULL);
+    }
 }
 
 
