@@ -37,6 +37,7 @@ struct _ClientConf {
     gchar * password;
     gchar * terminal_id;
     gchar * uri;
+    gboolean kiosk_mode;
     // Session options
     gchar * desktop;
     gchar * proxy_uri;
@@ -96,6 +97,8 @@ static void client_conf_init(ClientConf * conf) {
         "Desktop name to connect to", "<desktop name>" },
         { "terminal-id", 0, 0, G_OPTION_ARG_STRING, &conf->terminal_id,
         "Use a given Terminal ID instead of calculating it automatically", "<terminal ID>" },
+        { "kiosk", 0, 0, G_OPTION_ARG_NONE, &conf->kiosk_mode,
+        "Enable kiosk mode", NULL },
         { "log-level", 'v', 0, G_OPTION_ARG_CALLBACK, set_log_level,
         "Log level for each domain, or for all messages if domain is ommited. 0 = ERROR, 5 = DEBUG", "<[domain:]level,...>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
@@ -446,6 +449,11 @@ const gchar * client_conf_get_uri(ClientConf * conf) {
 
 const gchar * client_conf_get_proxy_uri(ClientConf * conf) {
     return conf->proxy_uri;
+}
+
+
+gboolean client_conf_get_kiosk_mode(ClientConf * conf) {
+    return conf->kiosk_mode;
 }
 
 
