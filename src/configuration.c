@@ -467,7 +467,7 @@ gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path) {
 
 
 gboolean client_conf_get_fullscreen(ClientConf * conf) {
-    return conf->fullscreen;
+    return conf->fullscreen || conf->kiosk_mode;
 }
 
 
