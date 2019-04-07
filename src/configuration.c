@@ -617,6 +617,7 @@ void client_conf_set_port(ClientConf * conf, const gchar * port) {
 
 void client_conf_set_username(ClientConf * conf, const gchar * username) {
     if (conf->kiosk_mode) return;
+    if (!g_strcmp0(conf->username, username)) return;
 
     g_free(conf->username);
     conf->username = g_strdup(username);
@@ -633,6 +634,7 @@ void client_conf_set_uri(ClientConf * conf, const gchar * uri) {
 
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
     if (conf->kiosk_mode) return;
+    if (fs == conf->fullscreen) return;
 
     conf->fullscreen = fs;
     write_bool(conf->file, "Session", "fullscreen", conf->fullscreen);
@@ -661,6 +663,7 @@ static gboolean set_proxy_uri(const gchar * option_name, const gchar * value, gp
 
 void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri) {
     if (conf->kiosk_mode) return;
+    if (!g_strcmp0(conf->proxy_uri, proxy_uri)) return;
 
     set_proxy_uri("", proxy_uri, conf, NULL);
     write_string(conf->file, "General", "proxy-uri", conf->proxy_uri);
