@@ -139,5 +139,12 @@ void client_app_window_set_desktops(ClientAppWindow * win, GList * desktop_names
  */
 gchar * client_app_window_get_desktop(ClientAppWindow * win);
 
+/*
+ * client_app_window_hide_config_button
+ *
+ * Hide the configuration button.
+ */
+void client_app_window_hide_config_button(ClientAppWindow * win);
+
 
 #endif /* _CLIENT_WIN_H */

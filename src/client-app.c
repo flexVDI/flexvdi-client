@@ -204,6 +204,9 @@ static void client_app_activate(GApplication * gapp) {
     app->main_window = client_app_window_new(app);
     gtk_widget_show_all(GTK_WIDGET(app->main_window));
 
+    if (client_conf_get_kiosk_mode(app->conf))
+        client_app_window_hide_config_button(app->main_window);
+
     const gchar * tid = client_conf_get_terminal_id(app->conf);
     g_autofree gchar * text = g_strconcat("Terminal ID: ", tid, NULL);
     client_app_window_set_info(app->main_window, text);

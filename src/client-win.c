@@ -424,3 +424,7 @@ gchar * client_app_window_get_desktop(ClientAppWindow * win) {
         return desktop;
     } else return g_strdup("");
 }
+
+void client_app_window_hide_config_button(ClientAppWindow * win) {
+    gtk_widget_hide(GTK_WIDGET(win->config));
+}
