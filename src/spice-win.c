@@ -729,7 +729,9 @@ static void spice_window_get_printers(SpiceWindow * win) {
     GSList * printers, * printer;
     g_debug("Getting printer list:");
     flexvdi_get_printer_list(&printers);
-    for (printer = printers; printer != NULL; printer = g_slist_next(printer)) {
+    if (!printers) {
+        g_menu_append(win->printers_menu, "No printers detected", NULL);
+    } else for (printer = printers; printer != NULL; printer = g_slist_next(printer)) {
         const char * printer_name = (const char *)printer->data;
         g_autofree gchar * parsed_printer_name = g_strdup(printer_name);
         g_strcanon(parsed_printer_name,
