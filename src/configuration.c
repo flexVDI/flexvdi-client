@@ -598,6 +598,8 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
 
 
 void client_conf_set_host(ClientConf * conf, const gchar * host) {
+    if (conf->kiosk_mode) return;
+
     g_free(conf->host);
     conf->host = g_strdup(host);
     write_string(conf->file, "General", "host", conf->host);
@@ -605,6 +607,8 @@ void client_conf_set_host(ClientConf * conf, const gchar * host) {
 
 
 void client_conf_set_port(ClientConf * conf, const gchar * port) {
+    if (conf->kiosk_mode) return;
+
     g_free(conf->port);
     conf->port = (port && port[0]) ? g_strdup(port) : NULL;
     write_string(conf->file, "General", "port", conf->port);
@@ -612,6 +616,8 @@ void client_conf_set_port(ClientConf * conf, const gchar * port) {
 
 
 void client_conf_set_username(ClientConf * conf, const gchar * username) {
+    if (conf->kiosk_mode) return;
+
     g_free(conf->username);
     conf->username = g_strdup(username);
     write_string(conf->file, "General", "username", conf->username);
@@ -626,6 +632,8 @@ void client_conf_set_uri(ClientConf * conf, const gchar * uri) {
 
 
 void client_conf_set_fullscreen(ClientConf * conf, gboolean fs) {
+    if (conf->kiosk_mode) return;
+
     conf->fullscreen = fs;
     write_bool(conf->file, "Session", "fullscreen", conf->fullscreen);
 }
@@ -652,6 +660,8 @@ static gboolean set_proxy_uri(const gchar * option_name, const gchar * value, gp
 
 
 void client_conf_set_proxy_uri(ClientConf * conf, const gchar * proxy_uri) {
+    if (conf->kiosk_mode) return;
+
     set_proxy_uri("", proxy_uri, conf, NULL);
     write_string(conf->file, "General", "proxy-uri", conf->proxy_uri);
 }
@@ -710,8 +720,10 @@ void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolea
 }
 
 
-void client_conf_set_window_size(ClientConf * conf, gint id,
-    int width, int height, gboolean maximized, int monitor) {
+void client_conf_set_window_size(ClientConf * conf, gint id, int width,
+                                 int height, gboolean maximized, int monitor) {
+    if (conf->kiosk_mode) return;
+
     g_autofree gchar * encoded_size = g_strdup_printf("%d,%d,%s,%d",
         width, height, maximized ? "true" : "false", monitor);
     g_autofree gchar * id_str = g_strdup_printf("%d", id);
