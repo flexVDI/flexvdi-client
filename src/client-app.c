@@ -245,7 +245,6 @@ static void network_changed(GNetworkMonitor * net_monitor, gboolean network_avai
         client_app_show_login(app, NULL);
     } else {
         if (!client_conf_had_file(app->conf)) {
-            GtkDialogFlags flags = GTK_DIALOG_DESTROY_WITH_PARENT;
             GtkWidget * dialog =
                 gtk_message_dialog_new(GTK_WINDOW(app->main_window), GTK_DIALOG_DESTROY_WITH_PARENT,
                                        GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO,
