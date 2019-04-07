@@ -256,7 +256,7 @@ void client_app_window_save_config(ClientAppWindow * win, ClientConf * conf) {
     client_conf_set_port(conf, g_strcmp0(port, "443") ? port : NULL);
     client_conf_set_fullscreen(conf,
         gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(win->fullscreen)));
-    client_conf_set_proxy_uri(conf, proxy_uri);
+    client_conf_set_proxy_uri(conf, g_strcmp0(proxy_uri, "") ? proxy_uri : NULL);
 }
 
 
