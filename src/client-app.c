@@ -166,7 +166,8 @@ static void about_activated(GSimpleAction * action, GVariant * parameter, gpoint
 }
 
 static void preferences_activated(GSimpleAction * action, GVariant * parameter, gpointer gapp) {
-    client_app_configure(CLIENT_APP(gapp), NULL);
+    if (!client_conf_get_kiosk_mode(CLIENT_APP(gapp)->conf))
+        client_app_configure(CLIENT_APP(gapp), NULL);
 }
 
 static void quit_activated(GSimpleAction * action, GVariant * parameter, gpointer gapp) {
@@ -283,7 +284,7 @@ static void button_pressed_handler(ClientAppWindow * win, int button, gpointer u
     ClientApp * app = CLIENT_APP(user_data);
     switch (button) {
         case SETTINGS_BUTTON:
-            client_app_configure(CLIENT_APP(user_data), NULL);
+            preferences_activated(NULL, NULL, user_data);
             break;
         case ABOUT_BUTTON:
             client_show_about(GTK_WINDOW(win), app->conf);
@@ -312,7 +313,7 @@ static void button_pressed_handler(ClientAppWindow * win, int button, gpointer u
  */
 static gboolean key_event_handler(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     if (event->key.keyval == GDK_KEY_F3)
-        client_app_configure(CLIENT_APP(user_data), NULL);
+        preferences_activated(NULL, NULL, user_data);
     return FALSE;
 }
 
@@ -365,6 +366,11 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
  * Show the settings page. Cancel the current request if there is one.
  */
 static void client_app_configure(ClientApp * app, const gchar * error) {
+    if (client_conf_get_kiosk_mode(app->conf)) {
+        client_app_show_login(app, error);
+        return;
+    }
+
     client_app_window_load_config(app->main_window, app->conf);
     client_app_window_set_central_widget(app->main_window, "settings");
     client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
