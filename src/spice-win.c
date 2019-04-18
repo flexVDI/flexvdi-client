@@ -856,3 +856,10 @@ static void show_about(GtkToolButton * toolbutton, gpointer user_data) {
 #endif
     client_show_about(GTK_WINDOW(win), win->conf);
 }
+
+void spice_win_release_mouse_pointer(SpiceWindow * win) {
+    spice_display_mouse_ungrab(win->spice);
+    GdkWindow * window = GDK_WINDOW(gtk_widget_get_window(GTK_WIDGET(win->spice)));
+    if (window)
+        gdk_window_set_cursor(window, NULL);
+}
