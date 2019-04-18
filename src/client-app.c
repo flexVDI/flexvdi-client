@@ -661,12 +661,16 @@ static void client_app_close_windows(ClientApp * app) {
 static void connection_disconnected(ClientConn * conn, ClientConnDisconnectReason reason,
                                     gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
+    int i;
 
     if (app->main_window) {
         client_app_show_login(app, "Failed to establish the connection, see the log file for further information.");
         client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
     } else {
         if (reason != CLIENT_CONN_DISCONNECT_USER) {
+            for (i = 0; i < MAX_WINDOWS; ++i)
+                if (app->windows[i])
+                    spice_win_release_mouse_pointer(app->windows[i]);
             GtkMessageType type =
                 reason == CLIENT_CONN_DISCONNECT_NO_ERROR || reason == CLIENT_CONN_DISCONNECT_INACTIVITY ?
                     GTK_MESSAGE_INFO : GTK_MESSAGE_ERROR;
