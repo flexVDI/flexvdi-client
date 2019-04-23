@@ -582,6 +582,7 @@ static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data) {
         event_type = FLEXVDI_POWER_EVENT_POWEROFF;
     }
 
+    spice_win_release_mouse_pointer(win);
     GtkWidget * dialog = gtk_message_dialog_new(GTK_WINDOW(win),
                                                 GTK_DIALOG_DESTROY_WITH_PARENT | GTK_DIALOG_MODAL,
                                                 GTK_MESSAGE_WARNING, GTK_BUTTONS_YES_NO,
