@@ -119,7 +119,19 @@ add_subdirectory(src)
 add_subdirectory(test)
 
 # Packages
-set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${FLEXVDI_VERSION}")
+include(CheckCSourceCompiles)
+check_c_source_compiles(
+    "#if !defined(__i386) && !defined(__i386__) && !defined(_M_IX86)
+     #error This is not x86
+     #endif
+     int main() { return 0; }"
+    ARCH_IS_I386
+)
+if (ARCH_IS_I386)
+    set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${FLEXVDI_VERSION}-i686")
+else ()
+    set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${FLEXVDI_VERSION}-x86_64")
+endif ()
 add_custom_target(dist
                   COMMAND git archive --prefix=${CPACK_PACKAGE_FILE_NAME}/
                           -o "${PROJECT_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.tar.bz2" HEAD
