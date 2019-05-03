@@ -54,6 +54,8 @@ struct _ClientConf {
     gboolean disable_usbredir;
     gchar * preferred_compression;
     gchar * grab_sequence;
+    gchar * shared_folder;
+    gboolean shared_folder_ro;
     WindowEdge toolbar_edge;
     // Device options
     gchar * usb_auto_filter;
@@ -138,6 +140,10 @@ static void client_conf_init(ClientConf * conf) {
         "Disable USB device redirection", NULL },
         { "preferred-compression", 0, 0, G_OPTION_ARG_STRING, &conf->preferred_compression,
         "Preferred image compression algorithm", "<auto-glz,auto-lz,quic,glz,lz,lz4,off>" },
+        { "shared-folder", 0, 0, G_OPTION_ARG_STRING, &conf->shared_folder,
+        "Shared directory with the guest", NULL },
+        { "shared-folder-ro", 0, 0, G_OPTION_ARG_NONE, &conf->shared_folder_ro,
+        "Shared directory with the guest is readonly", NULL },
         { "toolbar-edge", 0, 0, G_OPTION_ARG_CALLBACK, set_toolbar_edge,
         "Window edge where toolbar is shown (default top)", "<top,bottom,left,right>" },
         { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
@@ -212,6 +218,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->usb_connect_filter);
     g_free(conf->preferred_compression);
     g_free(conf->terminal_id);
+    g_free(conf->shared_folder);
     g_strfreev(conf->printers);
     g_key_file_free(conf->file);
     g_hash_table_unref(conf->cmdline_options);
@@ -394,6 +401,8 @@ void client_conf_set_session_options(ClientConf * conf, SpiceSession * session) 
     }
     if (conf->preferred_compression)
         parse_preferred_compression(session, conf->preferred_compression);
+    g_object_set(session, "shared-dir", conf->shared_folder, NULL);
+    g_object_set(session, "share-dir-ro", conf->shared_folder_ro, NULL);
 }
 
 
