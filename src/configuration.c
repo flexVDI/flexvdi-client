@@ -317,6 +317,9 @@ void client_conf_get_options_from_response(ClientConf * conf, JsonObject * param
         conf->disable_paste_to_guest |= !json_object_get_boolean_member(params, "enable_copy_paste_h2g");
     if (json_object_has_member(params, "enable_printing"))
         conf->disable_printing |= !json_object_get_boolean_member(params, "enable_printing");
+    if (json_object_has_member(params, "enable_shared_folder"))
+        if (!json_object_get_boolean_member(params, "enable_shared_folder"))
+            g_clear_pointer(&conf->shared_folder, g_free);
     if (json_object_has_member(params, "inactivity_timeout")) {
         int timeout_from_manager = json_object_get_int_member(params, "inactivity_timeout");
         if (conf->inactivity_timeout == 0 ||
