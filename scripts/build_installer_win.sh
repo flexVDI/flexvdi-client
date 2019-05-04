@@ -20,6 +20,7 @@
 PREFIX="$1"
 if file src/flexvdi-client.exe | grep -q x86-64; then
     ARCH=x86_64
+    sed -i s/PROGRAMFILES32/PROGRAMFILES64/ setup.nsi
 else
     ARCH=i686
 fi
