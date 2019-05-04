@@ -40,13 +40,12 @@ cp "$SRCDIR"/resources/images/icon.png $TMPDIR
 
 copy_with_deps() {
     cp "$@"
-    ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep "$PREFIX" | sort -u | xargs -r cp -t $TMPDIR/lib -u
+    ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep -E "$PREFIX|libudev|libcrypt" | sort -u | xargs -r cp -t $TMPDIR/lib -u
 }
 
 mkdir -p $TMPDIR/bin $TMPDIR/lib/gstreamer-1.0 $TMPDIR/lib/gio $TMPDIR/share/fonts
 copy_with_deps "$BIN" $TMPDIR/bin/flexvdi-client
 copy_with_deps "$LIB" $TMPDIR/lib/libflexvdi-client.so
-ldd "$BIN" | sed 's;.* => \(/.*\) (.*;\1;' | grep -e libudev | xargs -r cp -t $TMPDIR/lib
 copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,alsa,pulseaudio}.so "$TMPDIR"/lib/gstreamer-1.0
 copy_with_deps $(pkg-config gstreamer-1.0 --variable prefix)/libexec/gstreamer-1.0/gst-plugin-scanner "$TMPDIR"/bin
 copy_with_deps $(pkg-config gio-2.0 --variable giomoduledir)/libgiognutls.so "$TMPDIR"/lib/gio
