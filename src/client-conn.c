@@ -197,7 +197,12 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
         conn->audio = spice_audio_get(s, NULL);
     }
 
-    if (SPICE_IS_PORT_CHANNEL(channel)) {
+    if (SPICE_IS_WEBDAV_CHANNEL(channel)) {
+        gchar * shared_dir = NULL;
+        g_object_get(s, "shared-dir", &shared_dir, NULL);
+        if (shared_dir != NULL)
+            spice_channel_connect(channel);
+    } else if (SPICE_IS_PORT_CHANNEL(channel)) {
         g_signal_connect(channel, "notify::port-name",
                          G_CALLBACK(port_channel), conn);
         spice_channel_connect(channel);
