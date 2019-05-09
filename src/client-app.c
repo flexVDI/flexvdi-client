@@ -201,7 +201,7 @@ static void client_app_startup(GApplication * gapp) {
  */
 static void client_app_activate(GApplication * gapp) {
     ClientApp * app = CLIENT_APP(gapp);
-    app->main_window = client_app_window_new(app);
+    app->main_window = client_app_window_new(app, app->conf);
     gtk_widget_show_all(GTK_WIDGET(app->main_window));
 
     if (client_conf_get_kiosk_mode(app->conf))

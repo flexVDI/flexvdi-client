@@ -48,7 +48,7 @@ enum {
  *
  * Create a new main window associated with an application.
  */
-ClientAppWindow * client_app_window_new(ClientApp * app);
+ClientAppWindow * client_app_window_new(ClientApp * app, ClientConf * conf);
 
 /*
  * client_app_window_load_config

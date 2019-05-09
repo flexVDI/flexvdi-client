@@ -46,6 +46,8 @@ struct _ClientAppWindow {
     GtkEntry * password;
     GtkTreeView * desktops;
     GtkListStore * desk_store;
+    GtkImage * logo_toolbar;
+    GtkImage * logo_client;
     guint error_timeout;
     guint status_animation;
 };
@@ -87,6 +89,8 @@ static void client_app_window_class_init(ClientAppWindowClass * class) {
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, username);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, password);
     gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, desktops);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, logo_toolbar);
+    gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), ClientAppWindow, logo_client);
 
     // Emited when the user presses the configuration button (with a small gear wheel)
     signals[CLIENT_APP_BUTTON_PRESSED] =
@@ -120,15 +124,6 @@ static void desktop_selected_handler(GtkTreeView * tree_view, GtkTreePath * path
                                      GtkTreeViewColumn * column, gpointer user_data);
 
 static void client_app_window_init(ClientAppWindow * win) {
-    /* Set the CSS rules for all the widgets in the current screen. This includes other
-       windows too, but it is done here because this is the first window and there is
-       only one */
-    GtkCssProvider * css_provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_resource(css_provider, "/com/flexvdi/client/style.css");
-    GdkScreen * screen = gtk_widget_get_screen(GTK_WIDGET(win));
-    gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_USER + 1);
-
     gtk_widget_init_template(GTK_WIDGET(win));
 
     gtk_label_set_text(win->version, "version " VERSION_STRING);
@@ -159,6 +154,48 @@ static void client_app_window_dispose(GObject * obj) {
         win->status_animation = 0;
     }
     G_OBJECT_CLASS(client_app_window_parent_class)->dispose(obj);
+}
+
+
+ClientAppWindow * client_app_window_new(ClientApp * app, ClientConf * conf) {
+    ClientAppWindow * win = g_object_new(CLIENT_APP_WINDOW_TYPE, "application", app, NULL);
+
+    /* Set the CSS rules for all the widgets in the current screen. This includes other
+       windows too, but it is done here because this is the first window and there is
+       only one */
+    GtkCssProvider * css_provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_resource(css_provider, "/com/flexvdi/client/style.css");
+    GdkScreen * screen = gtk_widget_get_screen(GTK_WIDGET(win));
+    gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider),
+                                              GTK_STYLE_PROVIDER_PRIORITY_USER + 1);
+
+    // Add custom style
+    g_autofree gchar * custom_css_file = client_conf_get_custom_style_file(conf);
+    if (custom_css_file != NULL) {
+        css_provider = gtk_css_provider_new();
+        g_debug("Loading custom CSS from %s", custom_css_file);
+        gtk_css_provider_load_from_path(css_provider, custom_css_file, NULL);
+        gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(css_provider),
+                                                  GTK_STYLE_PROVIDER_PRIORITY_USER + 2);
+    }
+
+    g_autofree gchar * custom_toolbar_logo = client_conf_get_custom_toolbar_logo(conf);
+    if (custom_toolbar_logo != NULL) {
+        g_debug("Loading custom toolbar logo from %s", custom_toolbar_logo);
+        GdkPixbuf * toolbar_logo_img = gdk_pixbuf_new_from_file(custom_toolbar_logo, NULL);
+        if (toolbar_logo_img != NULL)
+            gtk_image_set_from_pixbuf(win->logo_toolbar, toolbar_logo_img);
+    }
+
+    g_autofree gchar * custom_client_logo = client_conf_get_custom_client_logo(conf);
+    if (custom_client_logo != NULL) {
+        g_debug("Loading custom client logo from %s", custom_client_logo);
+        GdkPixbuf * client_logo_img = gdk_pixbuf_new_from_file(custom_client_logo, NULL);
+        if (client_logo_img != NULL)
+            gtk_image_set_from_pixbuf(win->logo_client, client_logo_img);
+    }
+
+    return win;
 }
 
 
@@ -363,11 +400,6 @@ void client_app_window_set_central_widget_sensitive(ClientAppWindow * win, gbool
             gtk_widget_grab_focus(GTK_WIDGET(win->desktops));
         }
     }
-}
-
-
-ClientAppWindow * client_app_window_new(ClientApp * app) {
-    return g_object_new(CLIENT_APP_WINDOW_TYPE, "application", app, NULL);
 }
 
 
