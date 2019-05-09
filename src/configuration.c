@@ -203,6 +203,7 @@ static void client_conf_init(ClientConf * conf) {
 
 static void client_conf_finalize(GObject * obj) {
     ClientConf * conf = CLIENT_CONF(obj);
+    g_free(conf->file_name);
     g_free(conf->main_options);
     g_free(conf->session_options);
     g_free(conf->device_options);
