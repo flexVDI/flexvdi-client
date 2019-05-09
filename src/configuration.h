@@ -150,6 +150,13 @@ gboolean client_conf_get_window_size(ClientConf * conf, gint id,
     int * width, int * height, gboolean * maximized, int * monitor);
 
 /*
+ * Custom style getters
+ */
+gchar * client_conf_get_custom_style_file(ClientConf * conf);
+gchar * client_conf_get_custom_toolbar_logo(ClientConf * conf);
+gchar * client_conf_get_custom_client_logo(ClientConf * conf);
+
+/*
  * client_conf_save
  *
  * Save the configuration to file.

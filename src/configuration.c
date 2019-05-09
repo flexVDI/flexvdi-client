@@ -901,6 +901,21 @@ static void client_conf_load(ClientConf * conf) {
 }
 
 
+gchar * client_conf_get_custom_style_file(ClientConf * conf) {
+    return g_key_file_get_string(conf->file, "Custom", "css", NULL);
+}
+
+
+gchar * client_conf_get_custom_toolbar_logo(ClientConf * conf) {
+    return g_key_file_get_string(conf->file, "Custom", "toolbar-logo", NULL);
+}
+
+
+gchar * client_conf_get_custom_client_logo(ClientConf * conf) {
+    return g_key_file_get_string(conf->file, "Custom", "client-logo", NULL);
+}
+
+
 static void save_config_file(GKeyFile * file, const gchar * file_name, GError ** error) {
     g_autofree gchar * config_dir = g_path_get_dirname(file_name);
 #ifdef _WIN32
