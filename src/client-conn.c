@@ -113,7 +113,7 @@ ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
     g_object_set(conn->session,
                  "password", json_object_get_string_member(params, "spice_password"),
                  NULL);
-    conn->use_ws = json_object_get_boolean_member(params, "use_ws");
+    conn->use_ws = json_object_has_member(params, "use_ws") && json_object_get_boolean_member(params, "use_ws");
     if (conn->use_ws) {
         conn->ws_host = g_strdup(json_object_get_string_member(params, "spice_address"));
         const gchar * port = client_conf_get_port(conf);
