@@ -140,6 +140,11 @@ revealer.right #toolbar {
     border-right: none;
 }
 
+toolbar {
+    background-image: none;
+    background-color: #e8e8e8;
+}
+
 toolbar button {
     padding: 2px;
     min-width:32px;
@@ -160,6 +165,7 @@ toolbar button:active {
 }
 
 tooltip {
+    background-image: none;
 	background-color: lightgray;
 	border-color: white;
 	border-radius: 0;
