@@ -153,11 +153,11 @@ toolbar button {
 }
 
 toolbar button:hover {
-	border-color: #909090;
+    border-color: #909090;
 }
 
 toolbar button:active {
-	background-color: rgba(0,0,0,0.2);
+    background-color: rgba(0,0,0,0.2);
 }
 
 #usb-popover {
@@ -166,10 +166,10 @@ toolbar button:active {
 
 tooltip {
     background-image: none;
-	background-color: lightgray;
-	border-color: white;
-	border-radius: 0;
-	text-shadow: none;
+    background-color: lightgray;
+    border-color: white;
+    border-radius: 0;
+    text-shadow: none;
 }
 
 #notification {
