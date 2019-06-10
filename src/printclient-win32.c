@@ -21,7 +21,6 @@
 #include <string.h>
 #include <windows.h>
 #include <winspool.h>
-#include <shellapi.h>
 #include <poppler.h>
 #include <cairo/cairo-win32.h>
 #include "printclient-priv.h"
@@ -475,13 +474,7 @@ static void print_file(ClientPrinter * printer, const char * pdf,
 }
 
 
-static void open_with_default_app(const char * file) {
-    g_autofree wchar_t * fileW = g_utf8_to_utf16(file, -1, NULL, NULL, NULL);
-    ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
-}
-
-
-void print_job(PrintJob * job) {
+int print_job(PrintJob * job) {
     g_debug("Printing file %s with options %s", job->name, job->options);
     g_autofree gchar * printer_name = get_job_options(job->options, "printer");
 
@@ -496,7 +489,10 @@ void print_job(PrintJob * job) {
             }
 
             client_printer_delete(printer);
-        } else open_with_default_app(job->name);
-    } else open_with_default_app(job->name);
+            return TRUE;
+        }
+    }
+
+    return FALSE;
 }
 

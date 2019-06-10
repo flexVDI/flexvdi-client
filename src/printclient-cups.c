@@ -286,16 +286,10 @@ static int cups_printer_job_options_to_cups(CupsPrinter * cups, char * job_optio
 }
 
 
-static void open_with_default_app(const char * file) {
-    g_autofree gchar * command = g_strdup_printf("xdg-open %s", file);
-    // TODO: on Mac OS X, the command is 'open'
-    system(command);
-}
-
-
-void print_job(PrintJob * job) {
+int print_job(PrintJob * job) {
     g_autofree gchar * printer = get_job_options(job->options, "printer");
     g_autofree gchar * title = get_job_options(job->options, "title");
+    int result = FALSE;
 
     if (printer) {
         CupsPrinter * cups = cups_printer_new(printer);
@@ -307,7 +301,10 @@ void print_job(PrintJob * job) {
             for (i = 0; i < num_options; ++i) {
                 g_debug("%s = %s", options[i].name, options[i].value);
             }
-        } else open_with_default_app(job->name);
+            result = TRUE;
+        }
         cups_printer_delete(cups);
-    } else open_with_default_app(job->name);
+    }
+
+    return result;
 }

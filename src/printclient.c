@@ -21,6 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <shellapi.h>
+#endif
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <unistd.h>
@@ -65,12 +69,27 @@ void handle_print_job(FlexVDIPrintJobMsg * msg) {
 }
 
 
+static void open_with_default_app(const char * file) {
+#ifdef _WIN32
+    g_autofree wchar_t * fileW = g_utf8_to_utf16(file, -1, NULL, NULL, NULL);
+    ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
+#elif __linux__
+    g_autofree gchar * command = g_strdup_printf("xdg-open %s", file);
+    system(command);
+#elif __APPLE__
+    g_autofree gchar * command = g_strdup_printf("open %s", file);
+    system(command);
+#endif
+}
+
+
 void handle_print_job_data(FlexVDIPrintJobDataMsg * msg) {
     PrintJob * job = g_hash_table_lookup(print_jobs, GINT_TO_POINTER(msg->id));
     if (job) {
         if (!msg->dataLength) {
             close(job->file_handle);
-            print_job(job);
+            if (!print_job(job))
+                open_with_default_app(job->name);
             g_free(job->name);
             g_hash_table_remove(print_jobs, GINT_TO_POINTER(msg->id));
         } else {
@@ -132,6 +151,7 @@ int flexvdi_share_printer(FlexvdiPort * port, const char * printer) {
     size_t buf_size, name_len, ppd_len;
     GStatBuf stat_buf;
     g_autofree gchar * ppd_name = get_ppd_file(printer);
+    if (ppd_name == NULL) return FALSE;
     name_len = strlen(printer);
     if (!g_stat(ppd_name, &stat_buf)) {
         ppd_len = stat_buf.st_size;
