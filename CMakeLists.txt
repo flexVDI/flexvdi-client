@@ -45,6 +45,8 @@ check_module(CLIENT gst gstreamer-1.0)
 if (WIN32)
     check_module(LIB CAIRO cairo)
     check_module(LIB POPPLER poppler-glib)
+elseif (ANDROID OR IOS)
+    # No extra dependency on mobile devices
 else ()
     if (NOT APPLE)
         add_definitions(-DENABLE_SERIALREDIR)
@@ -86,6 +88,8 @@ message("  JSON-GLib:                ${json_VERSION_STR}")
 if (WIN32)
 message("  Cairo (Print):            ${CAIRO_VERSION_STR}")
 message("  Poppler (Print):          ${POPPLER_VERSION_STR}")
+elseif (ANDROID OR IOS)
+# Pass
 elseif (APPLE)
 message("  Cups (Print):             ${CUPS_VERSION_STR}")
 else ()
@@ -110,13 +114,17 @@ endforeach ()
 message("")
 
 # Build resources
+if (NOT ANDROID AND NOT IOS)
 add_subdirectory(resources)
+endif ()
 
 # Build client library
 add_subdirectory(src)
 
 # Build tests
+if (NOT ANDROID AND NOT IOS)
 add_subdirectory(test)
+endif ()
 
 # Packages
 include(CheckCSourceCompiles)
@@ -142,6 +150,8 @@ if (WIN32)
     add_custom_target(installer DEPENDS flexvdi-client-bin "${PROJECT_BINARY_DIR}/src/icon.ico"
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_installer_win.sh" ${CMAKE_INSTALL_PREFIX} ${CMAKE_BUILD_TYPE}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
+elseif (ANDROID OR IOS)
+# No installer
 elseif (APPLE)
     configure_file("${PROJECT_SOURCE_DIR}/scripts/Info-tpl.plist"
                    "${PROJECT_BINARY_DIR}/Info.plist" @ONLY)

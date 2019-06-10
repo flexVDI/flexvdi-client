@@ -15,6 +15,14 @@ if (WIN32)
         terminalid-win32.c printclient-win32.c legacy-config-parser-win32)
     set(LIB_LIBRARIES ${LIB_LIBRARIES} iphlpapi ws2_32)
     set(ICON icon.rc)
+elseif (ANDROID)
+    set(LIB_SOURCES ${LIB_SOURCES}
+        terminalid-android.c printclient-null.c legacy-config-parser-null)
+    set(ICON "")
+elseif (IOS)
+    set(LIB_SOURCES ${LIB_SOURCES}
+        terminalid-ios.c printclient-null.c legacy-config-parser-null)
+    set(ICON "")
 elseif (APPLE)
     set(LIB_SOURCES ${LIB_SOURCES}
         terminalid-macos.c printclient-cups.c legacy-config-parser-null)
@@ -36,6 +44,8 @@ if (APPLE)
     target_compile_options(flexvdi-client PRIVATE -xobjective-c -mmacosx-version-min=10.10)
     target_link_libraries(flexvdi-client "-framework Cocoa")
 endif ()
+
+if (NOT ANDROID AND NOT IOS)
 
 # client objects
 add_library(client_objects OBJECT ${CLIENT_SOURCES})
@@ -60,3 +70,5 @@ install(TARGETS flexvdi-client-bin flexvdi-client
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib
         PUBLIC_HEADER DESTINATION include/flexvdi-client)
+
+endif (NOT ANDROID AND NOT IOS)
