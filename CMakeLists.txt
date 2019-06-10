@@ -140,7 +140,7 @@ if (WIN32)
     configure_file("${PROJECT_SOURCE_DIR}/scripts/setup-tpl.nsi"
                    "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
     add_custom_target(installer DEPENDS flexvdi-client-bin "${PROJECT_BINARY_DIR}/src/icon.ico"
-                      COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_installer_win.sh" ${CMAKE_INSTALL_PREFIX}
+                      COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_installer_win.sh" ${CMAKE_INSTALL_PREFIX} ${CMAKE_BUILD_TYPE}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 elseif (APPLE)
     configure_file("${PROJECT_SOURCE_DIR}/scripts/Info-tpl.plist"

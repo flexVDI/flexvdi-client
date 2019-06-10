@@ -18,6 +18,7 @@
 # along with flexVDI Client. If not, see <https://www.gnu.org/licenses/>.
 
 PREFIX="$1"
+BUILD_TYPE="$2"
 if file src/flexvdi-client.exe | grep -q x86-64; then
     ARCH=x86_64
     sed -i s/PROGRAMFILES32/PROGRAMFILES64/ setup.nsi
@@ -59,6 +60,8 @@ for bin in $(find output -type f) ; do
 done
 
 # strip dlls
-find output -iname "*.dll" -exec ${ARCH}-w64-mingw32-strip \{\} + >& /dev/null
+if [ "$BUILD_TYPE" != "Debug" ]; then
+    find output -iname "*.dll" -exec ${ARCH}-w64-mingw32-strip \{\} + >& /dev/null
+fi
 
 makensis setup.nsi
