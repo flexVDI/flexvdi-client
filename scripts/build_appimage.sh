@@ -38,9 +38,10 @@ Icon=icon
 EOF
 cp "$SRCDIR"/resources/images/icon.png $TMPDIR
 
+NOT_PREFIX_LIBS="libudev|libcrypt|$NOT_PREFIX_LIBS"
+
 copy_with_deps() {
     cp "$@"
-    NOT_PREFIX_LIBS="libudev|libcrypt|liborc"
     ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep -E "$PREFIX|$NOT_PREFIX_LIBS" | sort -u | xargs -r cp -t $TMPDIR/lib -u
 }
 
