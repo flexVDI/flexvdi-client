@@ -40,7 +40,8 @@ cp "$SRCDIR"/resources/images/icon.png $TMPDIR
 
 copy_with_deps() {
     cp "$@"
-    ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep -E "$PREFIX|libudev|libcrypt" | sort -u | xargs -r cp -t $TMPDIR/lib -u
+    NOT_PREFIX_LIBS="libudev|libcrypt|liborc"
+    ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep -E "$PREFIX|$NOT_PREFIX_LIBS" | sort -u | xargs -r cp -t $TMPDIR/lib -u
 }
 
 mkdir -p $TMPDIR/bin $TMPDIR/lib/gstreamer-1.0 $TMPDIR/lib/gio $TMPDIR/share/fonts
