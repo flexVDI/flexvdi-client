@@ -303,6 +303,7 @@ static void button_pressed_handler(ClientAppWindow * win, int button, gpointer u
         case SAVE_BUTTON:
             client_app_window_save_config(app->main_window, app->conf);
             client_conf_save(app->conf);
+            app->autologin = TRUE; // Connect if the server offers a non-authenticated policy
             // fallthrough
         default:  // BACK and DISCARD buttons
             client_app_show_login(app, NULL);
