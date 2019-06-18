@@ -287,7 +287,7 @@ static gint client_conf_handle_options(GApplication * gapp, GVariantDict * opts,
         o->arg_data = add_option_to_table;
     }
     g_autoptr(GOptionContext) ctx = g_option_context_new(NULL);
-    g_autoptr(GOptionGroup) options = g_option_group_new("", "", "", conf, NULL);
+    GOptionGroup * options = g_option_group_new("", "", "", conf, NULL);
     g_option_group_add_entries(options, conf->all_options);
     g_option_context_add_group(ctx, options);
     g_option_context_set_help_enabled(ctx, FALSE);

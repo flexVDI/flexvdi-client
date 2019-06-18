@@ -22,9 +22,10 @@
 #include <glib.h>
 
 gchar * discover_terminal_id() {
-    DWORD buf_len = 0;
+    ULONG buf_len = 0;
     GetAdaptersInfo(NULL, &buf_len);
-    g_autofree PIP_ADAPTER_INFO adapters = g_malloc(buf_len), it;
+    g_autofree PIP_ADAPTER_INFO adapters = g_malloc(buf_len);
+    PIP_ADAPTER_INFO it;
     if (GetAdaptersInfo(adapters, &buf_len) == ERROR_SUCCESS) {
         for (it = adapters; it != NULL; it = it->Next) {
             if (it->AddressLength >= 6) {
