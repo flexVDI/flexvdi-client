@@ -151,7 +151,7 @@ static gboolean user_activity(SpiceWindow * win) {
 
 static void focus_spice_widget(GtkPopover * popover, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
-    gtk_widget_grab_focus(win->spice);
+    gtk_widget_grab_focus(GTK_WIDGET(win->spice));
 }
 
 static void spice_window_init(SpiceWindow * win) {
@@ -633,7 +633,7 @@ static gboolean motion_notify_event_cb(GtkWidget * widget, GdkEventMotion * even
         }
     }
     user_activity(win);
-    gtk_widget_grab_focus(win->spice);
+    gtk_widget_grab_focus(GTK_WIDGET(win->spice));
     return GDK_EVENT_PROPAGATE;
 }
 
