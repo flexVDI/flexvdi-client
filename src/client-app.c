@@ -532,6 +532,14 @@ static void desktop_request_cb(ClientRequest * req, gpointer user_data) {
 }
 
 
+// Case-insensitive UTF-8 string comparison
+static int utf8_strcmp(const char * a, const char * b) {
+    g_autofree gchar * ai = g_utf8_casefold(a, -1);
+    g_autofree gchar * bi = g_utf8_casefold(b, -1);
+    return g_strcmp0(ai, bi);
+}
+
+
 /*
  * Show the desktops page. Fill in the list with the desktop response.
  */
@@ -551,7 +559,7 @@ static void client_app_show_desktops(ClientApp * app, JsonObject * desktops) {
     }
 
     g_autoptr(GList) desktop_names =
-        g_list_sort(g_hash_table_get_keys(app->desktops), (GCompareFunc)g_strcmp0);
+        g_list_sort(g_hash_table_get_keys(app->desktops), (GCompareFunc)utf8_strcmp);
     const gchar * desktop = client_conf_get_desktop(app->conf);
     client_app_window_set_desktops(app->main_window, desktop_names, desktop);
 
