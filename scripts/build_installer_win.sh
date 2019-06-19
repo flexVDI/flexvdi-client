@@ -20,10 +20,10 @@
 PREFIX="$1"
 BUILD_TYPE="$2"
 if file src/flexvdi-client.exe | grep -q x86-64; then
-    ARCH=x86_64
+    HOST=x86_64-w64-mingw32
     sed -i s/PROGRAMFILES32/PROGRAMFILES64/ setup.nsi
 else
-    ARCH=i686
+    HOST=i686-w64-mingw32
 fi
 SYSTEM_DLLS="kernel32.dll user32.dll msvcrt.dll gdi32.dll msimg32.dll advapi32.dll \
     ole32.dll shell32.dll ws2_32.dll dnsapi.dll iphlpapi.dll usp10.dll dwmapi.dll \
@@ -32,7 +32,7 @@ SYSTEM_DLLS="kernel32.dll user32.dll msvcrt.dll gdi32.dll msimg32.dll advapi32.d
 
 
 walk_dlls() {
-    ${ARCH}-w64-mingw32-objdump -p "$1" | grep -i '\.dll$' | sed 's/.*\s\(\S\S*\)/\1/' | while read dll_name; do
+    ${HOST}-objdump -p "$1" | grep -i '\.dll$' | sed 's/.*\s\(\S\S*\)/\1/' | while read dll_name; do
         local dll_path=$(find "${DLL_DIRS[@]}" -maxdepth 1 -iname "$dll_name" -print -quit)
         if [ -z "$dll_path" -o ! -f "$dll_path" ]; then
             echo $SYSTEM_DLLS | grep -iq "$dll_name" || echo "$dll_name ($dll_path) not found"
@@ -53,14 +53,14 @@ cp "$PREFIX"/lib/gio/modules/libgiognutls.dll output/lib/gio/modules
 cp "$PREFIX"/lib/gstreamer-1.0/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,directsound}.dll output//lib/gstreamer-1.0
 
 # Find DLLs
-DLL_DIRS=( $(find "$PREFIX" $(${ARCH}-w64-mingw32-gcc -print-sysroot) -iname "*.dll" -type f -exec dirname \{\} \; 2>/dev/null | sort -u) )
+DLL_DIRS=( $(find "$PREFIX" $(${HOST}-gcc -print-sysroot) -iname "*.dll" -type f -exec dirname \{\} \; 2>/dev/null | sort -u) )
 for bin in $(find output -type f) ; do
     walk_dlls "$bin"
 done
 
-# strip dlls
+# strip binaries
 if [ "$BUILD_TYPE" != "Debug" ]; then
-    find output -iname "*.dll" -exec ${ARCH}-w64-mingw32-strip \{\} + >& /dev/null
+    find output \( -iname "*.dll" -o -iname "*.exe" \) -a -exec ${HOST}-strip \{\} + >& /dev/null
 fi
 
 cp "$PREFIX"/bin/usb.ids output/bin
