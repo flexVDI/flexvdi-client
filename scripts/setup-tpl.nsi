@@ -21,6 +21,10 @@
 
 Unicode true
 
+!include WinMessages.nsh
+!addincludedir "@PROJECT_SOURCE_DIR@/scripts/nsis"
+!include FontRegAdv.nsh
+
 !define APPNAME "flexVDI Client"
 !define APPVERSION @FLEXVDI_VERSION@
 OutFile "@CPACK_PACKAGE_FILE_NAME@.exe"
@@ -163,6 +167,9 @@ Section "!${APPNAME}"
 
     File /r output\*.*
     WriteUninstaller "uninstall.exe"
+
+    !insertmacro InstallTTF Lato-Regular.ttf "Lato"
+    SendMessage ${HWND_BROADCAST} ${WM_FONTCHANGE} 0 0 /TIMEOUT=5000
 
     !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
         CreateDirectory "$SMPROGRAMS\$StartMenuFolder"

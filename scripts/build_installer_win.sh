@@ -64,5 +64,6 @@ if [ "$BUILD_TYPE" != "Debug" ]; then
 fi
 
 cp "$PREFIX"/bin/usb.ids output/bin
+find /usr/share/fonts -name "Lato-Regular.ttf" -exec cp \{\} . \;
 
 makensis setup.nsi
