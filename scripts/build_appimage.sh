@@ -32,7 +32,9 @@ trap "rm -fr $TMPDIR" EXIT
 
 cat > $TMPDIR/flexvdi-client.desktop << EOF
 [Desktop Entry]
+Type=Application
 Name=flexVDI client
+Categories=Network;
 Exec=flexvdi-client
 Icon=icon
 EOF
