@@ -1,9 +1,9 @@
 set(LIB_SOURCES
     client-conn.c client-log.c flexvdi-port.c configuration.c client-request.c
-    printclient.c PPDGenerator.c ws-tunnel.c)
+    printclient.c PPDGenerator.c ws-tunnel.c conn-forward.c)
 set(LIB_HEADERS
     client-conn.h client-log.h flexvdi-port.h configuration.h client-request.h
-    printclient.h)
+    printclient.h conn-forward.h)
 set(CLIENT_SOURCES client-app.c client-win.c spice-win.c about.c)
 
 if (WIN32)
