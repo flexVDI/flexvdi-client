@@ -96,10 +96,7 @@ static void client_conn_dispose(GObject * obj) {
     g_clear_object(&conn->session);
     g_clear_object(&conn->guest_agent_port);
     g_clear_object(&conn->control_port);
-    if (conn->conn_forwarder != NULL) {
-        conn_forwarder_delete(conn->conn_forwarder);
-        conn->conn_forwarder = NULL;
-    }
+    g_clear_object(&conn->conn_forwarder);
     g_list_free_full(conn->tunnels, (GDestroyNotify)ws_tunnel_unref);
     G_OBJECT_CLASS(client_conn_parent_class)->dispose(obj);
 }

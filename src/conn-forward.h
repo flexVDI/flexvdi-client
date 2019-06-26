@@ -23,11 +23,17 @@
 #include <glib.h>
 #include "flexvdi-port.h"
 
-typedef struct ConnForwarder ConnForwarder;
 
+#define CONN_FORWARDER_TYPE (flexvdi_port_get_type())
+G_DECLARE_FINAL_TYPE(ConnForwarder, conn_forwarder, CONN, FORWARDER, GObject)
+
+/*
+ * conn_forwarder_new
+ *
+ * Create a new connection forwarder, connected to a flexVDI port
+ * (the guest agent port).
+ */
 ConnForwarder * conn_forwarder_new(FlexvdiPort * guest_agent_port);
-
-void conn_forwarder_delete(ConnForwarder * cf);
 
 /*
  * Set redirections.

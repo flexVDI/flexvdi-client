@@ -40,7 +40,8 @@ static gboolean tokenize_redirection(gchar * redir, gchar ** bind_address, gchar
         return FALSE;
 }
 
-struct ConnForwarder {
+struct _ConnForwarder {
+    GObject parent;
     FlexvdiPort * port;
     gchar ** local;
     gchar ** remote;
@@ -49,6 +50,8 @@ struct ConnForwarder {
     GSocketListener * listener;
     GCancellable * listener_cancellable;
 };
+
+G_DEFINE_TYPE(ConnForwarder, conn_forwarder, G_TYPE_OBJECT);
 
 #define WINDOW_SIZE 10*1024*1024
 #define MAX_MSG_SIZE FLEXVDI_MAX_MESSAGE_LENGTH - sizeof(FlexVDIMessageHeader)
@@ -186,55 +189,54 @@ static gpointer address_port_new(guint16 port, const char * address) {
     return p;
 }
 
-static void listener_accept_callback(GObject * source_object, GAsyncResult * res,
-                                     gpointer user_data);
+
+static void conn_forwarder_dispose(GObject * obj);
+static void conn_forwarder_finalize(GObject * obj);
+
+static void conn_forwarder_class_init(ConnForwarderClass * class) {
+    GObjectClass * object_class = G_OBJECT_CLASS(class);
+    object_class->dispose = conn_forwarder_dispose;
+    object_class->finalize = conn_forwarder_finalize;
+}
+
+
+static void conn_forwarder_init(ConnForwarder * cf) {
+    cf->remote_assocs = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+                                              NULL, g_object_unref);
+    cf->connections = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+                                            NULL, unref_connection);
+    cf->listener = g_socket_listener_new();
+    cf->listener_cancellable = g_cancellable_new();
+}
+
+
+static void conn_forwarder_dispose(GObject * obj) {
+    ConnForwarder * cf = CONN_FORWARDER(obj);
+    g_clear_object(&cf->port);
+    g_clear_object(&cf->listener_cancellable);
+    g_clear_object(&cf->listener);
+    G_OBJECT_CLASS(conn_forwarder_parent_class)->dispose(obj);
+}
+
+
+static void conn_forwarder_finalize(GObject * obj) {
+    ConnForwarder * cf = CONN_FORWARDER(obj);
+    g_hash_table_destroy(cf->remote_assocs);
+    g_hash_table_destroy(cf->connections);
+    G_OBJECT_CLASS(conn_forwarder_parent_class)->finalize(obj);
+}
+
+
 static void guest_agent_connected(FlexvdiPort * port, gboolean connected, ConnForwarder * cf);
 static gboolean conn_forwarder_handle_message(FlexvdiPort * port, int type, gpointer msg, gpointer data);
 
 ConnForwarder * conn_forwarder_new(FlexvdiPort * guest_agent_port) {
-    ConnForwarder * cf = g_malloc(sizeof(ConnForwarder));
-    if (cf) {
-        g_debug("Created new port forwarder");
-        cf->port = g_object_ref(guest_agent_port);
-        cf->remote_assocs = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-                                                  NULL, g_object_unref);
-        cf->connections = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-                                                NULL, unref_connection);
-        cf->listener = g_socket_listener_new();
-        cf->listener_cancellable = g_cancellable_new();
-        if (!cf->remote_assocs || !cf->connections ||
-                !cf->listener || !cf->listener_cancellable) {
-            conn_forwarder_delete(cf);
-            cf = NULL;
-        }
-        g_signal_connect(guest_agent_port, "agent-connected",
-                         G_CALLBACK(guest_agent_connected), cf);
-        if (flexvdi_port_is_agent_connected(guest_agent_port))
-            guest_agent_connected(guest_agent_port, TRUE, cf);
-        g_signal_connect(guest_agent_port, "message",
-                         G_CALLBACK(conn_forwarder_handle_message), cf);
-    }
+    ConnForwarder * cf = g_object_new(CONN_FORWARDER_TYPE, NULL);
+    cf->port = g_object_ref(guest_agent_port);
+    g_signal_connect(guest_agent_port, "agent-connected", G_CALLBACK(guest_agent_connected), cf);
+    g_signal_connect(guest_agent_port, "message", G_CALLBACK(conn_forwarder_handle_message), cf);
+    g_debug("Created new port forwarder");
     return cf;
-}
-
-void conn_forwarder_delete(ConnForwarder * cf) {
-    if (cf) {
-        g_debug("Deleting port forwarder");
-        g_clear_object(&cf->port);
-        if (cf->remote_assocs) {
-            g_hash_table_destroy(cf->remote_assocs);
-        }
-        if (cf->connections) {
-            g_hash_table_destroy(cf->connections);
-        }
-        if (cf->listener_cancellable) {
-            g_object_unref(cf->listener_cancellable);
-        }
-        if (cf->listener) {
-            g_socket_listener_close(cf->listener);
-        }
-        g_free(cf);
-    }
 }
 
 
@@ -291,6 +293,9 @@ static gboolean conn_forwarder_associate_remote(ConnForwarder * cf, const gchar 
 }
 
 
+static void listener_accept_callback(GObject * source_object, GAsyncResult * res,
+                                     gpointer user_data);
+
 static gboolean conn_forwarder_associate_local(ConnForwarder * cf, const gchar * local) {
     gchar * bind_address, * local_port, * host, * host_port;
     g_autofree gchar * local_copy = g_strdup(local);
@@ -343,7 +348,7 @@ static guint32 generate_connection_id(void) {
 
 static void listener_accept_callback(GObject * source_object, GAsyncResult * res,
                                      gpointer user_data) {
-    ConnForwarder * cf = (ConnForwarder *)user_data;
+    ConnForwarder * cf = CONN_FORWARDER(user_data);
     GError * error = NULL;
     GSocketConnection * sc = g_socket_listener_accept_finish(cf->listener, res,
                                                             &source_object, &error);
@@ -600,7 +605,7 @@ static void handle_ack(ConnForwarder * cf, FlexVDIForwardAckMsg * msg) {
 }
 
 static gboolean conn_forwarder_handle_message(FlexvdiPort * port, int type, gpointer msg, gpointer data) {
-    ConnForwarder * cf = (ConnForwarder *)data;
+    ConnForwarder * cf = CONN_FORWARDER(data);
     switch (type) {
         case FLEXVDI_FWDACCEPTED:
             handle_accepted(cf, (FlexVDIForwardAcceptedMsg *)msg);
