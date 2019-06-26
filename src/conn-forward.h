@@ -21,25 +21,18 @@
 #define __CONN_FORWARD_H
 
 #include <glib.h>
+#include "flexvdi-port.h"
 
 typedef struct ConnForwarder ConnForwarder;
 
-/*
- * Callback to send commands to the vdagent.
- */
-typedef void (* conn_forwarder_send_command_cb)(
-    guint32 command, const guint8 * data, guint32 data_size, gpointer user_data);
-
-ConnForwarder * conn_forwarder_new(conn_forwarder_send_command_cb cb, gpointer user_data);
+ConnForwarder * conn_forwarder_new(FlexvdiPort * guest_agent_port);
 
 void conn_forwarder_delete(ConnForwarder * cf);
 
-void conn_forwarder_agent_disconnected(ConnForwarder * cf);
-
 /*
- * Associate a local port with a remote endpoint.
+ * Set redirections.
  * 
- * @local: String representation of the redirection. One of:
+ * @local: List of string representations of the local redirections. Format:
  *         [bind_address:]local_port:remote_address:remote_port
  *         (Under development:)
  *         [bind_address:]local_port:remote_socket
@@ -48,14 +41,7 @@ void conn_forwarder_agent_disconnected(ConnForwarder * cf);
  *         local_socket:remote_socket
  *         [bind_address:]port
  *
- * Returns: %TRUE on success, %FALSE on error.
- */
-gboolean conn_forwarder_associate_local(ConnForwarder * cf, const gchar * local);
-
-/*
- * Associate a remote port with a local port.
- * 
- * @remote: String representation of the redirection. One of:
+ * @remote: List of string representations of the remote redirections. Format:
  *          [bind_address:]remote_port:local_address:local_port
  *          (Under development:)
  *          [bind_address:]remote_port:local_socket
@@ -63,14 +49,7 @@ gboolean conn_forwarder_associate_local(ConnForwarder * cf, const gchar * local)
  *          remote_socket:local_address:local_port
  *          remote_socket:local_socket
  *          [bind_address:]port
- *
- * Returns: %TRUE on success, %FALSE on error.
  */
-gboolean conn_forwarder_associate_remote(ConnForwarder * cf, const gchar * remote);
-
-/*
- * Handle a message received from the agent.
- */
-void conn_forwarder_handle_message(ConnForwarder * cf, guint32 command, gpointer msg);
+void conn_forwarder_set_redirections(ConnForwarder * cf, gchar ** local, gchar ** remote);
 
 #endif /* __CONN_FORWARD_H */

@@ -23,18 +23,6 @@
 #include <flexdp.h>
 #include "conn-forward.h"
 
-/*
-static void conn_forwarder_send_command(
-    uint32_t command, const uint8_t * data, uint32_t data_size, gpointer user_data) {
-    agent_msg_queue((SpiceMainChannel *)channel, command, data_size, data);
-    if (&SPICE_CHANNEL(channel)->priv->coroutine != g_coroutine_self())
-        spice_channel_wakeup(SPICE_CHANNEL(channel), FALSE);
-    else
-        agent_send_msg_queue((SpiceMainChannel *)channel);
-}
-*/
-
-
 static gboolean tokenize_redirection(gchar * redir, gchar ** bind_address, gchar ** port,
                                      gchar ** host, gchar ** host_port) {
     if ((* bind_address = strtok(redir, ":")) &&
@@ -53,18 +41,14 @@ static gboolean tokenize_redirection(gchar * redir, gchar ** bind_address, gchar
 }
 
 struct ConnForwarder {
-    conn_forwarder_send_command_cb send_command;
-    gpointer user_data;
+    FlexvdiPort * port;
+    gchar ** local;
+    gchar ** remote;
     GHashTable * remote_assocs;
     GHashTable * connections;
     GSocketListener * listener;
     GCancellable * listener_cancellable;
 };
-
-static void send_command(ConnForwarder * cf, guint32 command,
-                         const guint8 * data, guint32 data_size) {
-    cf->send_command(command, data, data_size, cf->user_data);
-}
 
 #define WINDOW_SIZE 10*1024*1024
 #define MAX_MSG_SIZE FLEXVDI_MAX_MESSAGE_LENGTH - sizeof(FlexVDIMessageHeader)
@@ -74,7 +58,7 @@ typedef struct Connection {
     GSocketConnection * conn;
     GCancellable * cancellable;
     GQueue * write_buffer;
-    guint8 * read_buffer;
+    uint8_t * read_buffer;
     guint32 data_sent, data_received, ack_interval;
     gboolean connecting;
     ConnForwarder * cf;
@@ -92,7 +76,6 @@ static Connection * new_connection(ConnForwarder * cf, int id, guint32 ack_int) 
         conn->ack_interval = ack_int;
         conn->connecting = TRUE;
         conn->write_buffer = g_queue_new();
-        conn->read_buffer = (guint8 *)g_malloc(MAX_MSG_SIZE);
     }
     return conn;
 }
@@ -109,7 +92,8 @@ static void unref_connection(gpointer value) {
             g_object_unref(conn->socket);
         }
         g_queue_free_full(conn->write_buffer, (GDestroyNotify)g_bytes_unref);
-        g_free(conn->read_buffer);
+        if (conn->read_buffer)
+            flexvdi_port_delete_msg_buffer(conn->read_buffer);
         g_free(conn);
     }
 }
@@ -136,9 +120,10 @@ static Connection * new_open_connection(ConnForwarder * cf, int id, guint32 ack_
 }
 
 static void close_agent_connection(ConnForwarder * cf, int id) {
-    FlexVDIForwardCloseMsg closeMsg;
-    closeMsg.id = id;
-    send_command(cf, FLEXVDI_FWDCLOSE, (const guint8 *)&closeMsg, sizeof(closeMsg));
+    uint8_t * buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDIForwardCloseMsg));
+    FlexVDIForwardCloseMsg * closeMsg = (FlexVDIForwardCloseMsg *)buf;
+    closeMsg->id = id;
+    flexvdi_port_send_msg(cf->port, FLEXVDI_FWDCLOSE, buf);
 }
 
 static void close_connection_no_notify(Connection * conn) {
@@ -203,13 +188,14 @@ static gpointer address_port_new(guint16 port, const char * address) {
 
 static void listener_accept_callback(GObject * source_object, GAsyncResult * res,
                                      gpointer user_data);
+static void guest_agent_connected(FlexvdiPort * port, gboolean connected, ConnForwarder * cf);
+static gboolean conn_forwarder_handle_message(FlexvdiPort * port, int type, gpointer msg, gpointer data);
 
-ConnForwarder * conn_forwarder_new(conn_forwarder_send_command_cb cb, gpointer user_data) {
+ConnForwarder * conn_forwarder_new(FlexvdiPort * guest_agent_port) {
     ConnForwarder * cf = g_malloc(sizeof(ConnForwarder));
     if (cf) {
         g_debug("Created new port forwarder");
-        cf->send_command = cb;
-        cf->user_data = user_data;
+        cf->port = g_object_ref(guest_agent_port);
         cf->remote_assocs = g_hash_table_new_full(g_direct_hash, g_direct_equal,
                                                   NULL, g_object_unref);
         cf->connections = g_hash_table_new_full(g_direct_hash, g_direct_equal,
@@ -221,6 +207,12 @@ ConnForwarder * conn_forwarder_new(conn_forwarder_send_command_cb cb, gpointer u
             conn_forwarder_delete(cf);
             cf = NULL;
         }
+        g_signal_connect(guest_agent_port, "agent-connected",
+                         G_CALLBACK(guest_agent_connected), cf);
+        if (flexvdi_port_is_agent_connected(guest_agent_port))
+            guest_agent_connected(guest_agent_port, TRUE, cf);
+        g_signal_connect(guest_agent_port, "message",
+                         G_CALLBACK(conn_forwarder_handle_message), cf);
     }
     return cf;
 }
@@ -228,6 +220,7 @@ ConnForwarder * conn_forwarder_new(conn_forwarder_send_command_cb cb, gpointer u
 void conn_forwarder_delete(ConnForwarder * cf) {
     if (cf) {
         g_debug("Deleting port forwarder");
+        g_clear_object(&cf->port);
         if (cf->remote_assocs) {
             g_hash_table_destroy(cf->remote_assocs);
         }
@@ -244,34 +237,32 @@ void conn_forwarder_delete(ConnForwarder * cf) {
     }
 }
 
-void conn_forwarder_agent_disconnected(ConnForwarder * cf) {
-    g_debug("Agent disconnected, close all connections");
-    g_hash_table_remove_all(cf->remote_assocs);
-    g_hash_table_remove_all(cf->connections);
+
+void conn_forwarder_set_redirections(ConnForwarder * cf, gchar ** local, gchar ** remote) {
+    cf->local = local;
+    cf->remote = remote;
 }
 
 
 static gboolean conn_forwarder_disassociate_remote(ConnForwarder * cf, guint16 rport) {
-    FlexVDIForwardShutdownMsg msg;
-
     if (!g_hash_table_remove(cf->remote_assocs, GUINT_TO_POINTER(rport))) {
         g_warning("Remote port %d is not associated with a local port.", rport);
         return FALSE;
     } else {
         g_debug("Disassociate remote port %d", rport);
-        msg.listenId = rport;
-        send_command(cf, FLEXVDI_FWDSHUTDOWN, (const guint8 *)&msg, sizeof(msg));
+        uint8_t * buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDIForwardShutdownMsg));
+        FlexVDIForwardShutdownMsg * shtMsg = (FlexVDIForwardShutdownMsg *)buf;
+        shtMsg->listenId = rport;
+        flexvdi_port_send_msg(cf->port, FLEXVDI_FWDSHUTDOWN, buf);
         return TRUE;
     }
 }
 
 
-/*
- * XXX Check capability before calling this function
- */
-gboolean conn_forwarder_associate_remote(ConnForwarder * cf, const gchar * remote) {
+static gboolean conn_forwarder_associate_remote(ConnForwarder * cf, const gchar * remote) {
     gchar * bind_address, * guest_port, * host, * host_port;
-    if (!tokenize_redirection(remote, &bind_address, &guest_port, &host, &host_port)) {
+    g_autofree gchar * remote_copy = g_strdup(remote);
+    if (!tokenize_redirection(remote_copy, &bind_address, &guest_port, &host, &host_port)) {
         g_warning("Unknown redirection '%s'", remote);
         return FALSE;
     }
@@ -289,23 +280,21 @@ gboolean conn_forwarder_associate_remote(ConnForwarder * cf, const gchar * remot
     }
     int addr_len = strlen(bind_address);
     int msg_len = sizeof(FlexVDIForwardListenMsg) + addr_len + 1;
-    FlexVDIForwardListenMsg * msg = g_malloc0(msg_len);
+    uint8_t * buf = flexvdi_port_get_msg_buffer(msg_len);
+    FlexVDIForwardListenMsg * msg = (FlexVDIForwardListenMsg *)buf;
     msg->id = msg->port = rport;
     msg->proto = FLEXVDI_FWDPROTO_TCP;
     msg->addressLength = addr_len;
     strcpy(msg->address, bind_address);
-    send_command(cf, FLEXVDI_FWDLISTEN, (const guint8 *)msg, msg_len);
-    g_free(msg);
+    flexvdi_port_send_msg(cf->port, FLEXVDI_FWDLISTEN, buf);
     return TRUE;
 }
 
 
-/*
- * XXX Check capability before calling this function
- */
-gboolean conn_forwarder_associate_local(ConnForwarder * cf, const gchar * local) {
+static gboolean conn_forwarder_associate_local(ConnForwarder * cf, const gchar * local) {
     gchar * bind_address, * local_port, * host, * host_port;
-    if (!tokenize_redirection(local, &bind_address, &local_port, &host, &host_port)) {
+    g_autofree gchar * local_copy = g_strdup(local);
+    if (!tokenize_redirection(local_copy, &bind_address, &local_port, &host, &host_port)) {
         g_warning("Unknown redirection '%s'", local);
         return FALSE;
     }
@@ -331,8 +320,21 @@ gboolean conn_forwarder_associate_local(ConnForwarder * cf, const gchar * local)
     return res;
 }
 
-#define DATA_HEAD_SIZE sizeof(FlexVDIMessageHeader)
-#define BUFFER_SIZE MAX_MSG_SIZE - DATA_HEAD_SIZE
+
+static void guest_agent_connected(FlexvdiPort * port, gboolean connected, ConnForwarder * cf) {
+    if (connected && flexvdi_port_agent_supports_capability(port, FLEXVDI_CAP_FORWARD)) {
+        gchar ** it;
+        for (it = cf->local; it != NULL && *it != NULL; ++it)
+            conn_forwarder_associate_local(cf, *it);
+        for (it = cf->remote; it != NULL && *it != NULL; ++it)
+            conn_forwarder_associate_remote(cf, *it);
+    } else if (!connected) {
+        g_debug("Agent disconnected, close all connections");
+        g_hash_table_remove_all(cf->remote_assocs);
+        g_hash_table_remove_all(cf->connections);
+    }
+}
+
 
 static guint32 generate_connection_id(void) {
     static guint32 seq = 0;
@@ -361,17 +363,17 @@ static void listener_accept_callback(GObject * source_object, GAsyncResult * res
         if (conn) {
             int addr_len = strlen(host->address);
             int msg_len = sizeof(FlexVDIForwardConnectMsg) + addr_len + 1;
-            FlexVDIForwardConnectMsg * msg = g_malloc0(msg_len);
+            uint8_t * buf = flexvdi_port_get_msg_buffer(msg_len);
+            FlexVDIForwardConnectMsg * msg = (FlexVDIForwardConnectMsg *)buf;
             msg->id = conn->id;
             msg->winSize = conn->ack_interval * 2;
             msg->proto = FLEXVDI_FWDPROTO_TCP;
             msg->port = host->port;
             msg->addressLength = addr_len;
             strcpy(msg->address, host->address);
-            send_command(cf, FLEXVDI_FWDCONNECT, (const guint8 *)msg, msg_len);
-            g_hash_table_insert(cf->connections, GUINT_TO_POINTER(msg->id), conn);
-            g_debug("Inserted connection in table with id %p", GUINT_TO_POINTER(msg->id));
-            g_free(msg);
+            flexvdi_port_send_msg(cf->port, FLEXVDI_FWDCONNECT, buf);
+            g_hash_table_insert(cf->connections, GUINT_TO_POINTER(conn->id), conn);
+            g_debug("Inserted connection in table with id %p", GUINT_TO_POINTER(conn->id));
         }
 
         g_socket_listener_accept_async(cf->listener, cf->listener_cancellable,
@@ -384,8 +386,9 @@ static void connection_read_callback(GObject * source_object, GAsyncResult * res
 
 static void program_read(Connection * conn) {
     GInputStream * stream = g_io_stream_get_input_stream((GIOStream *)conn->conn);
-    guint8 * data = conn->read_buffer + DATA_HEAD_SIZE;
-    g_input_stream_read_async(stream, data, BUFFER_SIZE, G_PRIORITY_DEFAULT,
+    conn->read_buffer = flexvdi_port_get_msg_buffer(MAX_MSG_SIZE);
+    FlexVDIForwardDataMsg * msg = (FlexVDIForwardDataMsg *)conn->read_buffer;
+    g_input_stream_read_async(stream, msg->data, MAX_MSG_SIZE - sizeof(*msg), G_PRIORITY_DEFAULT,
                               conn->cancellable, connection_read_callback, conn);
 }
 
@@ -414,9 +417,11 @@ static void connection_read_callback(GObject * source_object, GAsyncResult * res
     } else {
         msg->id = conn->id;
         msg->size = bytes;
-        send_command(cf, FLEXVDI_FWDDATA,
-                     conn->read_buffer, DATA_HEAD_SIZE + msg->size);
-        conn->data_sent += msg->size;
+        FlexVDIMessageHeader * header = flexvdi_port_get_msg_buffer_header(conn->read_buffer);
+        header->size = sizeof(*msg) + msg->size;
+        flexvdi_port_send_msg(cf->port, FLEXVDI_FWDDATA, conn->read_buffer);
+        conn->read_buffer = NULL;
+        conn->data_sent += bytes;
         if (conn->data_sent < WINDOW_SIZE) {
             program_read(conn);
         } else {
@@ -433,7 +438,6 @@ static void connection_write_callback(GObject * source_object, GAsyncResult * re
     GError * error = NULL;
     int num_written = g_output_stream_write_finish(stream, res, &error);
     int remaining;
-    FlexVDIForwardAckMsg msg;
 
     if (error != NULL) {
         /* Error or connection closed by peer */
@@ -461,12 +465,13 @@ static void connection_write_callback(GObject * source_object, GAsyncResult * re
 
         conn->data_received += num_written;
         if (conn->data_received >= conn->ack_interval) {
-            msg.id = conn->id;
-            msg.size = conn->data_received;
-            msg.winSize = conn->ack_interval * 2;
+            uint8_t * buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDIForwardAckMsg));
+            FlexVDIForwardAckMsg * msg = (FlexVDIForwardAckMsg *)buf;
+            msg->id = conn->id;
+            msg->size = conn->data_received;
+            msg->winSize = conn->ack_interval * 2;
             conn->data_received = 0;
-            send_command(conn->cf, FLEXVDI_FWDACK,
-                         (const guint8 *)&msg, sizeof(msg));
+            flexvdi_port_send_msg(conn->cf->port, FLEXVDI_FWDACK, buf);
         }
     }
 }
@@ -474,7 +479,6 @@ static void connection_write_callback(GObject * source_object, GAsyncResult * re
 static void connection_connect_callback(GObject * source_object, GAsyncResult * res,
                                         gpointer user_data) {
     Connection * conn = (Connection *)user_data;
-    FlexVDIForwardAckMsg msg = {.id = conn->id, .size = 0, .winSize = WINDOW_SIZE};
 
     if (g_cancellable_is_cancelled(conn->cancellable)) {
         unref_connection(conn);
@@ -490,8 +494,12 @@ static void connection_connect_callback(GObject * source_object, GAsyncResult * 
     } else {
         conn->connecting = FALSE;
         program_read(conn);
-        send_command(conn->cf, FLEXVDI_FWDACK,
-                     (const guint8 *)&msg, sizeof(msg));
+        uint8_t * buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDIForwardAckMsg));
+        FlexVDIForwardAckMsg * msg = (FlexVDIForwardAckMsg *)buf;
+        msg->id = conn->id;
+        msg->size = 0;
+        msg->winSize = WINDOW_SIZE;
+        flexvdi_port_send_msg(conn->cf->port, FLEXVDI_FWDACK, buf);
     }
 }
 
@@ -523,6 +531,8 @@ static void handle_accepted(ConnForwarder * cf, FlexVDIForwardAcceptedMsg * msg)
         g_warning("Remote port %d is not associated with a local port.", msg->listenId);
         close_agent_connection(cf, msg->id);
     }
+
+    g_free(msg);
 }
 
 static void handle_data(ConnForwarder * cf, FlexVDIForwardDataMsg * msg) {
@@ -533,10 +543,12 @@ static void handle_data(ConnForwarder * cf, FlexVDIForwardDataMsg * msg) {
     if (!conn) {
         /* Ignore, this is usually an already closed connection */
         g_debug("Connection %u does not exist.", msg->id);
+        g_free(msg);
     } else if (conn->connecting) {
         g_warning("Connection %u is still not connected!", conn->id);
+        g_free(msg);
     } else {
-        chunk = g_bytes_new(msg->data, msg->size);
+        chunk = g_bytes_new_with_free_func(msg->data, msg->size, g_free, msg);
         g_queue_push_tail(conn->write_buffer, chunk);
         if (g_queue_get_length(conn->write_buffer) == 1) {
             conn->refs++;
@@ -558,6 +570,8 @@ static void handle_close(ConnForwarder * cf, FlexVDIForwardCloseMsg * msg) {
         g_debug("Connection %u does not exists.", msg->id);
         close_agent_connection(cf, msg->id);
     }
+
+    g_free(msg);
 }
 
 static void handle_ack(ConnForwarder * cf, FlexVDIForwardAckMsg * msg) {
@@ -581,10 +595,13 @@ static void handle_ack(ConnForwarder * cf, FlexVDIForwardAckMsg * msg) {
         /* Ignore, this is usually an already closed connection */
         g_debug("Connection %u does not exists.", msg->id);
     }
+
+    g_free(msg);
 }
 
-void conn_forwarder_handle_message(ConnForwarder* cf, guint32 command, gpointer msg) {
-    switch (command) {
+static gboolean conn_forwarder_handle_message(FlexvdiPort * port, int type, gpointer msg, gpointer data) {
+    ConnForwarder * cf = (ConnForwarder *)data;
+    switch (type) {
         case FLEXVDI_FWDACCEPTED:
             handle_accepted(cf, (FlexVDIForwardAcceptedMsg *)msg);
             break;
@@ -598,6 +615,7 @@ void conn_forwarder_handle_message(ConnForwarder* cf, guint32 command, gpointer 
             handle_ack(cf, (FlexVDIForwardAckMsg *)msg);
             break;
         default:
-            break;
+            return FALSE;
     }
+    return TRUE;
 }
