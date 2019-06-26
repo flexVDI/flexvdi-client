@@ -23,23 +23,6 @@
 #include <flexdp.h>
 #include "conn-forward.h"
 
-static gboolean tokenize_redirection(gchar * redir, gchar ** bind_address, gchar ** port,
-                                     gchar ** host, gchar ** host_port) {
-    if ((* bind_address = strtok(redir, ":")) &&
-            (* port = strtok(NULL, ":")) &&
-            (* host = strtok(NULL, ":"))) {
-        if (!(* host_port = strtok(NULL, ":"))) {
-            // bind_address was not provided
-            * host_port = * host;
-            * host = * port;
-            * port = * bind_address;
-            * bind_address = NULL;
-        }
-        return TRUE;
-    } else
-        return FALSE;
-}
-
 struct _ConnForwarder {
     GObject parent;
     FlexvdiPort * port;
@@ -54,7 +37,6 @@ struct _ConnForwarder {
 G_DEFINE_TYPE(ConnForwarder, conn_forwarder, G_TYPE_OBJECT);
 
 #define WINDOW_SIZE 10*1024*1024
-#define MAX_MSG_SIZE FLEXVDI_MAX_MESSAGE_LENGTH - sizeof(FlexVDIMessageHeader)
 
 typedef struct Connection {
     GSocketClient * socket;
@@ -252,6 +234,24 @@ static gboolean conn_forwarder_disassociate_remote(ConnForwarder * cf, guint16 r
 }
 
 
+static gboolean tokenize_redirection(gchar * redir, gchar ** bind_address, gchar ** port,
+                                     gchar ** host, gchar ** host_port) {
+    if ((* bind_address = strtok(redir, ":")) &&
+            (* port = strtok(NULL, ":")) &&
+            (* host = strtok(NULL, ":"))) {
+        if (!(* host_port = strtok(NULL, ":"))) {
+            // bind_address was not provided
+            * host_port = * host;
+            * host = * port;
+            * port = * bind_address;
+            * bind_address = NULL;
+        }
+        return TRUE;
+    } else
+        return FALSE;
+}
+
+
 static gboolean conn_forwarder_associate_remote(ConnForwarder * cf, const gchar * remote) {
     gchar * bind_address, * guest_port, * host, * host_port;
     g_autofree gchar * remote_copy = g_strdup(remote);
@@ -379,6 +379,8 @@ static void listener_accept_callback(GObject * source_object, GAsyncResult * res
 
 static void connection_read_callback(GObject * source_object, GAsyncResult * res,
                                      gpointer user_data);
+
+#define MAX_MSG_SIZE FLEXVDI_MAX_MESSAGE_LENGTH - sizeof(FlexVDIMessageHeader)
 
 static void program_read(Connection * conn) {
     GInputStream * stream = g_io_stream_get_input_stream((GIOStream *)conn->conn);
