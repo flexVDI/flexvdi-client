@@ -22,6 +22,7 @@
 #ifdef ENABLE_SERIALREDIR
 #include "serialredir.h"
 #endif
+#include "conn-forward.h"
 
 
 struct _ClientConn {
@@ -37,6 +38,7 @@ struct _ClientConn {
     gboolean disconnecting;
     ClientConnDisconnectReason reason;
     FlexvdiPort * guest_agent_port, * control_port;
+    ConnForwarder * conn_forwarder;
 };
 
 enum {
@@ -79,6 +81,7 @@ static void client_conn_init(ClientConn * conn) {
     conn->control_port = flexvdi_port_new();
     conn->session = spice_session_new();
     spice_set_session_option(conn->session);
+    conn->conn_forwarder = conn_forwarder_new(conn->guest_agent_port);
 
     g_signal_connect(conn->session, "channel-new",
                      G_CALLBACK(channel_new), conn);
@@ -93,6 +96,10 @@ static void client_conn_dispose(GObject * obj) {
     g_clear_object(&conn->session);
     g_clear_object(&conn->guest_agent_port);
     g_clear_object(&conn->control_port);
+    if (conn->conn_forwarder != NULL) {
+        conn_forwarder_delete(conn->conn_forwarder);
+        conn->conn_forwarder = NULL;
+    }
     g_list_free_full(conn->tunnels, (GDestroyNotify)ws_tunnel_unref);
     G_OBJECT_CLASS(client_conn_parent_class)->dispose(obj);
 }
@@ -129,6 +136,10 @@ ClientConn * client_conn_new(ClientConf * conf, JsonObject * params) {
                      NULL);
     }
     client_conf_set_session_options(conf, conn->session);
+    conn_forwarder_set_redirections(conn->conn_forwarder,
+        client_conf_get_local_redirections(conf),
+        client_conf_get_remote_redirections(conf)
+    );
 
     return conn;
 }
