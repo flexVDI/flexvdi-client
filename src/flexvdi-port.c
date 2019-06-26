@@ -147,6 +147,11 @@ uint8_t * flexvdi_port_get_msg_buffer(size_t size) {
 }
 
 
+FlexVDIMessageHeader * flexvdi_port_get_msg_buffer_header(uint8_t * buffer) {
+    return (FlexVDIMessageHeader *)(buffer - HEADER_SIZE);
+}
+
+
 void flexvdi_port_delete_msg_buffer(uint8_t * buffer) {
     g_free(buffer - HEADER_SIZE);
 }

@@ -52,6 +52,13 @@ void flexvdi_port_set_channel(FlexvdiPort * port, SpicePortChannel * channel);
 uint8_t * flexvdi_port_get_msg_buffer(size_t size);
 
 /*
+ * flexvdi_port_get_msg_buffer_header
+ *
+ * Get a pointer to the header of a message, given a message buffer.
+ */
+FlexVDIMessageHeader * flexvdi_port_get_msg_buffer_header(uint8_t * buffer);
+
+/*
  * flexvdi_port_delete_msg_buffer
  *
  * Deletes a message buffer allocated with flexvdi_port_get_msg_buffer
