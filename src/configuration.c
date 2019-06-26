@@ -59,6 +59,8 @@ struct _ClientConf {
     gboolean shared_folder_ro;
     WindowEdge toolbar_edge;
     // Device options
+    gchar ** redir_remote;
+    gchar ** redir_local;
     gchar * usb_auto_filter;
     gchar * usb_connect_filter;
     gchar ** serial_params;
@@ -154,6 +156,10 @@ static void client_conf_init(ClientConf * conf) {
     gsize num_session_options = G_N_ELEMENTS(session_options) - 1;
 
     GOptionEntry device_options[] = {
+        { "redirect-remote", 'R', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_remote,
+        "Redirect a remote TCP port. Can appear multiple times", "[bind_address:]guest_port:host:host_port" },
+        { "redirect-local", 'L', 0, G_OPTION_ARG_STRING_ARRAY, &conf->redir_local,
+        "Redirect a local TCP port. Can appear multiple times", "[bind_address:]local_port:host:host_port", },
         { "usbredir-auto-redirect-filter", 0, 0, G_OPTION_ARG_STRING, &conf->usb_auto_filter,
           "Filter selecting USB devices to be auto-redirected when plugged in", "<filter-string>" },
         { "usbredir-redirect-on-connect", 0, 0, G_OPTION_ARG_STRING, &conf->usb_connect_filter,
@@ -219,6 +225,8 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->desktop);
     g_free(conf->proxy_uri);
     g_strfreev(conf->serial_params);
+    g_strfreev(conf->redir_remote);
+    g_strfreev(conf->redir_local);
     g_free(conf->usb_auto_filter);
     g_free(conf->usb_connect_filter);
     g_free(conf->preferred_compression);
@@ -554,6 +562,15 @@ WindowEdge client_conf_get_toolbar_edge(ClientConf * conf) {
     return conf->toolbar_edge;
 }
 
+
+gchar ** client_conf_get_local_redirections(ClientConf * conf) {
+    return conf->redir_local;
+}
+
+
+gchar ** client_conf_get_remote_redirections(ClientConf * conf) {
+    return conf->redir_remote;
+}
 
 /*
  * write_string
