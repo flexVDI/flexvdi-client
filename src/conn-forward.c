@@ -142,12 +142,9 @@ static void close_connection(Connection * conn) {
     close_connection_no_notify(conn);
 }
 
-#define TYPE_ADDRESS_PORT            (address_port_get_type ())
-#define ADDRESS_PORT(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ADDRESS_PORT, AddressPort))
-#define IS_ADDRESS_PORT(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_ADDRESS_PORT))
-#define ADDRESS_PORT_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), TYPE_ADDRESS_PORT, AddressPortClass))
-#define IS_ADDRESS_PORT_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), TYPE_ADDRESS_PORT))
-#define ADDRESS_PORT_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ADDRESS_PORT, AddressPortClass))
+
+#define ADDRESS_PORT_TYPE (address_port_get_type())
+G_DECLARE_FINAL_TYPE(AddressPort, address_port, ADDRESS, PORT, GObject)
 
 typedef struct _AddressPort {
     GObject parent_instance;
@@ -155,38 +152,32 @@ typedef struct _AddressPort {
     gchar * address;
 } AddressPort;
 
-typedef struct _AddressPortClass {
-    GObjectClass parent_class;
-} AddressPortClass;
-
-static GType address_port_get_type(void);
-
 G_DEFINE_TYPE(AddressPort, address_port, G_TYPE_OBJECT);
 
-static void address_port_dispose(GObject * gobject) {
-    G_OBJECT_CLASS(address_port_parent_class)->dispose(gobject);
-}
 
-static void address_port_finalize(GObject * gobject) {
-    AddressPort * self = ADDRESS_PORT(gobject);
-    g_free(self->address);
-    G_OBJECT_CLASS(address_port_parent_class)->finalize(gobject);
-}
+static void address_port_finalize(GObject * gobject);
 
-static void address_port_class_init(AddressPortClass * klass) {
-    GObjectClass * gobject_class = G_OBJECT_CLASS(klass);
-    gobject_class->dispose = address_port_dispose;
+static void address_port_class_init(AddressPortClass * class) {
+    GObjectClass * gobject_class = G_OBJECT_CLASS(class);
     gobject_class->finalize = address_port_finalize;
 }
 
-static void address_port_init (AddressPort * self) {
+
+static void address_port_init(AddressPort * addr) {}
+
+
+static void address_port_finalize(GObject * gobject) {
+    AddressPort * addr = ADDRESS_PORT(gobject);
+    g_free(addr->address);
+    G_OBJECT_CLASS(address_port_parent_class)->finalize(gobject);
 }
 
+
 static gpointer address_port_new(guint16 port, const char * address) {
-    AddressPort * p = g_object_new(TYPE_ADDRESS_PORT, NULL);
-    p->port = port;
-    p->address = g_strdup(address);
-    return p;
+    AddressPort * addr = g_object_new(ADDRESS_PORT_TYPE, NULL);
+    addr->port = port;
+    addr->address = g_strdup(address);
+    return addr;
 }
 
 
