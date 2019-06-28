@@ -38,7 +38,12 @@ G_DEFINE_TYPE(ConnForwarder, conn_forwarder, G_TYPE_OBJECT);
 
 #define WINDOW_SIZE 10*1024*1024
 
-typedef struct Connection {
+
+#define CONNECTION_TYPE (connection_get_type())
+G_DECLARE_FINAL_TYPE(Connection, connection, FLEXVDI, CONNECTION, GObject)
+
+typedef struct _Connection {
+    GObject parent;
     GSocketClient * socket;
     GSocketConnection * conn;
     GCancellable * cancellable;
@@ -47,81 +52,78 @@ typedef struct Connection {
     guint32 data_sent, data_received, ack_interval;
     gboolean connecting;
     ConnForwarder * cf;
-    int refs;
     guint32 id;
 } Connection;
 
-static Connection * new_connection(ConnForwarder * cf, int id, guint32 ack_int) {
-    Connection * conn = (Connection *)g_malloc0(sizeof(Connection));
-    if (conn) {
-        conn->cancellable = g_cancellable_new();
-        conn->refs = 1;
-        conn->id = id;
-        conn->cf = cf;
-        conn->ack_interval = ack_int;
-        conn->connecting = TRUE;
-        conn->write_buffer = g_queue_new();
-    }
+G_DEFINE_TYPE(Connection, connection, G_TYPE_OBJECT);
+
+
+static void connecction_dispose(GObject * gobject);
+static void connection_finalize(GObject * gobject);
+
+static void connection_class_init(ConnectionClass * class) {
+    GObjectClass * gobject_class = G_OBJECT_CLASS(class);
+    gobject_class->dispose = connecction_dispose;
+    gobject_class->finalize = connection_finalize;
+}
+
+
+static void connection_init(Connection * conn) {
+    conn->cancellable = g_cancellable_new();
+    conn->connecting = TRUE;
+    conn->write_buffer = g_queue_new();
+}
+
+
+static void connecction_dispose(GObject * obj) {
+    Connection * conn = FLEXVDI_CONNECTION(obj);
+    g_clear_object(&conn->cancellable);
+    g_clear_object(&conn->socket);
+    G_OBJECT_CLASS(connection_parent_class)->dispose(obj);
+}
+
+
+static void connection_finalize(GObject * gobject) {
+    Connection * conn = FLEXVDI_CONNECTION(gobject);
+    g_debug("Closing connection %u", conn->id);
+    g_io_stream_close((GIOStream *)conn->conn, NULL, NULL);
+    g_queue_free_full(conn->write_buffer, (GDestroyNotify)g_bytes_unref);
+    if (conn->read_buffer)
+        flexvdi_port_delete_msg_buffer(conn->read_buffer);
+    G_OBJECT_CLASS(connection_parent_class)->finalize(gobject);
+}
+
+
+static Connection * connection_new(ConnForwarder * cf, int id, guint32 ack_int) {
+    Connection * conn = g_object_new(CONNECTION_TYPE, NULL);
+    conn->id = id;
+    conn->cf = cf;
+    conn->ack_interval = ack_int;
     return conn;
 }
 
-static void unref_connection(gpointer value) {
-    Connection * conn = (Connection *) value;
-    if (!--conn->refs) {
-        g_debug("Closing connection %u", conn->id);
-        g_object_unref(conn->cancellable);
-        if (conn->conn) {
-            g_io_stream_close((GIOStream *)conn->conn, NULL, NULL);
-        }
-        if (conn->socket) {
-            g_object_unref(conn->socket);
-        }
-        g_queue_free_full(conn->write_buffer, (GDestroyNotify)g_bytes_unref);
-        if (conn->read_buffer)
-            flexvdi_port_delete_msg_buffer(conn->read_buffer);
-        g_free(conn);
-    }
-}
 
-static Connection * new_connection_with_socket(ConnForwarder * cf, int id, guint32 ack_int) {
-    Connection * conn = new_connection(cf, id, ack_int);
-    if (conn) {
-        conn->socket = g_socket_client_new();
-        if (!conn->socket) {
-            unref_connection(conn);
-            return NULL;
-        }
-    }
+static Connection * connection_new_with_socket(ConnForwarder * cf, int id, guint32 ack_int) {
+    Connection * conn = connection_new(cf, id, ack_int);
+    conn->socket = g_socket_client_new();
     return conn;
 }
 
-static Connection * new_open_connection(ConnForwarder * cf, int id, guint32 ack_int,
-                                       GSocketConnection * open_conn) {
-    Connection * conn = new_connection(cf, id, ack_int);
-    if (conn) {
-        conn->conn = open_conn;
-    }
+
+static Connection * connection_new_with_open_socket(ConnForwarder * cf, int id, guint32 ack_int,
+                                                    GSocketConnection * open_conn) {
+    Connection * conn = connection_new(cf, id, ack_int);
+    conn->conn = open_conn;
     return conn;
 }
 
-static void close_agent_connection(ConnForwarder * cf, int id) {
-    uint8_t * buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDIForwardCloseMsg));
-    FlexVDIForwardCloseMsg * closeMsg = (FlexVDIForwardCloseMsg *)buf;
-    closeMsg->id = id;
-    flexvdi_port_send_msg(cf->port, FLEXVDI_FWDCLOSE, buf);
-}
 
-static void close_connection_no_notify(Connection * conn) {
-    g_debug("Start closing connection %u with %d refs", conn->id, conn->refs);
+static void connection_close(Connection * conn) {
+    g_debug("Start closing connection %u", conn->id);
     if (!g_cancellable_is_cancelled(conn->cancellable))
         g_cancellable_cancel(conn->cancellable);
     if (!g_hash_table_remove(conn->cf->connections, GUINT_TO_POINTER(conn->id)))
         g_debug("Connection not found in hash table with id %p???", GUINT_TO_POINTER(conn->id));
-}
-
-static void close_connection(Connection * conn) {
-    close_agent_connection(conn->cf, conn->id);
-    close_connection_no_notify(conn);
 }
 
 
@@ -177,7 +179,7 @@ static void conn_forwarder_init(ConnForwarder * cf) {
     cf->remote_assocs = g_hash_table_new_full(g_direct_hash, g_direct_equal,
                                               NULL, g_object_unref);
     cf->connections = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-                                            NULL, unref_connection);
+                                            NULL, g_object_unref);
     cf->listener = g_socket_listener_new();
     cf->listener_cancellable = g_cancellable_new();
 }
@@ -354,8 +356,8 @@ static void listener_accept_callback(GObject * source_object, GAsyncResult * res
         g_debug("Accepted connection on port %d to %s:%d",
                     port, host->address, host->port);
 
-        Connection * conn = new_open_connection(cf, generate_connection_id(),
-                                               WINDOW_SIZE / 2, sc);
+        Connection * conn = connection_new_with_open_socket(cf, generate_connection_id(),
+                                                            WINDOW_SIZE / 2, sc);
         if (conn) {
             int addr_len = strlen(host->address);
             int msg_len = sizeof(FlexVDIForwardConnectMsg) + addr_len + 1;
@@ -390,6 +392,22 @@ static void program_read(Connection * conn) {
                               conn->cancellable, connection_read_callback, conn);
 }
 
+
+static void close_agent_connection(ConnForwarder * cf, int id) {
+    uint8_t * buf = flexvdi_port_get_msg_buffer(sizeof(FlexVDIForwardCloseMsg));
+    FlexVDIForwardCloseMsg * closeMsg = (FlexVDIForwardCloseMsg *)buf;
+    closeMsg->id = id;
+    flexvdi_port_send_msg(cf->port, FLEXVDI_FWDCLOSE, buf);
+}
+
+
+static void connection_close_unref(Connection * conn) {
+    close_agent_connection(conn->cf, conn->id);
+    connection_close(conn);
+    g_object_unref(conn);
+}
+
+
 static void connection_read_callback(GObject * source_object, GAsyncResult * res,
                                      gpointer user_data) {
     Connection * conn = (Connection *)user_data;
@@ -400,7 +418,7 @@ static void connection_read_callback(GObject * source_object, GAsyncResult * res
     FlexVDIForwardDataMsg * msg = (FlexVDIForwardDataMsg *)conn->read_buffer;
 
     if (g_cancellable_is_cancelled(conn->cancellable)) {
-        unref_connection(conn);
+        g_object_unref(conn);
         return;
     }
 
@@ -410,8 +428,7 @@ static void connection_read_callback(GObject * source_object, GAsyncResult * res
             g_debug("Read error on connection %u: %s", conn->id, error->message);
         else
             g_debug("Connection %u reset by peer", conn->id);
-        close_connection(conn);
-        unref_connection(conn);
+        connection_close_unref(conn);
     } else {
         msg->id = conn->id;
         msg->size = bytes;
@@ -423,7 +440,7 @@ static void connection_read_callback(GObject * source_object, GAsyncResult * res
         if (conn->data_sent < WINDOW_SIZE) {
             program_read(conn);
         } else {
-            unref_connection(conn);
+            g_object_unref(conn);
         }
     }
 }
@@ -440,8 +457,7 @@ static void connection_write_callback(GObject * source_object, GAsyncResult * re
     if (error != NULL) {
         /* Error or connection closed by peer */
         g_debug("Write error on connection %u: %s", conn->id, error->message);
-        close_connection(conn);
-        unref_connection(conn);
+        connection_close_unref(conn);
     } else {
         bytes = (GBytes *)g_queue_pop_head(conn->write_buffer);
         g_debug("Written %d bytes on connection %u", num_written, conn->id);
@@ -457,7 +473,7 @@ static void connection_write_callback(GObject * source_object, GAsyncResult * re
                                         g_bytes_get_size(new_bytes), G_PRIORITY_DEFAULT,
                                         NULL, connection_write_callback, conn);
         } else {
-            unref_connection(conn);
+            g_object_unref(conn);
         }
         g_bytes_unref(bytes);
 
@@ -479,7 +495,7 @@ static void connection_connect_callback(GObject * source_object, GAsyncResult * 
     Connection * conn = (Connection *)user_data;
 
     if (g_cancellable_is_cancelled(conn->cancellable)) {
-        unref_connection(conn);
+        g_object_unref(conn);
         return;
     }
 
@@ -487,8 +503,7 @@ static void connection_connect_callback(GObject * source_object, GAsyncResult * 
     if (!conn->conn) {
         /* Error */
         g_debug("Connection %u could not connect", conn->id);
-        close_connection(conn);
-        unref_connection(conn);
+        connection_close_unref(conn);
     } else {
         conn->connecting = FALSE;
         program_read(conn);
@@ -507,17 +522,16 @@ static void handle_accepted(ConnForwarder * cf, FlexVDIForwardAcceptedMsg * msg)
     Connection * conn = g_hash_table_lookup(cf->connections, id);
     if (conn) {
         g_warning("Connection %u already exists.", msg->id);
-        close_connection_no_notify(conn);
+        connection_close(conn);
     }
 
     local = ADDRESS_PORT(g_hash_table_lookup(cf->remote_assocs, rport));
     g_debug("Connection command, id %u on remote port %d -> %s port %d",
             msg->id, msg->listenId, local->address, local->port);
     if (local) {
-        conn = new_connection_with_socket(cf, msg->id, msg->winSize / 2);
+        conn = connection_new_with_socket(cf, msg->id, msg->winSize / 2);
         if (conn) {
-            g_hash_table_insert(cf->connections, id, conn);
-            conn->refs++;
+            g_hash_table_insert(cf->connections, id, g_object_ref(conn));
             g_socket_client_connect_to_host_async(conn->socket, local->address,
                                                   local->port, conn->cancellable,
                                                   connection_connect_callback, conn);
@@ -549,11 +563,10 @@ static void handle_data(ConnForwarder * cf, FlexVDIForwardDataMsg * msg) {
         chunk = g_bytes_new_with_free_func(msg->data, msg->size, g_free, msg);
         g_queue_push_tail(conn->write_buffer, chunk);
         if (g_queue_get_length(conn->write_buffer) == 1) {
-            conn->refs++;
             stream = g_io_stream_get_output_stream((GIOStream *)conn->conn);
             g_output_stream_write_async(stream, g_bytes_get_data(chunk, NULL),
                                         g_bytes_get_size(chunk), G_PRIORITY_DEFAULT,
-                                        NULL, connection_write_callback, conn);
+                                        NULL, connection_write_callback, g_object_ref(conn));
         }
     }
 }
@@ -562,7 +575,7 @@ static void handle_close(ConnForwarder * cf, FlexVDIForwardCloseMsg * msg) {
     Connection * conn = g_hash_table_lookup(cf->connections, GUINT_TO_POINTER(msg->id));
     if (conn) {
         g_debug("Close command for connection %u", conn->id);
-        close_connection_no_notify(conn);
+        connection_close(conn);
     } else {
         /* This is usually an already closed connection */
         g_debug("Connection %u does not exists.", msg->id);
@@ -579,14 +592,12 @@ static void handle_ack(ConnForwarder * cf, FlexVDIForwardAckMsg * msg) {
         if (conn->connecting) {
             conn->connecting = FALSE;
             conn->ack_interval = msg->winSize / 2;
-            conn->refs++;
-            program_read(conn);
+            program_read(g_object_ref(conn));
         } else {
             guint32 data_sent_before = conn->data_sent;
             conn->data_sent -= msg->size;
             if (conn->data_sent < WINDOW_SIZE && data_sent_before >= WINDOW_SIZE) {
-                conn->refs++;
-                program_read(conn);
+                program_read(g_object_ref(conn));
             }
         }
     } else {
