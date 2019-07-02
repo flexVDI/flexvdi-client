@@ -147,6 +147,7 @@ void print_to_stdout(const gchar * string) {
 void client_log_set_log_levels(const gchar * verbose_str) {
     g_list_free_full(level_for_domains, g_free);
     level_for_domains = NULL;
+    default_level = G_LOG_LEVEL_MESSAGE;
 
     gchar ** levels = g_strsplit(verbose_str, ",", 0), ** level;
     for (level = levels; *level; ++level) {
