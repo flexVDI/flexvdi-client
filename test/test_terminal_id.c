@@ -17,13 +17,35 @@
     along with flexVDI Client. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
 #include <glib.h>
 
 gchar * discover_terminal_id();
 
-int main(int argc, char * argv[]) {
+void test_terminal_id() {
+    int i;
+
+    // Test that the discover_terminal_id function returns a string
+    // that looks like a MAC address and is always the same
     g_autofree gchar * terminal_id = discover_terminal_id();
-    printf("Terminal ID is '%s'\n", terminal_id);
-    return 0;
+    g_assert_true(terminal_id != NULL);
+
+    g_auto(GStrv) terms = g_strsplit(terminal_id, ":", 0);
+    g_assert_cmpint(g_strv_length(terms), ==, 6);
+    for (i = 0; i < 6; ++i) {
+        g_assert_true(terms[i] != NULL);
+        g_assert_cmpint(strlen(terms[i]), ==, 2);
+        g_assert_true(g_ascii_isxdigit(terms[i][0]));
+        g_assert_true(g_ascii_isxdigit(terms[i][1]));
+    }
+
+    g_autofree gchar * terminal_id2 = discover_terminal_id();
+    g_assert_cmpstr(terminal_id, ==, terminal_id2);
+}
+
+int main(int argc, char * argv[]) {
+    g_test_init(&argc, &argv, NULL);
+
+    g_test_add_func("/misc/terminalid", test_terminal_id);
+
+    return g_test_run();
 }
