@@ -123,6 +123,7 @@ add_subdirectory(src)
 
 # Build tests
 if (NOT ANDROID AND NOT IOS)
+enable_testing()
 add_subdirectory(test)
 endif ()
 
