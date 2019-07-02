@@ -35,7 +35,7 @@ static GLogLevelFlags fatal_level = G_LOG_LEVEL_ERROR;
 static FILE * old_stdout = NULL;
 
 
-static int get_level_for_domain(const gchar * domain) {
+int client_log_get_level_for_domain(const gchar * domain) {
     GList * i;
     for (i = level_for_domains; i; i = i->next) {
         LevelForDomain * lfd = (LevelForDomain *)i->data;
@@ -71,7 +71,7 @@ static GLogWriterOutput log_to_file(GLogLevelFlags log_level, const GLogField * 
         for (i = 0; i < n_fields; ++i) {
             if (g_str_equal(fields[i].key, "GLIB_DOMAIN")) {
                 log_domain = (const gchar *)fields[i].value;
-                max_level = get_level_for_domain(log_domain);
+                max_level = client_log_get_level_for_domain(log_domain);
                 break;
             }
         }
@@ -171,7 +171,7 @@ void client_log_set_log_levels(const gchar * verbose_str) {
 
     g_strfreev(levels);
 
-    if (get_level_for_domain("GSpice") == G_LOG_LEVEL_DEBUG)
+    if (client_log_get_level_for_domain("GSpice") == G_LOG_LEVEL_DEBUG)
         g_setenv("SPICE_DEBUG", "1", TRUE);
     else
         g_unsetenv("SPICE_DEBUG");

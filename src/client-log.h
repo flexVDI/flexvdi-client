@@ -42,6 +42,13 @@ void client_log_setup();
 void client_log_set_log_levels(const gchar * levels);
 
 /*
+ * client_log_get_level_for_domain
+ *
+ * Get the log level for a domain.
+ */
+int client_log_get_level_for_domain(const gchar * domain);
+
+/*
  * print_to_stdout
  *
  * A GLib print handler that makes sure messages are printed to stdout.
