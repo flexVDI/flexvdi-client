@@ -65,6 +65,8 @@ static GLogWriterOutput log_to_file(GLogLevelFlags log_level, const GLogField * 
                                     gsize n_fields, gpointer user_data) {
     gsize i;
     const gchar * log_domain = NULL, * message = NULL, * log_level_str;
+    gboolean fatal = log_level & G_LOG_FLAG_FATAL;
+    log_level &= G_LOG_LEVEL_MASK;
 
     GLogLevelFlags max_level = default_level;
     if (level_for_domains != NULL) {
@@ -100,7 +102,7 @@ static GLogWriterOutput log_to_file(GLogLevelFlags log_level, const GLogField * 
     fprintf(stderr, "%s.%03d: %s-%s: %s\n", now_str, g_date_time_get_microsecond(now)/1000,
             log_domain, log_level_str, message);
 
-    if (log_level <= fatal_level) G_BREAKPOINT();
+    if (fatal || log_level <= fatal_level) G_BREAKPOINT();
 
     return G_LOG_WRITER_HANDLED;
 }
@@ -135,6 +137,7 @@ void client_log_setup() {
     const gchar * fatal_str = g_getenv("FLEXVDI_FATAL_LEVEL");
     if (fatal_str) {
         map_level(strtol(fatal_str, NULL, 10), &fatal_level);
+        g_log_set_always_fatal(fatal_level);
     }
 }
 
