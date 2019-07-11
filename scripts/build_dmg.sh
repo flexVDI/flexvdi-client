@@ -37,7 +37,7 @@ for SIZE in 16 32 64 128 256; do
 done
 iconutil -c icns -o flexvdi-client.icns $ICONDIR
 
-python -c "import bundler.main; bundler.main.main(['${PKG_NAME}.bundle'])"
+python2.7 -c "import bundler.main; bundler.main.main(['${PKG_NAME}.bundle'])"
 
 # Remove some extra files that crash the app
 rm -f flexvdi-client.app/Contents/Resources/lib/libbz2.1.0.dylib
