@@ -48,43 +48,43 @@
     ${prefix}/libexec/gstreamer-1.0/gst-plugin-scanner
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstapp.so
+    ${prefix}/lib/gstreamer-1.0/libgstapp.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstcoreelements.so
+    ${prefix}/lib/gstreamer-1.0/libgstcoreelements.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstaudioconvert.so
+    ${prefix}/lib/gstreamer-1.0/libgstaudioconvert.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstaudioresample.so
+    ${prefix}/lib/gstreamer-1.0/libgstaudioresample.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstautodetect.so
+    ${prefix}/lib/gstreamer-1.0/libgstautodetect.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstplayback.so
+    ${prefix}/lib/gstreamer-1.0/libgstplayback.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstjpeg.so
+    ${prefix}/lib/gstreamer-1.0/libgstjpeg.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstvideofilter.so
+    ${prefix}/lib/gstreamer-1.0/libgstvideofilter.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstvideoconvert.so
+    ${prefix}/lib/gstreamer-1.0/libgstvideoconvert.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstvideoscale.so
+    ${prefix}/lib/gstreamer-1.0/libgstvideoscale.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstdeinterlace.so
+    ${prefix}/lib/gstreamer-1.0/libgstdeinterlace.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstosxaudio.so
+    ${prefix}/lib/gstreamer-1.0/libgstosxaudio.dylib
   </binary>
   <binary>
-    ${prefix}/lib/gstreamer-1.0/libgstosxvideo.so
+    ${prefix}/lib/gstreamer-1.0/libgstosxvideo.dylib
   </binary>
 
   <data dest="${bundle}/Contents/Resources">
