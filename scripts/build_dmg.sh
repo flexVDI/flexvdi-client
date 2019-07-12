@@ -39,8 +39,11 @@ iconutil -c icns -o flexvdi-client.icns $ICONDIR
 
 python2.7 -c "import bundler.main; bundler.main.main(['${PKG_NAME}.bundle'])"
 
-# Remove some extra files that crash the app
-rm -f flexvdi-client.app/Contents/Resources/lib/libbz2.1.0.dylib
+# Sign app bundle
+IDENTITY="Developer ID Application: Flexible Software Solutions S.L."
+codesign -s "$IDENTITY" -fv flexvdi-client.app/Contents/MacOS/{flexvdi-client-bin,gst-plugin-scanner}
+find flexvdi-client.app/Contents/Resources/lib -type f | xargs codesign -s "$IDENTITY" -fv
+codesign -s "$IDENTITY" -fv flexvdi-client.app
 
 # Create the DMG image
 hdiutil create -size 45m -fs HFS+ -volname "${PKG_NAME}" "${PKG_NAME}.tmp.dmg"
@@ -83,3 +86,4 @@ sync
 hdiutil detach $DEV
 hdiutil convert "${PKG_NAME}.tmp.dmg" -format UDZO -o "${PKG_NAME}.dmg"
 
+codesign -s "$IDENTITY" -fv "${PKG_NAME}.dmg"
