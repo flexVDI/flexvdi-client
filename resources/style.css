@@ -101,6 +101,15 @@ label.subtitle {
     font-size: 120%;
 }
 
+entry, treeview, .frame {
+    background-color: white;
+    border-color: #b6b6b6;
+}
+
+entry selection {
+    background-color: @selection_color;
+}
+
 treeview:selected {
     background-color: @selection_color;
     color: #ffffff;
