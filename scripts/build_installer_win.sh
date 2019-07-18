@@ -27,7 +27,7 @@ fi
 SYSTEM_DLLS="kernel32.dll user32.dll msvcrt.dll gdi32.dll msimg32.dll advapi32.dll \
     ole32.dll shell32.dll ws2_32.dll dnsapi.dll iphlpapi.dll usp10.dll dwmapi.dll \
     imm32.dll setupapi.dll winmm.dll comctl32.dll comdlg32.dll imm32.dll crypt32.dll \
-    dsound.dll"
+    dsound.dll ucrtbase.dll"
 
 
 walk_dlls() {
