@@ -18,6 +18,7 @@
 !include MUI2.nsh
 !include WinVer.nsh
 !include FileFunc.nsh
+!include x64.nsh
 
 Unicode true
 
@@ -35,7 +36,6 @@ SetCompressor /SOLID /FINAL lzma
 Name "${APPNAME} v${APPVERSION}"
 !define MUI_ICON @PROJECT_BINARY_DIR@/src/icon.ico
 LicenseData "@PROJECT_SOURCE_DIR@/LICENSE"
-InstallDir "$PROGRAMFILES32\${APPNAME}"
 InstallDirRegKey HKLM "${UNINSTALL_KEY}" "InstallLocation"
 RequestExecutionLevel admin
 SetOverwrite on
@@ -142,6 +142,11 @@ Function .onInit
     ${IfNot} ${AtLeastWinVista}
         MessageBox MB_OK "Windows Vista and above required"
         Quit
+    ${EndIf}
+    ${If} ${RunningX64}
+        StrCpy $INSTDIR "@PROGRAMFILES@\${APPNAME}"
+    ${Else}
+        StrCpy $INSTDIR "$PROGRAMFILES\${APPNAME}"
     ${EndIf}
     !insertmacro MUI_LANGDLL_DISPLAY
 FunctionEnd

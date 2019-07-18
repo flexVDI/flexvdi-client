@@ -146,6 +146,11 @@ add_custom_target(dist
                           -o "${PROJECT_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.tar.bz2" HEAD
                   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 if (WIN32)
+    if (ARCH_IS_I386)
+        set(PROGRAMFILES "$PROGRAMFILES")
+    else ()
+        set(PROGRAMFILES "$PROGRAMFILES64")
+    endif ()
     configure_file("${PROJECT_SOURCE_DIR}/scripts/setup-tpl.nsi"
                    "${PROJECT_BINARY_DIR}/setup.nsi" @ONLY)
     add_custom_target(installer DEPENDS flexvdi-client-bin "${PROJECT_BINARY_DIR}/src/icon.ico"

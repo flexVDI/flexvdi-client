@@ -21,7 +21,6 @@ PREFIX="$1"
 BUILD_TYPE="$2"
 if file src/flexvdi-client.exe | grep -q x86-64; then
     HOST=x86_64-w64-mingw32
-    sed -i s/PROGRAMFILES32/PROGRAMFILES64/ setup.nsi
 else
     HOST=i686-w64-mingw32
 fi
