@@ -753,14 +753,13 @@ void client_conf_share_printer(ClientConf * conf, const gchar * printer, gboolea
 }
 
 
-void client_conf_set_window_size(ClientConf * conf, gint id, int width,
+void client_conf_set_window_size(ClientConf * conf, int width,
                                  int height, gboolean maximized, int monitor) {
     if (conf->kiosk_mode) return;
 
     g_autofree gchar * encoded_size = g_strdup_printf("%d,%d,%s,%d",
         width, height, maximized ? "true" : "false", monitor);
-    g_autofree gchar * id_str = g_strdup_printf("%d", id);
-    write_string(conf->file, "Layout", id_str, encoded_size);
+    write_string(conf->file, "Layout", "0", encoded_size);
 }
 
 
@@ -825,11 +824,10 @@ static void read_int(GKeyFile * file, const gchar * group, const gchar * key, gi
 }
 
 
-gboolean client_conf_get_window_size(ClientConf * conf, gint id,
+gboolean client_conf_get_window_size(ClientConf * conf,
     int * width, int * height, gboolean * maximized, int * monitor) {
     g_autofree gchar * encoded_size = NULL;
-    g_autofree gchar * id_str = g_strdup_printf("%d", id);
-    read_string(conf->file, "Layout", id_str, &encoded_size);
+    read_string(conf->file, "Layout", "0", &encoded_size);
     if (encoded_size != NULL) {
         gchar ** size_terms = g_strsplit(encoded_size, ",", 0);
         if (g_strv_length(size_terms) >= 4) {

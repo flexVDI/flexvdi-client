@@ -182,6 +182,7 @@ static void spice_window_init(SpiceWindow * win) {
     gtk_menu_button_set_menu_model(win->keys_button, keys_menu);
     g_object_unref(builder);
 
+    win->window_monitor = -1;
     win->printer_actions = g_simple_action_group_new();
     win->printers_menu = g_menu_new();
     win->printer_name_for_actions = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, g_free);
@@ -288,11 +289,10 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
         g_signal_connect(guest_port, "agent-connected", G_CALLBACK(guest_agent_connected), win);
         if (flexvdi_port_is_agent_connected(client_conn_get_guest_agent_port(conn)))
             guest_agent_connected(guest_port, TRUE, win);
-    }
 
-    win->window_monitor = -1;
-    if (client_conf_get_window_size(conf, monitor, &win->width, &win->height, &win->maximized, &win->window_monitor)) {
-        gtk_window_set_default_size(GTK_WINDOW(win), win->width, win->height);
+        if (client_conf_get_window_size(conf, &win->width, &win->height, &win->maximized, &win->window_monitor)) {
+            gtk_window_set_default_size(GTK_WINDOW(win), win->width, win->height);
+        }
     }
 
     switch (client_conf_get_toolbar_edge(conf)) {
@@ -362,10 +362,12 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
     g_signal_connect_swapped(gtk_menu_button_get_popover(win->usb_button), "closed",
                              G_CALLBACK(gtk_widget_grab_focus), win->spice);
 
-    gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
-    if (win->window_monitor == -1)
-        win->window_monitor = get_monitor(win);
-    client_conf_set_window_size(win->conf, win->monitor, win->width, win->height, win->maximized, win->window_monitor);
+    if (win->monitor == 0) {
+        gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
+        if (win->window_monitor == -1)
+            win->window_monitor = get_monitor(win);
+        client_conf_set_window_size(win->conf, win->width, win->height, win->maximized, win->window_monitor);
+    }
 
     if (flexvdi_port_is_agent_connected(client_conn_get_guest_agent_port(win->conn)))
         set_printers_menu_visibility(win);
@@ -377,10 +379,14 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
 
     GdkRectangle r;
     GdkDisplay * display = gdk_display_get_default();
-    GdkMonitor * monitor = gdk_display_get_monitor(display, win->window_monitor);
+    GdkMonitor * monitor;
+    if (win->monitor == 0)
+        monitor = gdk_display_get_monitor(display, win->window_monitor);
+    else
+        monitor = gdk_display_get_monitor(display, win->monitor);
     gdk_monitor_get_geometry(monitor, &r);
     gtk_window_move(GTK_WINDOW(win), r.x + (r.width - win->width) / 2, r.y + (r.height - win->height) / 2);
-    if (win->maximized) gtk_window_maximize(GTK_WINDOW(win));
+    if (win->monitor == 0 && win->maximized) gtk_window_maximize(GTK_WINDOW(win));
 
     // Do not go fullscreen until a map event is received, or it will fail in Windows.
 }
@@ -388,11 +394,13 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
 static gboolean configure_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(widget);
 
-    // Do not save the window size here. Save it only when the spice widget's size changes.
-    // In this way, we prevent unwanted effects, like saving the size while the window
-    // is changing to fullscreen state.
-    win->window_monitor = get_monitor(win);
-    client_conf_set_window_size(win->conf, win->monitor, win->width, win->height, win->maximized, win->window_monitor);
+    if (win->monitor == 0) {
+        // Do not save the window size here. Save it only when the spice widget's size changes.
+        // In this way, we prevent unwanted effects, like saving the size while the window
+        // is changing to fullscreen state.
+        win->window_monitor = get_monitor(win);
+        client_conf_set_window_size(win->conf, win->width, win->height, win->maximized, win->window_monitor);
+    }
 
     return GDK_EVENT_PROPAGATE;
 }
@@ -401,9 +409,9 @@ static void spice_size_allocate(GtkWidget * widget, GdkRectangle * a, gpointer u
     SpiceWindow * win = SPICE_WIN(user_data);
 
     // Save the window geometry only if we are not maximized or fullscreen.
-    if (!(win->maximized || win->fullscreen)) {
+    if (win->monitor == 0 && !(win->maximized || win->fullscreen)) {
         gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
-        client_conf_set_window_size(win->conf, win->monitor, win->width, win->height, win->maximized, win->window_monitor);
+        client_conf_set_window_size(win->conf, win->width, win->height, win->maximized, win->window_monitor);
     }
 }
 
@@ -512,9 +520,11 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
         (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0;
     win->fullscreen =
         (event->new_window_state & GDK_WINDOW_STATE_FULLSCREEN) != 0;
-    win->window_monitor = get_monitor(win);
-    client_conf_set_window_size(win->conf, win->monitor, win->width, win->height, win->maximized, win->window_monitor);
-    client_conf_set_fullscreen(win->conf, win->fullscreen);
+    if (win->monitor == 0) {
+        win->window_monitor = get_monitor(win);
+        client_conf_set_window_size(win->conf, win->width, win->height, win->maximized, win->window_monitor);
+        client_conf_set_fullscreen(win->conf, win->fullscreen);
+    }
 
     if (event->changed_mask & GDK_WINDOW_STATE_FULLSCREEN) {
         if (win->fullscreen) {
