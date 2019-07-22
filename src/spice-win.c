@@ -34,13 +34,13 @@ struct _SpiceWindow {
     GtkApplicationWindow parent;
     ClientConn * conn;
     ClientConf * conf;
-    gint id;
+    gint monitor;
     SpiceChannel * display_channel;
     gint width, height;
     gboolean initially_fullscreen;
     gboolean fullscreen;
     gboolean maximized;
-    gint monitor;
+    gint window_monitor;
     GtkRevealer * revealer;
     SpiceDisplay * spice;
     GtkBox * content_box;
@@ -204,7 +204,7 @@ static void spice_window_dispose(GObject * obj) {
 
 static void spice_window_finalize(GObject * obj) {
     SpiceWindow * win = SPICE_WIN(obj);
-    g_debug("destroy window (#%d)", win->id);
+    g_debug("destroy window (#%d)", win->monitor);
     G_OBJECT_CLASS(spice_window_parent_class)->finalize(obj);
 }
 
@@ -220,11 +220,11 @@ void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
                         GError * error, gpointer user_data);
 
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
-                               ClientConf * conf, int id, gchar * title) {
+                               ClientConf * conf, int monitor, gchar * title) {
     SpiceWindow * win = g_object_new(SPICE_WIN_TYPE,
                                      "title", title,
                                      NULL);
-    win->id = id;
+    win->monitor = monitor;
     win->conn = g_object_ref(conn);
     win->conf = g_object_ref(conf);
     win->display_channel = g_object_ref(channel);
@@ -233,7 +233,7 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
 
     /* spice display */
     SpiceSession * session = client_conn_get_session(conn);
-    win->spice = spice_display_new_with_monitor(session, 0, id);
+    win->spice = spice_display_new_with_monitor(session, 0, monitor);
     gtk_box_pack_end(win->content_box, GTK_WIDGET(win->spice), TRUE, TRUE, 0);
     gtk_widget_grab_focus(GTK_WIDGET(win->spice));
 
@@ -283,15 +283,15 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
         gtk_container_remove(GTK_CONTAINER(win->toolbar), GTK_WIDGET(win->paste_button));
     }
     spice_window_get_printers(win);
-    if (win->id == 0) {
+    if (win->monitor == 0) {
         FlexvdiPort * guest_port = client_conn_get_guest_agent_port(conn);
         g_signal_connect(guest_port, "agent-connected", G_CALLBACK(guest_agent_connected), win);
         if (flexvdi_port_is_agent_connected(client_conn_get_guest_agent_port(conn)))
             guest_agent_connected(guest_port, TRUE, win);
     }
 
-    win->monitor = -1;
-    if (client_conf_get_window_size(conf, id, &win->width, &win->height, &win->maximized, &win->monitor)) {
+    win->window_monitor = -1;
+    if (client_conf_get_window_size(conf, monitor, &win->width, &win->height, &win->maximized, &win->window_monitor)) {
         gtk_window_set_default_size(GTK_WINDOW(win), win->width, win->height);
     }
 
@@ -363,9 +363,9 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
                              G_CALLBACK(gtk_widget_grab_focus), win->spice);
 
     gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
-    if (win->monitor == -1)
-        win->monitor = get_monitor(win);
-    client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
+    if (win->window_monitor == -1)
+        win->window_monitor = get_monitor(win);
+    client_conf_set_window_size(win->conf, win->monitor, win->width, win->height, win->maximized, win->window_monitor);
 
     if (flexvdi_port_is_agent_connected(client_conn_get_guest_agent_port(win->conn)))
         set_printers_menu_visibility(win);
@@ -377,7 +377,7 @@ static void realize_window(GtkWidget * toplevel, gpointer user_data) {
 
     GdkRectangle r;
     GdkDisplay * display = gdk_display_get_default();
-    GdkMonitor * monitor = gdk_display_get_monitor(display, win->monitor);
+    GdkMonitor * monitor = gdk_display_get_monitor(display, win->window_monitor);
     gdk_monitor_get_geometry(monitor, &r);
     gtk_window_move(GTK_WINDOW(win), r.x + (r.width - win->width) / 2, r.y + (r.height - win->height) / 2);
     if (win->maximized) gtk_window_maximize(GTK_WINDOW(win));
@@ -391,8 +391,8 @@ static gboolean configure_event(GtkWidget * widget, GdkEvent * event, gpointer u
     // Do not save the window size here. Save it only when the spice widget's size changes.
     // In this way, we prevent unwanted effects, like saving the size while the window
     // is changing to fullscreen state.
-    win->monitor = get_monitor(win);
-    client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
+    win->window_monitor = get_monitor(win);
+    client_conf_set_window_size(win->conf, win->monitor, win->width, win->height, win->maximized, win->window_monitor);
 
     return GDK_EVENT_PROPAGATE;
 }
@@ -403,7 +403,7 @@ static void spice_size_allocate(GtkWidget * widget, GdkRectangle * a, gpointer u
     // Save the window geometry only if we are not maximized or fullscreen.
     if (!(win->maximized || win->fullscreen)) {
         gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
-        client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
+        client_conf_set_window_size(win->conf, win->monitor, win->width, win->height, win->maximized, win->window_monitor);
     }
 }
 
@@ -512,8 +512,8 @@ static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
         (event->new_window_state & GDK_WINDOW_STATE_MAXIMIZED) != 0;
     win->fullscreen =
         (event->new_window_state & GDK_WINDOW_STATE_FULLSCREEN) != 0;
-    win->monitor = get_monitor(win);
-    client_conf_set_window_size(win->conf, win->id, win->width, win->height, win->maximized, win->monitor);
+    win->window_monitor = get_monitor(win);
+    client_conf_set_window_size(win->conf, win->monitor, win->width, win->height, win->maximized, win->window_monitor);
     client_conf_set_fullscreen(win->conf, win->fullscreen);
 
     if (event->changed_mask & GDK_WINDOW_STATE_FULLSCREEN) {
@@ -860,9 +860,8 @@ void spice_win_release_mouse_pointer(SpiceWindow * win) {
         gdk_window_set_cursor(window, NULL);
 }
 
-
 int spice_window_get_monitor(SpiceWindow * win) {
-    return win->id;
+    return win->monitor;
 }
 
 

@@ -30,7 +30,7 @@
 G_DECLARE_FINAL_TYPE(SpiceWindow, spice_window, SPICE, WIN, GtkApplicationWindow)
 
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
-                               ClientConf * conf, int id, gchar * title);
+                               ClientConf * conf, int monitor, gchar * title);
 void spice_win_set_cp_sensitive(SpiceWindow * win, gboolean copy, gboolean paste);
 void spice_win_show_notification(SpiceWindow * win, const gchar * text, gint duration);
 void spice_win_release_mouse_pointer(SpiceWindow * win);
