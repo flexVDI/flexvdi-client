@@ -43,6 +43,7 @@ struct _ClientConf {
     gchar * desktop;
     gchar * proxy_uri;
     gboolean fullscreen;
+    gboolean multimonitor;
     gint inactivity_timeout;
     gboolean disable_printing;
     gboolean auto_clipboard;
@@ -115,6 +116,10 @@ static void client_conf_init(ClientConf * conf) {
         "Show desktop in fullscreen mode", NULL },
         { "no-fullscreen", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
         G_OPTION_ARG_NONE, &conf->fullscreen, "", NULL },
+        { "multimonitor", 'f', 0, G_OPTION_ARG_NONE, &conf->multimonitor,
+        "Use all the monitors in fullscreen mode", NULL },
+        { "no-multimonitor", 0, G_OPTION_FLAG_HIDDEN | G_OPTION_FLAG_REVERSE,
+        G_OPTION_ARG_NONE, &conf->multimonitor, "", NULL },
         { "inactivity-timeout", 0, 0, G_OPTION_ARG_INT, &conf->inactivity_timeout,
         "Close the client after a certain time of inactivity", "<seconds>" },
         { "flexvdi-disable-printing", 0, 0, G_OPTION_ARG_NONE, &conf->disable_printing,
@@ -497,6 +502,11 @@ gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path) {
 
 gboolean client_conf_get_fullscreen(ClientConf * conf) {
     return conf->fullscreen || conf->kiosk_mode;
+}
+
+
+gboolean client_conf_get_multimonitor(ClientConf * conf) {
+    return conf->multimonitor;
 }
 
 

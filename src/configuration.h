@@ -122,6 +122,7 @@ const gchar * client_conf_get_proxy_uri(ClientConf * conf);
 gboolean client_conf_get_kiosk_mode(ClientConf * conf);
 gchar * client_conf_get_connection_uri(ClientConf * conf, const gchar * path);
 gboolean client_conf_get_fullscreen(ClientConf * conf);
+gboolean client_conf_get_multimonitor(ClientConf * conf);
 gchar ** client_conf_get_serial_params(ClientConf * conf);
 gboolean client_conf_get_disable_printing(ClientConf * conf);
 const gchar * client_conf_get_terminal_id(ClientConf * conf);
