@@ -859,3 +859,8 @@ void spice_win_release_mouse_pointer(SpiceWindow * win) {
     if (window)
         gdk_window_set_cursor(window, NULL);
 }
+
+
+int spice_window_get_monitor(SpiceWindow * win) {
+    return win->id;
+}

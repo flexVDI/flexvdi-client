@@ -34,8 +34,6 @@
 #include "printclient.h"
 #include "about.h"
 
-#define MAX_WINDOWS 16
-
 
 #ifdef _WIN32
 static void print_to_dialog(const gchar * string) {
@@ -80,7 +78,6 @@ struct _ClientApp {
     gchar * desktop_name;
     GHashTable * desktops;
     SpiceMainChannel * main;
-    SpiceWindow * windows[MAX_WINDOWS];
     gint64 last_input_time;
     gboolean autologin;
 };
@@ -353,12 +350,6 @@ static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_da
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_USER);
     if (app->main_window != NULL && GTK_WIDGET(app->main_window) == widget) {
         app->main_window = NULL;
-    } else {
-        for (i = 0; i < MAX_WINDOWS; ++i) {
-            if (GTK_WIDGET(app->windows[i]) == widget) {
-                app->windows[i] = NULL;
-            }
-        }
     }
 
     return FALSE;
@@ -661,6 +652,19 @@ static void client_app_close_windows(ClientApp * app) {
 }
 
 
+static SpiceWindow * get_window_for_monitor(ClientApp * app, int monitor) {
+    GList * window = gtk_application_get_windows(GTK_APPLICATION(app));
+    for (; window != NULL; window = window->next) {
+        if (SPICE_IS_WIN(window->data)) {
+            SpiceWindow * win = SPICE_WIN(window->data);
+            if (spice_window_get_monitor(win) == monitor)
+                return win;
+        }
+    }
+    return NULL;
+}
+
+
 /*
  * Connection disconnected handler. If the connection fails at startup and the main
  * window is still showing, show an error message and return to login. Otherwise, show
@@ -675,9 +679,10 @@ static void connection_disconnected(ClientConn * conn, ClientConnDisconnectReaso
         client_app_window_set_central_widget_sensitive(app->main_window, TRUE);
     } else {
         if (reason != CLIENT_CONN_DISCONNECT_USER) {
-            for (i = 0; i < MAX_WINDOWS; ++i)
-                if (app->windows[i])
-                    spice_win_release_mouse_pointer(app->windows[i]);
+            GList * window = gtk_application_get_windows(GTK_APPLICATION(app));
+            for (; window != NULL; window = window->next)
+                if (SPICE_IS_WIN(window->data))
+                    spice_win_release_mouse_pointer(SPICE_WIN(window->data));
             GtkMessageType type =
                 reason == CLIENT_CONN_DISCONNECT_NO_ERROR || reason == CLIENT_CONN_DISCONNECT_INACTIVITY ?
                     GTK_MESSAGE_INFO : GTK_MESSAGE_ERROR;
@@ -761,7 +766,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
     g_debug("Reported %d monitors in display channel %d", monitors->len, id);
 
     for (i = 0; i < monitors->len; ++i) {
-        if (!app->windows[i]) {
+        if (!get_window_for_monitor(app, i)) {
             g_autofree gchar * name = NULL;
             if (app->desktop_name) {
                 name = g_strdup(app->desktop_name);
@@ -770,7 +775,6 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
             }
             g_autofree gchar * title = g_strdup_printf("%s - flexVDI Client", name);
             SpiceWindow * win = spice_window_new(app->connection, display, app->conf, i, title);
-            app->windows[i] = win;
             // Inform GTK that this is an application window
             gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(win));
             spice_g_signal_connect_object(display, "display-mark",
@@ -800,14 +804,6 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
         }
     }
 
-    for (; i < MAX_WINDOWS; ++i) {
-        if (!app->windows[i]) continue;
-        gtk_widget_destroy(GTK_WIDGET(app->windows[i]));
-        app->windows[i] = NULL;
-        spice_main_channel_update_display_enabled(app->main, i, FALSE, TRUE);
-        spice_main_channel_send_monitor_config(app->main);
-    }
-
     g_clear_pointer(&monitors, g_array_unref);
 }
 
@@ -834,12 +830,10 @@ static void set_cp_sensitive(SpiceWindow * win, ClientApp * app) {
 
 
 static void main_agent_update(SpiceChannel * channel, ClientApp * app) {
-    int i;
-    for (i = 0; i < MAX_WINDOWS; ++i) {
-        if (app->windows[i]) {
-            set_cp_sensitive(app->windows[i], app);
-        }
-    }
+    GList * window = gtk_application_get_windows(GTK_APPLICATION(app));
+    for (; window != NULL; window = window->next)
+        if (SPICE_IS_WIN(window->data))
+            set_cp_sensitive(SPICE_WIN(window->data), app);
 }
 
 
