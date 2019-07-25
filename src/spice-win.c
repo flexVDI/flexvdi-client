@@ -149,11 +149,6 @@ static gboolean user_activity(SpiceWindow * win) {
     return GDK_EVENT_PROPAGATE;
 }
 
-static void focus_spice_widget(GtkPopover * popover, gpointer user_data) {
-    SpiceWindow * win = SPICE_WIN(user_data);
-    gtk_widget_grab_focus(GTK_WIDGET(win->spice));
-}
-
 static void spice_window_init(SpiceWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
 
@@ -192,13 +187,6 @@ static void spice_window_init(SpiceWindow * win) {
     win->printer_name_for_actions = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, g_free);
     gtk_widget_insert_action_group(GTK_WIDGET(win), "printer", G_ACTION_GROUP(win->printer_actions));
     gtk_menu_button_set_menu_model(win->printers_button, G_MENU_MODEL(win->printers_menu));
-
-    g_signal_connect(gtk_menu_button_get_popover(win->keys_button), "closed",
-                     G_CALLBACK(focus_spice_widget), win);
-    g_signal_connect(gtk_menu_button_get_popover(win->printers_button), "closed",
-                     G_CALLBACK(focus_spice_widget), win);
-    g_signal_connect(gtk_menu_button_get_popover(win->usb_button), "closed",
-                     G_CALLBACK(focus_spice_widget), win);
 }
 
 static void spice_window_dispose(GObject * obj) {
@@ -366,6 +354,13 @@ static int get_monitor(SpiceWindow * win) {
 
 static void realize_window(GtkWidget * toplevel, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(user_data);
+
+    g_signal_connect_swapped(gtk_menu_button_get_popover(win->keys_button), "closed",
+                             G_CALLBACK(gtk_widget_grab_focus), win->spice);
+    g_signal_connect_swapped(gtk_menu_button_get_popover(win->printers_button), "closed",
+                             G_CALLBACK(gtk_widget_grab_focus), win->spice);
+    g_signal_connect_swapped(gtk_menu_button_get_popover(win->usb_button), "closed",
+                             G_CALLBACK(gtk_widget_grab_focus), win->spice);
 
     gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
     if (win->monitor == -1)
