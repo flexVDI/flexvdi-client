@@ -71,6 +71,7 @@ struct _SpiceWindow {
 
 enum {
     SPICE_WIN_USER_ACTIVITY = 0,
+    SPICE_WIN_BUTTON,
     SPICE_WIN_LAST_SIGNAL
 };
 
@@ -119,6 +120,18 @@ static void spice_window_class_init(SpiceWindowClass * class) {
                      g_cclosure_marshal_VOID__VOID,
                      G_TYPE_NONE,
                      0);
+
+    // Emited when the user presses a button in the toolbar that is managed app-widely
+    signals[SPICE_WIN_BUTTON] =
+        g_signal_new("button-clicked",
+                     SPICE_WIN_TYPE,
+                     G_SIGNAL_RUN_FIRST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__INT,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_INT);
 }
 
 static void realize_window(GtkWidget * toplevel, gpointer user_data);
@@ -128,8 +141,6 @@ static void copy_from_guest(GtkToolButton * toolbutton, gpointer user_data);
 static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data);
 static gboolean window_state_cb(GtkWidget * widget, GdkEventWindowState * event,
                                 gpointer user_data);
-static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data);
-static void minimize(GtkToolButton * toolbutton, gpointer user_data);
 static void power_event_cb(GtkToolButton * toolbutton, gpointer user_data);
 static void keystroke(GSimpleAction * action, GVariant * parameter, gpointer user_data);
 static void show_about(GtkToolButton * toolbutton, gpointer user_data);
@@ -149,15 +160,28 @@ static gboolean user_activity(SpiceWindow * win) {
     return GDK_EVENT_PROPAGATE;
 }
 
+static void emit_button_signal(GtkToolButton * toolbutton, SpiceWindow * win) {
+    int button;
+    if (toolbutton == win->close_button) button = SPICE_WINDOW_BUTTON_CLOSE;
+    else if (toolbutton == win->minimize_button) button = SPICE_WINDOW_BUTTON_MINIMIZE;
+    else if (toolbutton == win->fullscreen_button) button = SPICE_WINDOW_BUTTON_FULLSCREEN;
+    else if (toolbutton == win->restore_button) button = SPICE_WINDOW_BUTTON_RESTORE;
+    else {
+        g_warning("Unknown toolbar button pressed!");
+        return;
+    }
+    g_signal_emit(win, signals[SPICE_WIN_BUTTON], 0, button);
+}
+
 static void spice_window_init(SpiceWindow * win) {
     gtk_widget_init_template(GTK_WIDGET(win));
 
-    g_signal_connect_swapped(win->close_button, "clicked", G_CALLBACK(gtk_window_close), win);
+    g_signal_connect(win->close_button, "clicked", G_CALLBACK(emit_button_signal), win);
     g_signal_connect(win->copy_button, "clicked", G_CALLBACK(copy_from_guest), win);
     g_signal_connect(win->paste_button, "clicked", G_CALLBACK(paste_to_guest), win);
-    g_signal_connect(win->fullscreen_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
-    g_signal_connect(win->restore_button, "clicked", G_CALLBACK(toggle_fullscreen), win);
-    g_signal_connect(win->minimize_button, "clicked", G_CALLBACK(minimize), win);
+    g_signal_connect(win->fullscreen_button, "clicked", G_CALLBACK(emit_button_signal), win);
+    g_signal_connect(win->restore_button, "clicked", G_CALLBACK(emit_button_signal), win);
+    g_signal_connect(win->minimize_button, "clicked", G_CALLBACK(emit_button_signal), win);
     g_signal_connect(win->reboot_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win->shutdown_button, "clicked", G_CALLBACK(power_event_cb), win);
     g_signal_connect(win->poweroff_button, "clicked", G_CALLBACK(power_event_cb), win);
@@ -287,7 +311,7 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     if (win->monitor == 0) {
         FlexvdiPort * guest_port = client_conn_get_guest_agent_port(conn);
         g_signal_connect(guest_port, "agent-connected", G_CALLBACK(guest_agent_connected), win);
-        if (flexvdi_port_is_agent_connected(client_conn_get_guest_agent_port(conn)))
+        if (flexvdi_port_is_agent_connected(guest_port))
             guest_agent_connected(guest_port, TRUE, win);
 
         if (client_conf_get_window_size(conf, &win->width, &win->height, &win->maximized, &win->window_monitor)) {
@@ -462,8 +486,7 @@ static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data) {
     );
 }
 
-static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data) {
-    SpiceWindow * win = SPICE_WIN(user_data);
+void spice_window_toggle_fullscreen(SpiceWindow * win) {
     if (win->fullscreen) {
 #ifdef __APPLE__
         ns(win).level = NSNormalWindowLevel;
@@ -472,11 +495,6 @@ static void toggle_fullscreen(GtkToolButton * toolbutton, gpointer user_data) {
     } else {
         gtk_window_fullscreen(GTK_WINDOW(win));
     }
-}
-
-static void minimize(GtkToolButton * toolbutton, gpointer user_data) {
-    SpiceWindow * win = SPICE_WIN(user_data);
-    gtk_window_iconify(GTK_WINDOW(win));
 }
 
 #ifndef GDK_WINDOWING_X11

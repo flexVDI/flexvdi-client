@@ -724,6 +724,7 @@ static void connection_disconnected(ClientConn * conn, ClientConnDisconnectReaso
 static void spice_win_display_mark(SpiceChannel * channel, gint mark, SpiceWindow * win);
 static void set_cp_sensitive(SpiceWindow * win, ClientApp * app);
 static void user_activity_cb(SpiceWindow * win, ClientApp * app);
+static void button_clicked_cb(SpiceWindow * win, SpiceWindowButton button, ClientApp * app);
 
 /*
  * Monitor changes handler. Creates a SpiceWindow for each new monitor.
@@ -770,6 +771,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
             g_signal_connect(win, "user-activity", G_CALLBACK(user_activity_cb), app);
             if (monitors->len == 1)
                 gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER);
+            g_signal_connect(win, "button-clicked", G_CALLBACK(button_clicked_cb), app);
             gtk_widget_show_all(GTK_WIDGET(win));
             set_cp_sensitive(win, app);
             if (app->main_window) {
@@ -900,4 +902,26 @@ static gboolean check_ungrab(gpointer user_data) {
     }
 
     return FALSE;
+}
+
+
+/*
+ * Toolbar button clicked. This callback is called for those toolbar buttons
+ * that trigger app-wide actions, like closing the client, going fullscreen/minimize, etc.
+ */
+static void button_clicked_cb(SpiceWindow * win, SpiceWindowButton button, ClientApp * app) {
+    if (button == SPICE_WINDOW_BUTTON_CLOSE) {
+        if (app->connection)
+            client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_USER);
+    } else {
+        GList * window = gtk_application_get_windows(GTK_APPLICATION(app));
+        for (; window != NULL; window = window->next)
+            if (SPICE_IS_WIN(window->data)) {
+                if (button == SPICE_WINDOW_BUTTON_MINIMIZE) {
+                    gtk_window_iconify(GTK_WINDOW(window->data));
+                } else {
+                    spice_window_toggle_fullscreen(SPICE_WIN(window->data));
+                }
+            }
+    }
 }

@@ -29,6 +29,14 @@
 #define SPICE_WIN_TYPE (spice_window_get_type())
 G_DECLARE_FINAL_TYPE(SpiceWindow, spice_window, SPICE, WIN, GtkApplicationWindow)
 
+typedef enum {
+    SPICE_WINDOW_BUTTON_CLOSE,
+    SPICE_WINDOW_BUTTON_MINIMIZE,
+    SPICE_WINDOW_BUTTON_FULLSCREEN,
+    SPICE_WINDOW_BUTTON_RESTORE,
+    SPICE_WINDOW_BUTTON_LAST
+} SpiceWindowButton;
+
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
                                ClientConf * conf, int monitor, gchar * title);
 void spice_win_set_cp_sensitive(SpiceWindow * win, gboolean copy, gboolean paste);
@@ -36,5 +44,6 @@ void spice_win_show_notification(SpiceWindow * win, const gchar * text, gint dur
 void spice_win_release_mouse_pointer(SpiceWindow * win);
 int spice_window_get_monitor(SpiceWindow * win);
 void spice_window_enable_grabbing(SpiceWindow * win, gboolean enable);
+void spice_window_toggle_fullscreen(SpiceWindow * win);
 
 #endif /* _SPICE_WIN_H */
