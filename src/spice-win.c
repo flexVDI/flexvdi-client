@@ -864,3 +864,8 @@ void spice_win_release_mouse_pointer(SpiceWindow * win) {
 int spice_window_get_monitor(SpiceWindow * win) {
     return win->id;
 }
+
+
+void spice_window_enable_grabbing(SpiceWindow * win, gboolean enable) {
+    g_object_set(win->spice, "grab-keyboard", enable, "grab-mouse", enable, NULL);
+}

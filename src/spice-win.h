@@ -35,5 +35,6 @@ void spice_win_set_cp_sensitive(SpiceWindow * win, gboolean copy, gboolean paste
 void spice_win_show_notification(SpiceWindow * win, const gchar * text, gint duration);
 void spice_win_release_mouse_pointer(SpiceWindow * win);
 int spice_window_get_monitor(SpiceWindow * win);
+void spice_window_enable_grabbing(SpiceWindow * win, gboolean enable);
 
 #endif /* _SPICE_WIN_H */

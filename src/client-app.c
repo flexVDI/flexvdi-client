@@ -80,6 +80,7 @@ struct _ClientApp {
     SpiceMainChannel * main;
     gint64 last_input_time;
     gboolean autologin;
+    gboolean grab_disabled;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -564,6 +565,7 @@ static void connection_disconnected(ClientConn * conn, ClientConnDisconnectReaso
 void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
                         GError * error, gpointer user_data);
 static gboolean check_inactivity(gpointer user_data);
+static gboolean check_ungrab(gpointer user_data);
 
 /*
  * Start the Spice connection with the current parameters, in the configuration object.
@@ -783,11 +785,12 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
                 g_signal_connect(win, "delete-event", G_CALLBACK(delete_cb), app);
 
                 // Start the inactivity timeout when the first window is created
+                app->last_input_time = g_get_monotonic_time();
                 gint inactivity_timeout = client_conf_get_inactivity_timeout(app->conf);
                 if (inactivity_timeout >= 40) {
-                    app->last_input_time = g_get_monotonic_time();
                     check_inactivity(app);
                 }
+                check_ungrab(app);
             }
             g_signal_connect(win, "user-activity", G_CALLBACK(user_activity_cb), app);
             if (monitors->len == 1)
@@ -860,6 +863,12 @@ void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
  */
 static void user_activity_cb(SpiceWindow * win, ClientApp * app) {
     app->last_input_time = g_get_monotonic_time();
+    if (app->grab_disabled) {
+        g_debug("Enable grabbing");
+        spice_window_enable_grabbing(win, TRUE);
+        app->grab_disabled = FALSE;
+        check_ungrab(app);
+    }
 }
 
 
@@ -890,6 +899,29 @@ static gboolean check_inactivity(gpointer user_data) {
         }
     } else {
         g_timeout_add(time_to_inactivity - 30000, check_inactivity, app);
+    }
+
+    return FALSE;
+}
+
+
+static gboolean check_ungrab(gpointer user_data) {
+    ClientApp * app = CLIENT_APP(user_data);
+    gint64 now = g_get_monotonic_time();
+    // Ungrab after 55 seconds, to avoid race condition with a 1-minute screenlock timeout
+    gint time_to_ungrab = (app->last_input_time - now)/1000 + 55000;
+
+    if (time_to_ungrab <= 0) {
+        g_debug("Disable grabbing so that screen saver can run");
+        GList * window = gtk_application_get_windows(GTK_APPLICATION(app));
+        for (; window != NULL; window = window->next) {
+            if (SPICE_IS_WIN(window->data)) {
+                spice_window_enable_grabbing(SPICE_WIN(window->data), FALSE);
+            }
+        }
+        app->grab_disabled = TRUE;
+    } else {
+        g_timeout_add(time_to_ungrab, check_ungrab, app);
     }
 
     return FALSE;
