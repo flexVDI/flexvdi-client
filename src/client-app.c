@@ -348,7 +348,6 @@ static void desktop_selected_handler(ClientAppWindow * win, gpointer user_data) 
  */
 static gboolean delete_cb(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
-    int i;
 
     if (app->connection)
         client_conn_disconnect(app->connection, CLIENT_CONN_DISCONNECT_USER);
@@ -670,7 +669,6 @@ static void client_app_close_windows(ClientApp * app) {
 static void connection_disconnected(ClientConn * conn, ClientConnDisconnectReason reason,
                                     gpointer user_data) {
     ClientApp * app = CLIENT_APP(user_data);
-    int i;
 
     if (app->main_window) {
         client_app_show_login(app, "Failed to establish the connection, see the log file for further information.");
