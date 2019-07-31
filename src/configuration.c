@@ -35,6 +35,7 @@ struct _ClientConf {
     gchar * port;
     gchar * username;
     gchar * password;
+    gchar * passfile;
     gchar * terminal_id;
     gchar * uri;
     gboolean kiosk_mode;
@@ -95,6 +96,8 @@ static void client_conf_init(ClientConf * conf) {
         "User name", "<user name>" },
         { "password", 'w', 0, G_OPTION_ARG_STRING, &conf->password,
         "Password", "<password>" },
+        { "passfile", 'w', 0, G_OPTION_ARG_STRING, &conf->passfile,
+        "Password", "<passfile>" },
         { "desktop", 'd', 0, G_OPTION_ARG_STRING, &conf->desktop,
         "Desktop name to connect to", "<desktop name>" },
         { "terminal-id", 0, 0, G_OPTION_ARG_STRING, &conf->terminal_id,
@@ -212,6 +215,7 @@ static void client_conf_finalize(GObject * obj) {
     g_free(conf->port);
     g_free(conf->username);
     g_free(conf->password);
+    g_free(conf->passfile);
     g_free(conf->desktop);
     g_free(conf->proxy_uri);
     g_strfreev(conf->serial_params);
@@ -446,6 +450,18 @@ const gchar * client_conf_get_username(ClientConf * conf) {
 
 
 const gchar * client_conf_get_password(ClientConf * conf) {
+    if (!conf->password && conf->passfile) {
+        g_autoptr(GFile) file = g_file_new_for_path(conf->passfile);
+        g_autoptr(GFileInputStream) fistream = g_file_read(file, NULL, NULL);
+        if (fistream) {
+            g_autoptr(GDataInputStream) distream = g_data_input_stream_new(G_INPUT_STREAM(fistream));
+            conf->password = g_data_input_stream_read_line_utf8(distream, NULL, NULL, NULL);
+        }
+        if (!conf->password) {
+            g_warning("Could not read password from file '%s'", conf->passfile);
+            g_clear_pointer(&conf->passfile, g_free);
+        }
+    }
     return conf->password;
 }
 
