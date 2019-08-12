@@ -176,6 +176,7 @@ Section "!${APPNAME}"
     !insertmacro InstallTTF Lato-Regular.ttf "Lato"
     SendMessage ${HWND_BROADCAST} ${WM_FONTCHANGE} 0 0 /TIMEOUT=5000
 
+    SetOutPath "$INSTDIR\bin"
     !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
         CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
         CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" "$INSTDIR\uninstall.exe"
