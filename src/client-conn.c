@@ -181,7 +181,7 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
     int id, type;
 
     g_object_get(channel, "channel-id", &id, "channel-type", &type, NULL);
-    g_debug("New Spice channel (%d:%d)", type, id);
+    g_debug("New %s channel (%d:%d)", spice_channel_type_to_string(type), type, id);
     conn->channels++;
 
     if (conn->use_ws)
