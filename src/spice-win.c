@@ -437,6 +437,20 @@ static void spice_size_allocate(GtkWidget * widget, GdkRectangle * a, gpointer u
         gtk_window_get_size(GTK_WINDOW(win), &win->width, &win->height);
         client_conf_set_window_size(win->conf, win->width, win->height, win->maximized, win->window_monitor);
     }
+
+    if (client_conf_get_resize_guest(win->conf)) {
+        SpiceMainChannel * main_channel = client_conn_get_main_channel(win->conn);
+        if (win->monitor == 0 && !win->fullscreen) {
+            spice_main_channel_update_display(main_channel, 0, 0, 0, a->width, a->height, TRUE);
+            g_debug("Resizing display to %dx%d+0+0", a->width, a->height);
+        } else {
+            GdkRectangle r;
+            GdkMonitor * monitor = gdk_display_get_monitor(gdk_display_get_default(), win->monitor);
+            gdk_monitor_get_geometry(monitor, &r);
+            spice_main_channel_update_display(main_channel, win->monitor, r.x, r.y, a->width, a->height, TRUE);
+            g_debug("Resizing display to %dx%d+%d+%d", a->width, a->height, r.x, r.y);
+        }
+    }
 }
 
 gboolean map_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
@@ -450,6 +464,9 @@ gboolean map_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
         gtk_widget_hide(GTK_WIDGET(win->minimize_button));
         gtk_widget_hide(GTK_WIDGET(win->close_button));
     }
+
+    SpiceMainChannel * main_channel = client_conn_get_main_channel(win->conn);
+    spice_main_channel_update_display_enabled(main_channel, win->monitor, TRUE, TRUE);
 
     return GDK_EVENT_PROPAGATE;
 }

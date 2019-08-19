@@ -432,7 +432,7 @@ void client_conf_set_display_options(ClientConf * conf, GObject * display, gbool
     g_object_set(display,
         "grab-keyboard", TRUE && grab_enable,
         "grab-mouse", conf->grab_mouse && grab_enable,
-        "resize-guest", conf->resize_guest,
+        "resize-guest", FALSE,
         "scaling", TRUE,
         "disable-inputs", FALSE,
         NULL);
@@ -562,6 +562,11 @@ SoupSession * client_conf_get_soup_session(ClientConf * conf) {
 
 WindowEdge client_conf_get_toolbar_edge(ClientConf * conf) {
     return conf->toolbar_edge;
+}
+
+
+gboolean client_conf_get_resize_guest(ClientConf * conf) {
+    return conf->resize_guest;
 }
 
 

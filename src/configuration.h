@@ -135,6 +135,7 @@ gint client_conf_get_inactivity_timeout(ClientConf * conf);
 gboolean client_conf_get_auto_clipboard(ClientConf * conf);
 SoupSession * client_conf_get_soup_session(ClientConf * conf);
 WindowEdge client_conf_get_toolbar_edge(ClientConf * conf);
+gboolean client_conf_get_resize_guest(ClientConf * conf);
 
 /*
  * Setters for those options that can be saved to disk.
