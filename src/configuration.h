@@ -97,8 +97,9 @@ void client_conf_set_gtk_session_options(ClientConf * conf, GObject * gtk_sessio
  * client_conf_set_display_options
  *
  * Transfer display options to a SpiceDisplay object, like pointer grab behaviour.
+ * This function allows to enable/disable grabbing if it is not already disabled.
  */
-void client_conf_set_display_options(ClientConf * conf, GObject * display);
+void client_conf_set_display_options(ClientConf * conf, GObject * display, gboolean grab_enable);
 
 /*
  * client_conf_had_file

@@ -423,10 +423,10 @@ void client_conf_set_gtk_session_options(ClientConf * conf, GObject * gtk_sessio
 }
 
 
-void client_conf_set_display_options(ClientConf * conf, GObject * display) {
+void client_conf_set_display_options(ClientConf * conf, GObject * display, gboolean grab_enable) {
     g_object_set(display,
-        "grab-keyboard", TRUE,
-        "grab-mouse", conf->grab_mouse,
+        "grab-keyboard", TRUE && grab_enable,
+        "grab-mouse", conf->grab_mouse && grab_enable,
         "resize-guest", conf->resize_guest,
         "scaling", TRUE,
         "disable-inputs", FALSE,

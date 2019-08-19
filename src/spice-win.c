@@ -266,7 +266,7 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
     gtk_widget_show_all(popover);
 
     win->initially_fullscreen = client_conf_get_fullscreen(conf);
-    client_conf_set_display_options(conf, G_OBJECT(win->spice));
+    client_conf_set_display_options(conf, G_OBJECT(win->spice), TRUE);
     SpiceGrabSequence *seq = spice_grab_sequence_new_from_string(client_conf_get_grab_sequence(conf));
     spice_display_set_grab_keys(win->spice, seq);
     spice_grab_sequence_free(seq);
@@ -867,5 +867,5 @@ int spice_window_get_monitor(SpiceWindow * win) {
 
 
 void spice_window_enable_grabbing(SpiceWindow * win, gboolean enable) {
-    g_object_set(win->spice, "grab-keyboard", enable, "grab-mouse", enable, NULL);
+    client_conf_set_display_options(win->conf, G_OBJECT(win->spice), enable);
 }
