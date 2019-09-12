@@ -650,6 +650,11 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         g_debug("New main channel");
         app->main = SPICE_MAIN_CHANNEL(channel);
+        g_object_set(channel,
+            "disable-display-align", TRUE,
+            NULL);
+        g_signal_connect(channel, "channel-event",
+                         G_CALLBACK(main_channel_event), app);
         g_signal_connect(channel, "main-agent-update",
                          G_CALLBACK(main_agent_update), app);
         main_agent_update(channel, app);
@@ -728,7 +733,15 @@ static void button_clicked_cb(SpiceWindow * win, SpiceWindowButton button, Clien
 
 /*
  * Monitor changes handler. Creates a SpiceWindow for each new monitor.
- * Currently, multimonitor configurations are still not fully supported.
+ *
+ * Multimonitor specification:
+ * https://www.spice-space.org/multiple-monitors.html
+ *
+ * We can assume that we will have either:
+ * a) One display channel id with up to four monitors
+ * b) Up to four display channel ids with just one monitor
+ * Specification says that case a is for Linux guests and case b is for Windows guests,
+ * but that is for QXL. Case b also happens on Linux guests with Virtio GPU
  */
 static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientApp * app) {
     GArray * monitors = NULL;
@@ -740,10 +753,13 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
                  "monitors", &monitors,
                  NULL);
     g_return_if_fail(monitors != NULL);
-    g_return_if_fail(id == 0); // Only one display channel supported
+    g_return_if_fail(id == 0 || monitors->len <= 1);
     g_debug("Reported %d monitors in display channel %d", monitors->len, id);
 
-    for (i = 0; i < monitors->len; ++i) {
+    for (i = id; i < id + monitors->len; ++i) {
+        SpiceDisplayMonitorConfig * monitor = &g_array_index(monitors, SpiceDisplayMonitorConfig, i - id);
+        g_debug("Guest's monitor %d (%d:%d) geometry is %dx%d+%d+%d",
+            i, id, monitor->id, monitor->width, monitor->height, monitor->x, monitor->y);
         if (!get_window_for_monitor(app, i)) {
             g_autofree gchar * name = NULL;
             if (app->desktop_name) {
@@ -752,7 +768,7 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
                 g_object_get(client_conn_get_session(app->connection), "name", &name, NULL);
             }
             g_autofree gchar * title = g_strdup_printf("%s - flexVDI Client", name);
-            SpiceWindow * win = spice_window_new(app->connection, display, app->conf, i, title);
+            SpiceWindow * win = spice_window_new(app->connection, display, app->conf, monitor->id, title);
             // Inform GTK that this is an application window
             gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(win));
             spice_g_signal_connect_object(display, "display-mark",
@@ -769,9 +785,8 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
                 check_ungrab(app);
             }
             g_signal_connect(win, "user-activity", G_CALLBACK(user_activity_cb), app);
-            if (monitors->len == 1)
-                gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER);
             g_signal_connect(win, "button-clicked", G_CALLBACK(button_clicked_cb), app);
+            gtk_window_set_position(GTK_WINDOW(win), GTK_WIN_POS_CENTER);
             gtk_widget_show_all(GTK_WIDGET(win));
             set_cp_sensitive(win, app);
             if (app->main_window) {
@@ -923,5 +938,23 @@ static void button_clicked_cb(SpiceWindow * win, SpiceWindowButton button, Clien
                     spice_window_toggle_fullscreen(SPICE_WIN(window->data));
                 }
             }
+
+        if (client_conf_get_multimonitor(app->conf) && button == SPICE_WINDOW_BUTTON_FULLSCREEN) {
+            // Request the same monitor layout on the guest as on the client
+            g_debug("Requesting client monitor layout");
+            GdkDisplay * display = gdk_display_get_default();
+            SpiceMainChannel * main_channel = client_conn_get_main_channel(app->connection);
+            int i, n_monitor = gdk_display_get_n_monitors(display);
+            for (i = 0; i < n_monitor; ++i) {
+                GdkRectangle r;
+                GdkMonitor * monitor = gdk_display_get_monitor(display, i);
+                gdk_monitor_get_geometry(monitor, &r);
+                g_debug("Monitor %d geometry is %dx%d+%d+%d", i, r.width, r.height, r.x, r.y);
+                spice_main_channel_update_display(main_channel, i,
+                    r.x, r.y, r.width, r.height, TRUE);
+                spice_main_channel_update_display_enabled(main_channel, i, TRUE, TRUE);
+            }
+            spice_main_channel_send_monitor_config(main_channel);
+        }
     }
 }
