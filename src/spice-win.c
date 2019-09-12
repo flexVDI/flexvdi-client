@@ -245,11 +245,15 @@ void usb_connect_failed(GObject * object, SpiceUsbDevice * device,
                         GError * error, gpointer user_data);
 
 SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
-                               ClientConf * conf, int monitor, gchar * title) {
+                               ClientConf * conf, int monitor_id, gchar * title) {
     SpiceWindow * win = g_object_new(SPICE_WIN_TYPE,
                                      "title", title,
                                      NULL);
-    win->monitor = monitor;
+    int display_id = 0;
+    g_object_get(channel, "channel-id", &display_id, NULL);
+    // either monitor_id is always 0 or display_id is,
+    // we can't have display (0, 2) and (2, 0), for example
+    win->monitor = display_id + monitor_id;
     win->conn = g_object_ref(conn);
     win->conf = g_object_ref(conf);
     win->display_channel = g_object_ref(channel);
@@ -258,7 +262,7 @@ SpiceWindow * spice_window_new(ClientConn * conn, SpiceChannel * channel,
 
     /* spice display */
     SpiceSession * session = client_conn_get_session(conn);
-    win->spice = spice_display_new_with_monitor(session, 0, monitor);
+    win->spice = spice_display_new_with_monitor(session, display_id, monitor_id);
     gtk_box_pack_end(win->content_box, GTK_WIDGET(win->spice), TRUE, TRUE, 0);
     gtk_widget_grab_focus(GTK_WIDGET(win->spice));
 
@@ -442,13 +446,13 @@ static void spice_size_allocate(GtkWidget * widget, GdkRectangle * a, gpointer u
         SpiceMainChannel * main_channel = client_conn_get_main_channel(win->conn);
         if (win->monitor == 0 && !win->fullscreen) {
             spice_main_channel_update_display(main_channel, 0, 0, 0, a->width, a->height, TRUE);
-            g_debug("Resizing display to %dx%d+0+0", a->width, a->height);
+            g_debug("Resizing monitor %d to %dx%d+0+0", win->monitor, a->width, a->height);
         } else {
             GdkRectangle r;
             GdkMonitor * monitor = gdk_display_get_monitor(gdk_display_get_default(), win->monitor);
             gdk_monitor_get_geometry(monitor, &r);
             spice_main_channel_update_display(main_channel, win->monitor, r.x, r.y, a->width, a->height, TRUE);
-            g_debug("Resizing display to %dx%d+%d+%d", a->width, a->height, r.x, r.y);
+            g_debug("Resizing monitor %d to %dx%d+%d+%d", win->monitor, a->width, a->height, r.x, r.y);
         }
     }
 }
@@ -456,8 +460,10 @@ static void spice_size_allocate(GtkWidget * widget, GdkRectangle * a, gpointer u
 gboolean map_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     SpiceWindow * win = SPICE_WIN(widget);
 
-    if (win->initially_fullscreen) {
-        gtk_window_fullscreen(GTK_WINDOW(win));
+    if (win->monitor > 0) {
+        gtk_window_fullscreen_on_monitor(GTK_WINDOW(win), gdk_screen_get_default(), win->monitor);
+    } else if (win->initially_fullscreen) {
+        spice_window_toggle_fullscreen(win);
     } else {
         gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
         gtk_widget_hide(GTK_WIDGET(win->restore_button));
@@ -504,13 +510,25 @@ static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data) {
 }
 
 void spice_window_toggle_fullscreen(SpiceWindow * win) {
+    GtkWindow * gtk_win = GTK_WINDOW(win);
     if (win->fullscreen) {
 #ifdef __APPLE__
         ns(win).level = NSNormalWindowLevel;
 #endif
-        gtk_window_unfullscreen(GTK_WINDOW(win));
+        if (win->monitor == 0) {
+            gtk_window_unfullscreen(gtk_win);
+        } else {
+            SpiceMainChannel * main_channel = client_conn_get_main_channel(win->conn);
+            spice_main_channel_update_display_enabled(main_channel, win->monitor, FALSE, TRUE);
+            gtk_widget_destroy(GTK_WIDGET(win));
+        }
     } else {
-        gtk_window_fullscreen(GTK_WINDOW(win));
+        if (client_conf_get_multimonitor(win->conf)) {
+            if (gtk_window_is_maximized(gtk_win))
+                gtk_window_unmaximize(gtk_win);
+            gtk_window_fullscreen_on_monitor(gtk_win, gdk_screen_get_default(), win->monitor);
+        } else
+            gtk_window_fullscreen(gtk_win);
     }
 }
 
