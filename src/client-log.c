@@ -123,10 +123,12 @@ static gboolean map_level(int level_num, GLogLevelFlags * level) {
 void client_log_setup() {
     old_stdout = fdopen(dup(1), "a");
     if (!g_getenv("FLEXVDI_LOG_STDERR")) {
-        g_autoptr(GDateTime) now = g_date_time_new_now_local();
-        g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
-        g_autofree gchar * file_path = g_build_filename(log_dir, "flexvdi-client.log", NULL);
-        g_mkdir_with_parents(log_dir, 0700);
+        g_autofree gchar * file_path = g_strdup(g_getenv("FLEXVDI_LOG_FILE"));
+        if (!file_path) {
+            g_autofree gchar * log_dir = g_build_filename(g_get_user_data_dir(), "flexvdi-client", NULL);
+            g_mkdir_with_parents(log_dir, 0700);
+            file_path = g_build_filename(log_dir, "flexvdi-client.log", NULL);
+        }
         freopen(file_path, "a", stderr);
         freopen(file_path, "a", stdout);
     }
