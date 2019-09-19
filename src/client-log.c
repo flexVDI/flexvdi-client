@@ -20,6 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <spice-client.h>
+#ifdef ANDROID
+#include <android/log.h>
+#endif
 #include "client-log.h"
 
 
@@ -97,10 +100,23 @@ static GLogWriterOutput log_to_file(GLogLevelFlags log_level, const GLogField * 
         default: log_level_str = "DEBUG"; break;
     }
 
+#ifdef ANDROID
+    android_LogPriority android_log_level = ANDROID_LOG_UNKNOWN;
+    switch (log_level) {
+        case G_LOG_LEVEL_ERROR: android_log_level = ANDROID_LOG_FATAL; break;
+        case G_LOG_LEVEL_CRITICAL: android_log_level = ANDROID_LOG_ERROR; break;
+        case G_LOG_LEVEL_WARNING: android_log_level = ANDROID_LOG_WARN; break;
+        case G_LOG_LEVEL_MESSAGE: android_log_level = ANDROID_LOG_INFO; break;
+        case G_LOG_LEVEL_INFO: android_log_level = ANDROID_LOG_INFO; break;
+        default: android_log_level = ANDROID_LOG_DEBUG; break;
+    }
+    __android_log_print(android_log_level, log_domain, "%s", message);
+#else
     g_autoptr(GDateTime) now = g_date_time_new_now_local();
     g_autofree gchar * now_str = g_date_time_format(now, "%Y/%m/%d %H:%M:%S");
     fprintf(stderr, "%s.%03d: %s-%s: %s\n", now_str, g_date_time_get_microsecond(now)/1000,
             log_domain, log_level_str, message);
+#endif
 
     if (fatal || log_level <= fatal_level) G_BREAKPOINT();
 
@@ -121,6 +137,7 @@ static gboolean map_level(int level_num, GLogLevelFlags * level) {
 }
 
 void client_log_setup() {
+#ifndef ANDROID
     old_stdout = fdopen(dup(1), "a");
     if (!g_getenv("FLEXVDI_LOG_STDERR")) {
         g_autofree gchar * file_path = g_strdup(g_getenv("FLEXVDI_LOG_FILE"));
@@ -133,6 +150,7 @@ void client_log_setup() {
         freopen(file_path, "a", stdout);
     }
     setvbuf(stderr, NULL, _IONBF, 2);
+#endif
 
     g_log_set_writer_func(log_to_file, NULL, NULL);
 
