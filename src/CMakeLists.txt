@@ -17,7 +17,7 @@ if (WIN32)
     set(ICON icon.rc)
 elseif (ANDROID)
     set(LIB_SOURCES ${LIB_SOURCES}
-        terminalid-android.c printclient-null.c legacy-config-parser-null)
+        terminalid-null.c printclient-null.c legacy-config-parser-null)
     set(ICON "")
 elseif (IOS)
     set(LIB_SOURCES ${LIB_SOURCES}

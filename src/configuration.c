@@ -617,7 +617,8 @@ const gchar * client_conf_get_terminal_id(ClientConf * conf) {
     if (!conf->terminal_id) {
         conf->terminal_id = discover_terminal_id();
         if (conf->terminal_id[0] == '\0') {
-            // TODO: Random terminal id
+            g_free(conf->terminal_id);
+            conf->terminal_id = g_uuid_string_random();
         }
         write_string(conf->file, "General", "terminal-id", conf->terminal_id);
         client_conf_save(conf);
