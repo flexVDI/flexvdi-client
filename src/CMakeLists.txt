@@ -73,4 +73,9 @@ install(TARGETS flexvdi-client-bin flexvdi-client
         LIBRARY DESTINATION lib
         PUBLIC_HEADER DESTINATION include/flexvdi-client)
 
+else (NOT ANDROID AND NOT IOS)
+install(TARGETS flexvdi-client
+        LIBRARY DESTINATION lib
+        PUBLIC_HEADER DESTINATION include/flexvdi-client)
+
 endif (NOT ANDROID AND NOT IOS)
