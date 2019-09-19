@@ -950,6 +950,10 @@ static void save_config_file(GKeyFile * file, const gchar * file_name, GError **
 
 
 void client_conf_save(ClientConf * conf) {
+#ifdef ANDROID
+    return;
+#endif
+
     GError * error = NULL;
     save_config_file(conf->file, conf->file_name, &error);
     if (error) {
