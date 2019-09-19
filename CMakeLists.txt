@@ -160,7 +160,7 @@ if (WIN32)
     add_custom_target(installer DEPENDS flexvdi-client-bin "${PROJECT_BINARY_DIR}/src/icon.ico"
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_installer_win.sh" ${CMAKE_INSTALL_PREFIX} ${CMAKE_BUILD_TYPE}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
-elseif (ANDROID OR IOS)
+elseif (IOS)
 # No installer
 elseif (APPLE)
     configure_file("${PROJECT_SOURCE_DIR}/scripts/Info-tpl.plist"
@@ -169,6 +169,10 @@ elseif (APPLE)
                    "${PROJECT_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}.bundle" COPYONLY)
     add_custom_target(installer DEPENDS flexvdi-client-bin
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_dmg.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME}
+                      WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
+elseif (ANDROID)
+    add_custom_target(installer DEPENDS flexvdi-client
+                      COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_android_imports.sh" ${CMAKE_INSTALL_PREFIX} ${CMAKE_BUILD_TYPE}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 else ()
     add_custom_target(installer DEPENDS flexvdi-client-bin
