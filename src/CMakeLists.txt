@@ -43,6 +43,8 @@ set_target_properties(flexvdi-client PROPERTIES PUBLIC_HEADER "${LIB_HEADERS}")
 if (APPLE)
     target_compile_options(flexvdi-client PRIVATE -xobjective-c -mmacosx-version-min=10.10)
     target_link_libraries(flexvdi-client "-framework Cocoa")
+elseif (ANDROID)
+    target_link_libraries(flexvdi-client "-llog -lm")
 endif ()
 
 if (NOT ANDROID AND NOT IOS)
