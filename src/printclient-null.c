@@ -17,6 +17,7 @@
     along with flexVDI Client. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <glib.h>
 #include "printclient-priv.h"
 
 
