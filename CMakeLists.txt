@@ -10,6 +10,9 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
 message("${CMAKE_PROJECT_NAME} v${FLEXVDI_VERSION} ${CMAKE_BUILD_TYPE} build")
+if (CMAKE_C_FLAGS MATCHES ".*-DANDROID.*")
+    set(ANDROID 1)
+endif ()
 
 
 ## Find required packages
