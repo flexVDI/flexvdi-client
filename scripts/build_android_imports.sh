@@ -1,13 +1,11 @@
 #!/bin/bash
 
 walk_libs() {
-    ndk-depends "$1" | while read so_name; do
-        local so_path="$LIB_DIR"/$so_name
-        if [ ! -f "$so_path" ]; then
-            case "$so_name" in
-                libm.so|libc.so|libdl.so|liblog.so);;
-                *) echo Missing $so_name;;
-            esac
+    ndk-depends --print-paths -L "$LIB_DIR" -L "$LIB_DIR"/gstreamer-1.0 "$1" | \
+            tr -d ' ' | cut -d '>' -f 2 | while read so_path; do
+        local so_name=$(basename "$so_path")
+        if echo $so_path | grep -q '^$/system'; then
+            continue # System lib
         elif [ ! -f libs/$so_name ]; then
             echo Copying $so_name
             cp "$so_path" libs
@@ -23,8 +21,16 @@ if [ ! -d "$LIB_DIR" ]; then
 fi
 rm -fr libs
 mkdir -p libs
-cp "$LIB_DIR"/libflexvdi-client.so libs
 walk_libs "$LIB_DIR"/libflexvdi-client.so
+walk_libs "$LIB_DIR"/libgnutls.so
+
+CERBERO_PLUGINS="coreelements coretracers adder app audioconvert audiomixer audiorate \
+    audioresample audiotestsrc gio pango rawparse typefindfunctions videoconvert \
+    videorate videoscale videotestsrc volume autodetect videofilter playback \
+    deinterlace androidmedia opengl opensles"
+for plugin in $CERBERO_PLUGINS; do
+    walk_libs "$LIB_DIR"/gstreamer-1.0/libgst${plugin}.so
+done
 
 BUILD_TYPE="$2"
 if [ "$BUILD_TYPE" != "Debug" ]; then
