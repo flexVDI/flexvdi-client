@@ -171,6 +171,8 @@ SpiceSession * client_conn_get_session(ClientConn * conn) {
 
 static void open_ws_tunnel(SpiceChannel * channel, int with_tls, gpointer user_data);
 static void port_channel(SpiceChannel * channel, GParamSpec * pspec, ClientConn * conn);
+static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
+                               ClientConn * conn);
 
 /*
  * New channel handler. Finishes the connection process of each channel.
@@ -189,6 +191,8 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer data)
 
     if (SPICE_IS_MAIN_CHANNEL(channel)) {
         conn->main = SPICE_MAIN_CHANNEL(channel);
+        g_signal_connect(channel, "channel-event",
+                         G_CALLBACK(main_channel_event), conn);
     }
 
     if (SPICE_IS_DISPLAY_CHANNEL(channel)) {
@@ -295,6 +299,48 @@ static void port_channel(SpiceChannel * channel, GParamSpec * pspec, ClientConn 
     } else {
         serial_port_open(channel);
 #endif
+    }
+}
+
+
+/*
+ * Main channel even handler. Mainly handles connection problems.
+ */
+static void main_channel_event(SpiceChannel * channel, SpiceChannelEvent event,
+                               ClientConn * conn) {
+    const GError * error = NULL;
+
+    switch (event) {
+    case SPICE_CHANNEL_OPENED:
+        g_debug("main channel: opened");
+        break;
+    case SPICE_CHANNEL_SWITCHING:
+        g_debug("main channel: switching host");
+        break;
+    case SPICE_CHANNEL_CLOSED:
+        g_debug("main channel: closed");
+        client_conn_disconnect(conn, CLIENT_CONN_DISCONNECT_NO_ERROR);
+        break;
+    case SPICE_CHANNEL_ERROR_IO:
+        client_conn_disconnect(conn, CLIENT_CONN_DISCONNECT_IO_ERROR);
+        break;
+    case SPICE_CHANNEL_ERROR_TLS:
+    case SPICE_CHANNEL_ERROR_LINK:
+    case SPICE_CHANNEL_ERROR_CONNECT:
+        error = spice_channel_get_error(channel);
+        g_debug("main channel: failed to connect");
+        if (error) {
+            g_debug("channel error: %s", error->message);
+        }
+        client_conn_disconnect(conn, CLIENT_CONN_DISCONNECT_CONN_ERROR);
+        break;
+    case SPICE_CHANNEL_ERROR_AUTH:
+        g_warning("main channel: auth failure (wrong password?)");
+        client_conn_disconnect(conn, CLIENT_CONN_DISCONNECT_AUTH_ERROR);
+        break;
+    default:
+        g_warning("unknown main channel event: %u", event);
+        break;
     }
 }
 
