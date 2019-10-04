@@ -48,6 +48,7 @@ struct _FlexvdiPort {
 
 enum {
     FLEXVDI_PORT_AGENT_CONNECTED = 0,
+    FLEXVDI_PORT_MESSAGE,
     FLEXVDI_PORT_LAST_SIGNAL
 };
 
@@ -73,6 +74,19 @@ static void flexvdi_port_class_init(FlexvdiPortClass * class) {
                      G_TYPE_NONE,
                      1,
                      G_TYPE_INT);
+
+    // Emited when a new message arrives
+    signals[FLEXVDI_PORT_MESSAGE] =
+        g_signal_new("message",
+                     FLEXVDI_PORT_TYPE,
+                     G_SIGNAL_RUN_LAST,
+                     0,
+                     g_signal_accumulator_true_handled, NULL,
+                     NULL,
+                     G_TYPE_BOOLEAN,
+                     2,
+                     G_TYPE_UINT,
+                     G_TYPE_POINTER);
 }
 
 static void flexvdi_port_init(FlexvdiPort * port) {
@@ -268,16 +282,14 @@ static void handle_capabilities_msg(FlexvdiPort * port, FlexVDICapabilitiesMsg *
  * Handle messages comming from the agent
  */
 static void handle_message(FlexvdiPort * port) {
-    switch(port->current_header.type) {
-    case FLEXVDI_CAPABILITIES:
+    uint32_t type = port->current_header.type;
+    if (type == FLEXVDI_CAPABILITIES) {
         handle_capabilities_msg(port, (FlexVDICapabilitiesMsg *)port->buffer);
-        break;
-    case FLEXVDI_PRINTJOB:
-        handle_print_job((FlexVDIPrintJobMsg *)port->buffer);
-        break;
-    case FLEXVDI_PRINTJOBDATA:
-        handle_print_job_data((FlexVDIPrintJobDataMsg *)port->buffer);
-        break;
+    } else {
+        gboolean handled = FALSE;
+        g_signal_emit(port, signals[FLEXVDI_PORT_MESSAGE], 0,
+            type, port->buffer, &handled);
+        g_debug("Message type %d was %shandled", type, handled ? "" : "not ");
     }
 }
 
