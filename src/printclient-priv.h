@@ -28,8 +28,6 @@ typedef struct PrintJob {
     char * options;
 } PrintJob;
 
-void handle_print_job(FlexVDIPrintJobMsg * msg);
-void handle_print_job_data(FlexVDIPrintJobDataMsg * msg);
 char * get_ppd_file(const char * printer);
 int print_job(PrintJob * job);
 char * get_job_options(char * options, const char * opName);

@@ -32,7 +32,59 @@
 #include "printclient-priv.h"
 #include "flexvdi-port.h"
 
-static GHashTable * print_jobs;
+struct _PrintJobManager {
+    GObject parent;
+    GHashTable * print_jobs;
+};
+
+enum {
+    PRINT_JOB_MANAGER_PDF = 0,
+    PRINT_JOB_MANAGER_LAST_SIGNAL
+};
+
+static guint signals[PRINT_JOB_MANAGER_LAST_SIGNAL];
+
+G_DEFINE_TYPE(PrintJobManager, print_job_manager, G_TYPE_OBJECT);
+
+
+static void print_job_manager_finalize(GObject * obj);
+
+static void print_job_manager_class_init(PrintJobManagerClass * class) {
+    GObjectClass * object_class = G_OBJECT_CLASS(class);
+    object_class->finalize = print_job_manager_finalize;
+
+    // Emited when a job is not printed and the file remains
+    signals[PRINT_JOB_MANAGER_PDF] =
+        g_signal_new("pdf",
+                     PRINT_JOB_MANAGER_TYPE,
+                     G_SIGNAL_RUN_FIRST,
+                     0,
+                     NULL, NULL,
+                     g_cclosure_marshal_VOID__POINTER,
+                     G_TYPE_NONE,
+                     1,
+                     G_TYPE_POINTER);
+}
+
+
+static gboolean remove_temp_files(gpointer user_data);
+
+static void print_job_manager_init(PrintJobManager * pjb) {
+    pjb->print_jobs = g_hash_table_new_full(g_direct_hash, NULL, NULL, g_free);
+    g_timeout_add_seconds(300, remove_temp_files, NULL);
+}
+
+
+static void print_job_manager_finalize(GObject * obj) {
+    PrintJobManager * pjb = PRINT_JOB_MANAGER(obj);
+    g_hash_table_unref(pjb->print_jobs);
+    G_OBJECT_CLASS(print_job_manager_parent_class)->finalize(obj);
+}
+
+
+PrintJobManager * print_job_manager_new() {
+    return g_object_new(PRINT_JOB_MANAGER_TYPE, NULL);
+}
 
 
 static gboolean remove_temp_files(gpointer user_data) {
@@ -60,44 +112,46 @@ static gboolean remove_temp_files(gpointer user_data) {
 }
 
 
-void handle_print_job(FlexVDIPrintJobMsg * msg) {
+static void handle_print_job(PrintJobManager * pjb, FlexVDIPrintJobMsg * msg) {
     PrintJob * job = g_malloc(sizeof(PrintJob));
     job->file_handle = g_file_open_tmp("fpjXXXXXX.pdf", &job->name, NULL);
     job->options = g_strndup(msg->options, msg->optionsLength);
     g_debug("Job %s, Options: %.*s", job->name, msg->optionsLength, msg->options);
-    g_hash_table_insert(print_jobs, GINT_TO_POINTER(msg->id), job);
+    g_hash_table_insert(pjb->print_jobs, GINT_TO_POINTER(msg->id), job);
 }
 
 
-static void open_with_default_app(const char * file) {
-#ifdef _WIN32
-    g_autofree wchar_t * fileW = g_utf8_to_utf16(file, -1, NULL, NULL, NULL);
-    ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
-#elif __linux__
-    g_autofree gchar * command = g_strdup_printf("xdg-open %s", file);
-    system(command);
-#elif __APPLE__
-    g_autofree gchar * command = g_strdup_printf("open %s", file);
-    system(command);
-#endif
-}
-
-
-void handle_print_job_data(FlexVDIPrintJobDataMsg * msg) {
-    PrintJob * job = g_hash_table_lookup(print_jobs, GINT_TO_POINTER(msg->id));
+static void handle_print_job_data(PrintJobManager * pjb, FlexVDIPrintJobDataMsg * msg) {
+    PrintJob * job = g_hash_table_lookup(pjb->print_jobs, GINT_TO_POINTER(msg->id));
     if (job) {
         if (!msg->dataLength) {
             close(job->file_handle);
             if (!print_job(job))
-                open_with_default_app(job->name);
+                g_signal_emit(pjb, signals[PRINT_JOB_MANAGER_PDF], 0, job->name);
             g_free(job->name);
-            g_hash_table_remove(print_jobs, GINT_TO_POINTER(msg->id));
+            g_hash_table_remove(pjb->print_jobs, GINT_TO_POINTER(msg->id));
         } else {
             write(job->file_handle, msg->data, msg->dataLength);
         }
     } else {
         g_info("Job %d not found", msg->id);
     }
+}
+
+
+gboolean print_job_manager_handle_message(
+        PrintJobManager * pjb, uint32_t type, gpointer data) {
+    switch (type) {
+    case FLEXVDI_PRINTJOB:
+        handle_print_job(pjb, (FlexVDIPrintJobMsg *)data);
+        break;
+    case FLEXVDI_PRINTJOBDATA:
+        handle_print_job_data(pjb, (FlexVDIPrintJobDataMsg *)data);
+        break;
+    default:
+        return FALSE;
+    }
+    return TRUE;
 }
 
 
@@ -131,12 +185,6 @@ char * get_job_options(char * options, const char * op_name) {
     memcpy(result, op_pos, value_len);
     result[value_len] = '\0';
     return result;
-}
-
-
-void flexvdi_init_print_client() {
-    print_jobs = g_hash_table_new_full(g_direct_hash, NULL, NULL, g_free);
-    g_timeout_add_seconds(300, remove_temp_files, NULL);
 }
 
 

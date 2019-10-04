@@ -21,9 +21,22 @@
 #define _PRINTCLIENT_H_
 
 #include <glib.h>
+#include <glib-object.h>
 #include "flexvdi-port.h"
 
-void flexvdi_init_print_client();
+/*
+ * PrintJobManager
+ *
+ * Manages print jobs arriving from the guest.
+ */
+#define PRINT_JOB_MANAGER_TYPE (print_job_manager_get_type())
+G_DECLARE_FINAL_TYPE(PrintJobManager, print_job_manager, PRINT, JOB_MANAGER, GObject)
+
+PrintJobManager * print_job_manager_new();
+
+gboolean print_job_manager_handle_message(
+    PrintJobManager * pjb, uint32_t type, gpointer data);
+
 int flexvdi_get_printer_list(GSList ** printerList);
 int flexvdi_share_printer(FlexvdiPort * port, const char * printer);
 int flexvdi_unshare_printer(FlexvdiPort * port, const char * printer);

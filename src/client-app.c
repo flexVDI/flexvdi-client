@@ -81,6 +81,7 @@ struct _ClientApp {
     gint64 last_input_time;
     gboolean autologin;
     gboolean grab_disabled;
+    PrintJobManager * pjb;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -92,6 +93,7 @@ static void client_app_startup(GApplication * gapp);
 static void client_app_activate(GApplication * gapp);
 static void client_app_open(GApplication * application, GFile ** files,
                             gint n_files, const gchar * hint);
+static void open_with_default_app(PrintJobManager * pjb, const char * file);
 
 static void client_app_class_init(ClientAppClass * class) {
     G_APPLICATION_CLASS(class)->local_command_line = client_app_local_command_line;
@@ -119,6 +121,9 @@ static void client_app_init(ClientApp * app) {
     app->username = app->password = app->desktop = "";
     app->desktops = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
     app->autologin = TRUE;
+
+    app->pjb = print_job_manager_new();
+    g_signal_connect(app->pjb, "pdf", G_CALLBACK(open_with_default_app), NULL);
 
     // Sets valid command-line options
     client_conf_set_application_options(app->conf, G_APPLICATION(app));
@@ -181,7 +186,6 @@ static GActionEntry app_entries[] = {
 static void client_app_startup(GApplication * gapp) {
     g_set_print_handler(old_print_func);
 
-    flexvdi_init_print_client();
 #ifdef ENABLE_SERIALREDIR
     ClientApp * app = CLIENT_APP(gapp);
     serial_port_init(app->conf);
@@ -273,6 +277,23 @@ static void client_app_open(GApplication * application, GFile ** files,
     ClientApp * app = CLIENT_APP(application);
     client_conf_set_uri(app->conf, g_file_get_uri(*files));
     client_app_activate(application);
+}
+
+
+/*
+ * Open a PDF file with the default application.
+ */
+static void open_with_default_app(PrintJobManager * pjb, const char * file) {
+#ifdef _WIN32
+    g_autofree wchar_t * fileW = g_utf8_to_utf16(file, -1, NULL, NULL, NULL);
+    ShellExecute(NULL, L"open", fileW, NULL, NULL, SW_SHOWNORMAL);
+#elif __linux__
+    g_autofree gchar * command = g_strdup_printf("xdg-open %s", file);
+    system(command);
+#elif __APPLE__
+    g_autofree gchar * command = g_strdup_printf("open %s", file);
+    system(command);
+#endif
 }
 
 
@@ -575,10 +596,15 @@ static gboolean check_ungrab(gpointer user_data);
  */
 static void client_app_connect(ClientApp * app) {
     SpiceSession * session = client_conn_get_session(app->connection);
+    client_conf_set_gtk_session_options(app->conf, G_OBJECT(spice_gtk_session_get(session)));
     g_signal_connect(session, "channel-new",
                      G_CALLBACK(channel_new), app);
     g_signal_connect(app->connection, "disconnected",
                      G_CALLBACK(connection_disconnected), app);
+
+    FlexvdiPort * guest_port = client_conn_get_guest_agent_port(app->connection);
+    g_signal_connect_swapped(guest_port, "message",
+                             G_CALLBACK(print_job_manager_handle_message), app->pjb);
 
     SpiceUsbDeviceManager * manager = spice_usb_device_manager_get(session, NULL);
     if (manager) {
@@ -597,8 +623,6 @@ static void client_app_connect(ClientApp * app) {
 static void client_app_connect_with_response(ClientApp * app, JsonObject * params) {
     client_conf_get_options_from_response(app->conf, params);
     app->connection = client_conn_new(app->conf, params);
-    SpiceSession * session = client_conn_get_session(app->connection);
-    client_conf_set_gtk_session_options(app->conf, G_OBJECT(spice_gtk_session_get(session)));
     client_app_connect(app);
 }
 
@@ -607,8 +631,6 @@ static void client_app_connect_with_response(ClientApp * app, JsonObject * param
  */
 static void client_app_connect_with_spice_uri(ClientApp * app, const gchar * uri) {
     app->connection = client_conn_new_with_uri(app->conf, uri);
-    SpiceSession * session = client_conn_get_session(app->connection);
-    client_conf_set_gtk_session_options(app->conf, G_OBJECT(spice_gtk_session_get(session)));
     client_app_connect(app);
 }
 
