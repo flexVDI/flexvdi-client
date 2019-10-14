@@ -74,7 +74,14 @@ install(TARGETS flexvdi-client-bin flexvdi-client
         PUBLIC_HEADER DESTINATION include/flexvdi-client)
 
 else (NOT ANDROID AND NOT IOS)
-install(TARGETS flexvdi-client
+add_library(flexvdi-client-static STATIC ${LIB_SOURCES})
+target_link_libraries(flexvdi-client-static ${LIB_LIBRARIES})
+if (ANDROID)
+    target_link_libraries(flexvdi-client "-llog -lm")
+endif ()
+set_target_properties(flexvdi-client-static PROPERTIES OUTPUT_NAME flexvdi-client)
+
+install(TARGETS flexvdi-client flexvdi-client-static
         LIBRARY DESTINATION lib
         PUBLIC_HEADER DESTINATION include/flexvdi-client)
 
