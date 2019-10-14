@@ -171,9 +171,7 @@ elseif (APPLE)
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_dmg.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME}
                       WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
 elseif (ANDROID)
-    add_custom_target(installer DEPENDS flexvdi-client
-                      COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_android_imports.sh" ${CMAKE_INSTALL_PREFIX} ${CMAKE_BUILD_TYPE}
-                      WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
+    add_custom_target(installer DEPENDS flexvdi-client-static flexvdi-client)
 else ()
     add_custom_target(installer DEPENDS flexvdi-client-bin
                       COMMAND "${PROJECT_SOURCE_DIR}/scripts/build_appimage.sh" ${CMAKE_INSTALL_PREFIX} ${CPACK_PACKAGE_FILE_NAME} ${CMAKE_BUILD_TYPE}
