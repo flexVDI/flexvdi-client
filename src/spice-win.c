@@ -463,7 +463,7 @@ gboolean map_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
     if (win->monitor > 0) {
         gtk_window_fullscreen_on_monitor(GTK_WINDOW(win), gdk_screen_get_default(), win->monitor);
     } else if (win->initially_fullscreen) {
-        spice_window_toggle_fullscreen(win);
+        spice_window_set_fullscreen(win, TRUE);
     } else {
         gtk_widget_show(GTK_WIDGET(win->fullscreen_button));
         gtk_widget_hide(GTK_WIDGET(win->restore_button));
@@ -509,9 +509,11 @@ static void paste_to_guest(GtkToolButton * toolbutton, gpointer user_data) {
     );
 }
 
-void spice_window_toggle_fullscreen(SpiceWindow * win) {
+void spice_window_set_fullscreen(SpiceWindow * win, gboolean fullscreen) {
     GtkWindow * gtk_win = GTK_WINDOW(win);
-    if (win->fullscreen) {
+    if (win->fullscreen == fullscreen)
+        return;
+    if (!fullscreen) {
 #ifdef __APPLE__
         ns(win).level = NSNormalWindowLevel;
 #endif

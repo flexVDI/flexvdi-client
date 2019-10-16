@@ -82,6 +82,7 @@ struct _ClientApp {
     gboolean autologin;
     gboolean grab_disabled;
     PrintJobManager * pjb;
+    gboolean fullscreen;
 };
 
 G_DEFINE_TYPE(ClientApp, client_app, GTK_TYPE_APPLICATION);
@@ -203,6 +204,9 @@ static void client_app_startup(GApplication * gapp) {
  */
 static void client_app_activate(GApplication * gapp) {
     ClientApp * app = CLIENT_APP(gapp);
+
+    app->fullscreen = client_conf_get_fullscreen(app->conf);
+
     app->main_window = client_app_window_new(app, app->conf);
     gtk_widget_show_all(GTK_WIDGET(app->main_window));
 
@@ -652,6 +656,7 @@ static void channel_new(SpiceSession * s, SpiceChannel * channel, gpointer user_
         app->main = SPICE_MAIN_CHANNEL(channel);
         g_object_set(channel,
             "disable-display-align", TRUE,
+            "disable-display-position", FALSE,
             NULL);
         g_signal_connect(channel, "channel-event",
                          G_CALLBACK(main_channel_event), app);
@@ -755,11 +760,19 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
     g_return_if_fail(monitors != NULL);
     g_return_if_fail(id == 0 || monitors->len <= 1);
     g_debug("Reported %d monitors in display channel %d", monitors->len, id);
+    gboolean multimonitor = client_conf_get_multimonitor(app->conf) && app->fullscreen;
 
     for (i = id; i < id + monitors->len; ++i) {
         SpiceDisplayMonitorConfig * monitor = &g_array_index(monitors, SpiceDisplayMonitorConfig, i - id);
         g_debug("Guest's monitor %d (%d:%d) geometry is %dx%d+%d+%d",
             i, id, monitor->id, monitor->width, monitor->height, monitor->x, monitor->y);
+
+        if (i > 0 && !multimonitor) {
+            g_debug("Additional monitor ignored in this status");
+            spice_main_channel_update_display_enabled(app->main, i, FALSE, TRUE);
+            continue;
+        }
+
         if (!get_window_for_monitor(app, i)) {
             g_autofree gchar * name = NULL;
             if (app->desktop_name) {
@@ -795,6 +808,18 @@ static void display_monitors(SpiceChannel * display, GParamSpec * pspec, ClientA
                 GSimpleAction * prefs_action =
                     G_SIMPLE_ACTION(g_action_map_lookup_action(G_ACTION_MAP(app), "preferences"));
                 g_simple_action_set_enabled(prefs_action, FALSE);
+            }
+        }
+
+        if (multimonitor) {
+            // Check that size/position is correct, or request again
+            GdkRectangle r;
+            gdk_monitor_get_geometry(
+                gdk_display_get_monitor(gdk_display_get_default(), i), &r);
+            if (r.x != monitor->x || r.y != monitor->y
+                    || r.width != monitor->width || r.height != monitor->height) {
+                spice_main_channel_update_display(app->main, i,
+                    r.x, r.y, r.width, r.height, TRUE);
             }
         }
     }
@@ -935,7 +960,8 @@ static void button_clicked_cb(SpiceWindow * win, SpiceWindowButton button, Clien
                 if (button == SPICE_WINDOW_BUTTON_MINIMIZE) {
                     gtk_window_iconify(GTK_WINDOW(window->data));
                 } else {
-                    spice_window_toggle_fullscreen(SPICE_WIN(window->data));
+                    app->fullscreen = button == SPICE_WINDOW_BUTTON_FULLSCREEN;
+                    spice_window_set_fullscreen(SPICE_WIN(window->data), app->fullscreen);
                 }
             }
 

@@ -44,6 +44,6 @@ void spice_win_show_notification(SpiceWindow * win, const gchar * text, gint dur
 void spice_win_release_mouse_pointer(SpiceWindow * win);
 int spice_window_get_monitor(SpiceWindow * win);
 void spice_window_enable_grabbing(SpiceWindow * win, gboolean enable);
-void spice_window_toggle_fullscreen(SpiceWindow * win);
+void spice_window_set_fullscreen(SpiceWindow * win, gboolean fullscreen);
 
 #endif /* _SPICE_WIN_H */
