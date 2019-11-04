@@ -151,6 +151,7 @@ gboolean print_job_manager_handle_message(
     default:
         return FALSE;
     }
+    g_free(data);
     return TRUE;
 }
 

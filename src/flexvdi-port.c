@@ -294,6 +294,8 @@ static void handle_message(FlexvdiPort * port) {
         gboolean handled = FALSE;
         g_signal_emit(port, signals[FLEXVDI_PORT_MESSAGE], 0,
             type, port->buffer, &handled);
+        if (handled)
+            port->buffer = NULL; // ownership is passed to handler
         g_debug("Message type %d was %shandled", type, handled ? "" : "not ");
     }
 }
