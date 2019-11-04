@@ -24,7 +24,7 @@
 #include "flexvdi-port.h"
 
 
-#define CONN_FORWARDER_TYPE (flexvdi_port_get_type())
+#define CONN_FORWARDER_TYPE (conn_forwarder_get_type())
 G_DECLARE_FINAL_TYPE(ConnForwarder, conn_forwarder, CONN, FORWARDER, GObject)
 
 /*
@@ -37,7 +37,7 @@ ConnForwarder * conn_forwarder_new(FlexvdiPort * guest_agent_port);
 
 /*
  * Set redirections.
- * 
+ *
  * @local: List of string representations of the local redirections. Format:
  *         [bind_address:]local_port:remote_address:remote_port
  *         (Under development:)
