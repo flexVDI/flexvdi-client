@@ -78,6 +78,9 @@ static void connection_init(Connection * conn) {
 static void connecction_dispose(GObject * obj) {
     Connection * conn = FLEXVDI_CONNECTION(obj);
     g_clear_object(&conn->cancellable);
+    if (conn->conn)
+        g_io_stream_close((GIOStream *)conn->conn, NULL, NULL);
+    g_clear_object(&conn->conn);
     g_clear_object(&conn->socket);
     G_OBJECT_CLASS(connection_parent_class)->dispose(obj);
 }
@@ -86,7 +89,6 @@ static void connecction_dispose(GObject * obj) {
 static void connection_finalize(GObject * gobject) {
     Connection * conn = FLEXVDI_CONNECTION(gobject);
     g_debug("Closing connection %u", conn->id);
-    g_io_stream_close((GIOStream *)conn->conn, NULL, NULL);
     g_queue_free_full(conn->write_buffer, (GDestroyNotify)g_bytes_unref);
     if (conn->read_buffer)
         flexvdi_port_delete_msg_buffer(conn->read_buffer);
