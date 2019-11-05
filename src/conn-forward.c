@@ -576,7 +576,10 @@ static void handle_data(ConnForwarder * cf, FlexVDIForwardDataMsg * msg) {
 static void handle_close(ConnForwarder * cf, FlexVDIForwardCloseMsg * msg) {
     Connection * conn = g_hash_table_lookup(cf->connections, GUINT_TO_POINTER(msg->id));
     if (conn) {
-        g_debug("Close command for connection %u", conn->id);
+        if (msg->error != 0)
+            g_warning("Error in connection %u, closing: %s", conn->id, strerror(msg->error));
+        else
+            g_debug("Close command for connection %u", conn->id);
         connection_close(conn);
     } else {
         /* This is usually an already closed connection */
