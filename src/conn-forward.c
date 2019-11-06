@@ -457,6 +457,11 @@ static void connection_write_callback(GObject * source_object, GAsyncResult * re
     int num_written = g_output_stream_write_finish(stream, res, &error);
     int remaining;
 
+    if (g_cancellable_is_cancelled(conn->cancellable)) {
+        g_object_unref(conn);
+        return;
+    }
+
     if (error != NULL) {
         /* Error or connection closed by peer */
         g_debug("Write error on connection %u: %s", conn->id, error->message);
@@ -474,7 +479,7 @@ static void connection_write_callback(GObject * source_object, GAsyncResult * re
             new_bytes = g_queue_peek_head(conn->write_buffer);
             g_output_stream_write_async(stream, g_bytes_get_data(new_bytes, NULL),
                                         g_bytes_get_size(new_bytes), G_PRIORITY_DEFAULT,
-                                        NULL, connection_write_callback, conn);
+                                        conn->cancellable, connection_write_callback, conn);
         } else {
             g_object_unref(conn);
         }
@@ -569,7 +574,8 @@ static void handle_data(ConnForwarder * cf, FlexVDIForwardDataMsg * msg) {
             stream = g_io_stream_get_output_stream((GIOStream *)conn->conn);
             g_output_stream_write_async(stream, g_bytes_get_data(chunk, NULL),
                                         g_bytes_get_size(chunk), G_PRIORITY_DEFAULT,
-                                        NULL, connection_write_callback, g_object_ref(conn));
+                                        conn->cancellable, connection_write_callback,
+                                        g_object_ref(conn));
         }
     }
 }
