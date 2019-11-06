@@ -18,6 +18,10 @@
 */
 
 #include <stdio.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <shellapi.h>
+#endif
 #include <gtk/gtk.h>
 #include <gst/gst.h>
 #include <spice-client-gtk.h>
