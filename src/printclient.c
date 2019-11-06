@@ -21,10 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#ifdef _WIN32
-#include <windows.h>
-#include <shellapi.h>
-#endif
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <unistd.h>

@@ -77,8 +77,7 @@ if (CMAKE_BUILD_TYPE STREQUAL Release)
 endif ()
 if (WIN32)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unknown-pragmas")
-    # WINVER = 0x0501 -> Windows XP
-    add_definitions(-DWIN32 -DUNICODE -D_UNICODE -DWINVER=0x0501 -DWIN32_LEAN_AND_MEAN)
+    add_definitions(-DWIN32 -DUNICODE -D_UNICODE -DWIN32_LEAN_AND_MEAN)
 endif ()
 add_definitions(-DG_LOG_USE_STRUCTURED)
 

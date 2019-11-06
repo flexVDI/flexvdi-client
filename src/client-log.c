@@ -19,6 +19,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#include <io.h>
+#endif
 #include <spice-client.h>
 #ifdef ANDROID
 #include <android/log.h>

@@ -17,6 +17,7 @@
     along with flexVDI Client. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <stdlib.h>
 #include <glib.h>
 #include <gio/gio.h>
 #include <string.h>
