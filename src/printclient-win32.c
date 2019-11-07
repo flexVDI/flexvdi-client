@@ -476,7 +476,7 @@ static void print_file(ClientPrinter * printer, const char * pdf,
 
 int print_job(PrintJob * job) {
     g_debug("Printing file %s with options %s", job->name, job->options);
-    g_autofree gchar * printer_name = get_job_options(job->options, "printer");
+    gchar * printer_name = get_job_options(job->options, "printer");
 
     if (printer_name) {
         ClientPrinter * printer = client_printer_new(as_utf16(printer_name));
@@ -495,4 +495,3 @@ int print_job(PrintJob * job) {
 
     return FALSE;
 }
-
