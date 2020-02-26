@@ -205,7 +205,7 @@ static void client_conf_init(ClientConf * conf) {
     // FIXME: Disable checking server certificate
     conf->soup = soup_session_new_with_options(
         "ssl-strict", FALSE,
-        "timeout", 5,
+        "timeout", 45,
         NULL);
 }
 
