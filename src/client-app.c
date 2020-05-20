@@ -106,6 +106,51 @@ static void client_app_class_init(ClientAppClass * class) {
     G_APPLICATION_CLASS(class)->open = client_app_open;
 }
 
+/**
+ * Escapes some special characters in the source string by inserting a '\'
+ * before them. Acts like g_strescape() but does not damage utf8 chars.
+ * Returns a newly allocated string.
+ */
+gchar *util_strescape(const gchar *source, const gchar *exceptions)
+{
+    GString *result = g_string_new(NULL);
+    while (TRUE) {
+        char c = *source++;
+        if ('\0' == c) {
+            goto done;
+        }
+        if (exceptions && !strchr(exceptions, c)) {
+            continue;
+        }
+        switch (c) {
+            case '\n':
+                g_string_append(result, "\\n");
+                break;
+            case '\"':
+                g_string_append(result, "\\\"");
+                break;
+            case '\\':
+                g_string_append(result, "\\\\");
+                break;
+            case '\b':
+                g_string_append(result, "\\b");
+                break;
+            case '\f':
+                g_string_append(result, "\\f");
+                break;
+            case '\r':
+                g_string_append(result, "\\r");
+                break;
+            case '\t':
+                g_string_append(result, "\\t");
+                break;
+            default:
+                g_string_append_c(result, c);
+        }
+    }
+done:
+    return g_string_free(result, FALSE);
+}
 
 /*
  * Initialize the application instance. Called just after client_app_new by GObject.
@@ -480,10 +525,14 @@ static void client_app_request_desktop(ClientApp * app) {
     client_app_window_set_central_widget_sensitive(app->main_window, FALSE);
 
     g_clear_object(&app->current_request);
+    
+    g_autofree gchar *user = util_strescape(app->username, NULL);
+    g_autofree gchar *pass = util_strescape(app->password, NULL);
+
     g_autofree gchar * req_body = g_strdup_printf(
         "{\"hwaddress\": \"%s\", \"username\": \"%s\", \"password\": \"%s\", \"desktop\": \"%s\"}",
         client_conf_get_terminal_id(app->conf),
-        app->username, app->password, app->desktop);
+        user, pass, app->desktop);
     app->current_request = client_request_new_with_data(app->conf,
         "/vdi/desktop", req_body, desktop_request_cb, app);
 }
