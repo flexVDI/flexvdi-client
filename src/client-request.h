@@ -52,8 +52,7 @@ ClientRequest * client_request_new(ClientConf * conf, const gchar * path,
  * Create a new POST request, with data.
  */
 ClientRequest * client_request_new_with_data(ClientConf * conf, const gchar * path,
-    const gchar * post_data, ClientRequestCallback cb, gpointer user_data);
-
+    const gchar * post_data, const gchar * loggable_post_data, ClientRequestCallback cb, gpointer user_data);
 /*
  * client_request_cancel
  * 

@@ -82,7 +82,7 @@ static void test_client_request_get_fail(Fixture *f, gconstpointer user_data) {
 
 static void test_client_request_post(Fixture *f, gconstpointer user_data) {
     f->req = client_request_new_with_data(f->conf, "/post",
-        "foobar", request_result, f);
+        "foobar", "foobar not secret", request_result, f);
 
     g_main_loop_run(f->loop);
 

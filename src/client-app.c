@@ -472,7 +472,7 @@ static void client_app_show_login(ClientApp * app, const gchar * error) {
     g_autofree gchar * req_body = g_strdup_printf(
         "{\"hwaddress\": \"%s\"}", client_conf_get_terminal_id(app->conf));
     app->current_request = client_request_new_with_data(app->conf,
-        "/vdi/authmode", req_body, authmode_request_cb, app);
+        "/vdi/authmode", req_body, req_body, authmode_request_cb, app);
 }
 
 
@@ -533,8 +533,14 @@ static void client_app_request_desktop(ClientApp * app) {
         "{\"hwaddress\": \"%s\", \"username\": \"%s\", \"password\": \"%s\", \"desktop\": \"%s\"}",
         client_conf_get_terminal_id(app->conf),
         user, pass, app->desktop);
+
+    g_autofree gchar * loggable_req_body = g_strdup_printf(
+        "{\"hwaddress\": \"%s\", \"username\": \"%s\", \"password\": \"%s\", \"desktop\": \"%s\"}",
+        client_conf_get_terminal_id(app->conf),
+        user, "******", app->desktop);
+
     app->current_request = client_request_new_with_data(app->conf,
-        "/vdi/desktop", req_body, desktop_request_cb, app);
+        "/vdi/desktop", req_body, loggable_req_body, desktop_request_cb, app);
 }
 
 
