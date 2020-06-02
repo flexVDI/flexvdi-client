@@ -57,7 +57,7 @@ cp src/flexvdi-client.exe output/bin
 
 # Copy gio TLS and GStreamer modules
 cp "$PREFIX"/lib/gio/modules/libgiognutls.dll output/lib/gio/modules
-cp "$PREFIX"/lib/gstreamer-1.0/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,directsound}.dll output//lib/gstreamer-1.0
+cp "$PREFIX"/lib/gstreamer-1.0/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,directsound,directsoundsrc}.dll output//lib/gstreamer-1.0
 
 # Find DLLs
 DLL_DIRS=( $(find "$PREFIX" $($CC -print-sysroot) -iname "*.dll" -type f -exec dirname \{\} \; 2>/dev/null | sort -u) )
