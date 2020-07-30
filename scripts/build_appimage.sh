@@ -40,11 +40,12 @@ Icon=icon
 EOF
 cp "$SRCDIR"/resources/images/icon.png $TMPDIR
 
-NOT_PREFIX_LIBS="libudev|libcrypt|$NOT_PREFIX_LIBS"
+NOT_PREFIX_LIBS="libudev|libcrypt\.|$NOT_PREFIX_LIBS"
+EXCLUDED_LIBS="libcrypto"
 
 copy_with_deps() {
     cp "$@"
-    ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep -E "$PREFIX|$NOT_PREFIX_LIBS" | sort -u | xargs -r cp -t $TMPDIR/lib -u
+    ldd "${@:1:$#-1}" | grep "=>" | sed 's;.* => \(/.*\) (.*;\1;' | grep -E "$PREFIX|$NOT_PREFIX_LIBS" | grep -v "$EXCLUDED_LIBS" | sort -u | xargs -r cp -t $TMPDIR/lib -u
 }
 
 mkdir -p $TMPDIR/bin $TMPDIR/lib/gstreamer-1.0 $TMPDIR/lib/gio $TMPDIR/share/fonts
