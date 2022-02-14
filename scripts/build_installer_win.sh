@@ -21,6 +21,9 @@ set -e
 PREFIX="$1"
 BUILD_TYPE="$2"
 
+THIS_SCRIPT=`readlink -e "$0"`
+SRCDIR=`dirname "${THIS_SCRIPT}"`/../
+
 if [ -z "$CC" ]; then
     if file src/flexvdi-client.exe | grep -q x86-64; then
         HOST=x86_64-w64-mingw32
@@ -72,6 +75,6 @@ if [ "$BUILD_TYPE" != "Debug" ]; then
 fi
 
 cp "$PREFIX"/bin/usb.ids output/bin
-find . -name "Lato-Regular.ttf" -exec cp \{\} . \;
+cp "$SRCDIR"/resources/fonts/Lato-Regular.ttf .
 
 makensis setup.nsi
