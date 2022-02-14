@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with flexVDI Client. If not, see <https://www.gnu.org/licenses/>.
 
+set -e
 PREFIX="$1"
 BUILD_TYPE="$2"
 

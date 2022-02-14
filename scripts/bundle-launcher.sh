@@ -1,5 +1,6 @@
 #!/bin/sh
 
+set -e
 if test "x$GTK_DEBUG_LAUNCHER" != x; then
     set -x
 fi
