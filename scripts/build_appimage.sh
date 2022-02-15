@@ -53,7 +53,7 @@ copy_with_deps "$BIN" $TMPDIR/bin/flexvdi-client
 copy_with_deps "$LIB" $TMPDIR/lib/libflexvdi-client.so
 copy_with_deps $(pkg-config gstreamer-1.0 --variable pluginsdir)/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,alsa,pulseaudio}.so "$TMPDIR"/lib/gstreamer-1.0
 copy_with_deps $(pkg-config gstreamer-1.0 --variable prefix)/libexec/gstreamer-1.0/gst-plugin-scanner "$TMPDIR"/bin
-copy_with_deps $(pkg-config gio-2.0 --variable giomoduledir)/libgiognutls.so "$TMPDIR"/lib/gio
+copy_with_deps $(pkg-config gio-2.0 --variable giomoduledir)/libgioopenssl.so "$TMPDIR"/lib/gio
 cp -a "$PREFIX"/lib/gtk-3.0 "$TMPDIR"/lib
 find $TMPDIR/{bin,lib} -type f -exec chmod 755 \{\} + &> /dev/null | true
 if [ "$BUILD_TYPE" != "Debug" ]; then

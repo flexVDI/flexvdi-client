@@ -41,7 +41,7 @@
   </binary>
 
   <binary>
-    ${prefix}/lib/gio/modules/libgiognutls.so
+    ${prefix}/lib/gio/modules/libgioopenssl.so
   </binary>
 
   <binary dest="${bundle}/Contents/MacOS">

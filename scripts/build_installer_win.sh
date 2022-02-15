@@ -60,7 +60,7 @@ mkdir -p output/bin output/lib/gio/modules output/lib/gstreamer-1.0
 cp src/flexvdi-client.exe output/bin
 
 # Copy gio TLS and GStreamer modules
-cp "$PREFIX"/lib/gio/modules/libgiognutls.dll output/lib/gio/modules
+cp "$PREFIX"/lib/gio/modules/libgioopenssl.dll output/lib/gio/modules
 cp "$PREFIX"/lib/gstreamer-1.0/libgst{app,coreelements,audioconvert,audioresample,autodetect,playback,jpeg,videofilter,videoconvert,videoscale,deinterlace,directsound,directsoundsrc}.dll output//lib/gstreamer-1.0
 
 # Find DLLs
